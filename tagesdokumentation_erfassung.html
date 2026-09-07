@@ -202,9 +202,6 @@ const DIENSTART_OPTIONS = {
     { value: "Rufdienst (ZD2)", label: "Rufdienst (ZD2)", start: "11:00", end: "18:00" },
     { value: "Rufdienst (Samstag, RBD)", label: "Rufdienst (Samstag, RBD)", start: "09:00", end: "10:30" },
     { value: "Rufdienst (Sonntag/Feiertag, RBD2)", label: "Rufdienst (Sonntag/Feiertag, RBD2)", start: "09:00", end: "10:30" },
-    { value: "Bereitschaftsdienst", label: "Bereitschaftsdienst" },
-    { value: "Spätdienst", label: "Spätdienst" },
-    { value: "Sonstiges", label: "Sonstiges" },
   ],
   "Assistenzarzt": [
     { value: "", label: "" },
@@ -240,7 +237,7 @@ document.getElementById('funktion').addEventListener('change', (e) => {
 
 // Rufdienst-Zeilen dynamisch erzeugen (1-8)
 const tbody = document.getElementById('rufdienst-table');
-const artOptions = ["", "telefonisch (von zu Hause, RBT)", "Präsenz im Haus (RBA)", "Operation / Eingriff", "Sonstiges"];
+const artOptions = ["", "telefonisch (RBT)", "Präsenz im Haus (RBA)", "Operation / Eingriff", "Sonstiges"];
 const grundOptions = ["", "Notfall / Notoperation", "OP-Verlängerung", "Aufnahme / Ambulanz", "Konsil / Anforderung anderer Abteilung", "Personalausfall / Unterbesetzung", "Übergabe / Nachbereitung / Dokumentation", "Patienten-/Angehörigengespräch", "Angeordnete Zusatzaufgabe", "Sonstiges (bitte erläutern)"];
 for (let i = 1; i <= 8; i++) {
   const tr = document.createElement('tr');
