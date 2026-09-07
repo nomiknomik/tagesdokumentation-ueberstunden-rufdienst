@@ -47,7 +47,7 @@
     <table class="grid">
       <tr>
         <td class="label" style="width:16%">Name, Vorname:</td>
-        <td style="width:34%"><input class="ro" id="name_vorname" value="Zabelyshenskiy, Alexander" readonly></td>
+        <td style="width:34%"><input id="name_vorname" value="Zabelyshenskiy, Alexander"></td>
         <td class="label" style="width:10%">Datum:</td>
         <td style="width:40%">
           <div class="date-wrap">
@@ -59,13 +59,24 @@
       </tr>
       <tr>
         <td class="label">Personalnummer:</td>
-        <td><input class="ro" id="personalnummer" value="421761" readonly></td>
+        <td><input id="personalnummer" value="421761"></td>
         <td class="label">Klinik / Abteilung:</td>
-        <td><input class="ro" id="klinik_abteilung" value="Allgemein-, Viszeral- u. Gefäßchirurgie" readonly></td>
+        <td>
+          <select id="klinik_abteilung">
+            <option value="Allgemein-, Viszeral- u. Gefäßchirurgie">Allgemein-, Viszeral- u. Gefäßchirurgie</option>
+            <option value="Unfallchirurgie">Unfallchirurgie</option>
+          </select>
+        </td>
       </tr>
       <tr>
         <td class="label">Funktion / Position:</td>
-        <td><input class="ro" id="funktion" value="Oberarzt" readonly></td>
+        <td>
+          <select id="funktion">
+            <option value="Oberarzt">Oberarzt</option>
+            <option value="Assistenzarzt">Assistenzarzt</option>
+            <option value="Physician Assistant">Physician Assistant</option>
+          </select>
+        </td>
         <td class="label">Dienstart:</td>
         <td>
           <select id="dienstart">
@@ -89,6 +100,11 @@
             <input type="checkbox" id="frn_check" style="width:auto; vertical-align:middle;">
             frei nach Dienst (Nachtoperation – normale Arbeitszeit trotzdem eintragen, kein Minusstunden-Abzug; wird als Bemerkung vermerkt)
           </label>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="4" style="text-align:right; background:#f5f5f5; padding:4px 8px;">
+          <button type="button" id="resetBtn" style="background:#999; padding:4px 10px; font-size:11px; border-radius:3px;">Dienstart &amp; Erfassung zurücksetzen</button>
         </td>
       </tr>
     </table>
@@ -310,6 +326,32 @@ recalcDuty();
 for (let i=1;i<=8;i++){ recalcRow(i); }
 document.querySelector('.block').addEventListener('input', saveFormToCookie);
 document.querySelector('.block').addEventListener('change', saveFormToCookie);
+
+// ---- Reset: Dienstart und alles darunter (Kopfdaten bleiben erhalten) ----
+const RESET_IDS = [
+  "dienstart","frn_check",
+  "dienstbeginn","plan_dienstende","tats_dienstende","ueberstunden_std","grund_ueberstunden",
+  "erlaeuterung","angeordnet_durch",
+  "summe_inanspruchnahme","anzahl_einsaetze",
+  "ueberstunden_gesamt","ruhezeit_eingehalten","gewuenschter_ausgleich","geplanter_ausgleichstag"
+];
+for (let i=1;i<=8;i++){
+  ["beginn","ende","dauer","art","grund_anlass","fallnr"].forEach(c=>RESET_IDS.push(`rufdienst_${i}_${c}`));
+}
+function resetBelowHeader(){
+  RESET_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+    else if (el.type === 'checkbox') el.checked = false;
+    else el.value = '';
+  });
+  recalcDuty();
+  for (let i=1;i<=8;i++){ recalcRow(i); }
+  recalcSumme();
+  saveFormToCookie();
+}
+document.getElementById('resetBtn').addEventListener('click', resetBelowHeader);
 
 // Feste Zeiten je Dienstart automatisch eintragen (ersetzt die frühere separate Zeitvorlage)
 document.getElementById('dienstart').addEventListener('change', (e) => {
