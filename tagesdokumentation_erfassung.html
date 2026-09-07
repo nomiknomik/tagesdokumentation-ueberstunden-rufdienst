@@ -124,8 +124,7 @@
         <td><input type="text" class="time-input" inputmode="numeric" placeholder="hh:mm" maxlength="5" id="tats_dienstende"></td>
         <td><input class="rowcalc" id="ueberstunden_std" readonly></td>
         <td>
-          <select id="grund_ueberstunden">
-            <option value=""></option>
+          <select id="grund_ueberstunden" multiple size="4" style="height:auto;">
             <option>Notfall / Notoperation</option>
             <option>OP-Verlängerung</option>
             <option>Aufnahme / Ambulanz</option>
@@ -136,6 +135,7 @@
             <option>Angeordnete Zusatzaufgabe</option>
             <option>Sonstiges (bitte erläutern)</option>
           </select>
+          <small style="display:block; margin-top:2px;">Strg/Cmd-Klick für Mehrfachauswahl – 1. Auswahl geht ins Feld, weitere automatisch in Erläuterung</small>
         </td>
       </tr>
       <tr>
@@ -330,6 +330,7 @@ function saveFormToCookie(){
   document.querySelectorAll('.block input, .block select').forEach(el => {
     if (!el.id || el.readOnly || el.classList.contains('ro') || el.classList.contains('rowcalc')) return;
     if (el.type === 'checkbox') { data[el.id] = el.checked; return; }
+    if (el.multiple) { data[el.id] = Array.from(el.selectedOptions).map(o => o.value); return; }
     data[el.id] = el.value;
   });
   setCookie(COOKIE_NAME, JSON.stringify(data), 90);
@@ -343,6 +344,9 @@ function loadFormFromCookie(){
       const el = document.getElementById(id);
       if (!el || el.readOnly) return;
       if (el.type === 'checkbox') { el.checked = !!data[id]; }
+      else if (el.multiple && Array.isArray(data[id])) {
+        Array.from(el.options).forEach(o => { o.selected = data[id].includes(o.value); });
+      }
       else { el.value = data[id]; }
     });
   } catch(e){ console.warn('Cookie-Daten konnten nicht geladen werden', e); }
@@ -368,13 +372,18 @@ function resetBelowHeader(){
   RESET_IDS.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    if (el.tagName === 'SELECT') el.value = (id === 'ruhezeit_eingehalten') ? 'Ja' : el.options[0].value;
+    if (el.tagName === 'SELECT') {
+      if (el.multiple) { Array.from(el.options).forEach(o => o.selected = false); }
+      else el.value = (id === 'ruhezeit_eingehalten') ? 'Ja' : el.options[0].value;
+    }
     else if (el.type === 'checkbox') el.checked = false;
     else el.value = '';
   });
   recalcDuty();
   for (let i=1;i<=8;i++){ recalcRow(i); }
   recalcSumme();
+  const err = document.getElementById('erlaeuterung');
+  if (err) err.dataset.autoGrund = '';
   saveFormToCookie();
 }
 document.getElementById('resetBtn').addEventListener('click', resetBelowHeader);
@@ -388,6 +397,24 @@ document.getElementById('dienstart').addEventListener('change', (e) => {
     document.getElementById('plan_dienstende').value = end;
     recalcDuty();
   }
+  saveFormToCookie();
+});
+
+// Grund der Überstunden: Mehrfachauswahl – 1. Auswahl bleibt im Feld (für PDF-Textfeld),
+// alle weiteren werden automatisch in die Erläuterung übernommen
+document.getElementById('grund_ueberstunden').addEventListener('change', (e) => {
+  const selected = Array.from(e.target.selectedOptions).map(o => o.value).filter(v => v);
+  const err = document.getElementById('erlaeuterung');
+  const extra = selected.slice(1).join(', ');
+  let val = err.value;
+  if (err.dataset.autoGrund) {
+    val = val.replace(err.dataset.autoGrund, '').replace(/^ – | – $/, '').trim();
+  }
+  if (extra) {
+    val = val ? val + ' – ' + extra : extra;
+  }
+  err.value = val;
+  err.dataset.autoGrund = extra;
   saveFormToCookie();
 });
 
