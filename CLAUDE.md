@@ -105,3 +105,19 @@ Layout-Bug mehr offen. Bei künftigen Änderungen an Koordinaten immer
 - "Überstunden am Tag gesamt" übernimmt aktuell nur `ueberstunden_std`
   (Dienstzeit-Überstunden), keine Verrechnung mit Rufdienst-Summe – ggf. mit
   Nutzer klären, ob das so gewünscht ist
+
+## Update (Redesign Dienstart + Cookies)
+- **Zeitvorlage-Feld entfernt** (war redundant): Die Wochentags-Varianten sind jetzt
+  direkt im offiziellen `dienstart`-Dropdown enthalten:
+  - `Regeldienst (Montag)` → amb2 (07:10–16:05)
+  - `Regeldienst` → amb4 (07:25–16:05)
+  - `Rufdienst (Mo–Do)` → ZD1 (11:00–18:00)
+  - `Rufdienst` → ZD2 (11:00–18:00)
+  - `Rufdienst (Samstag)` → RBD (09:00–10:30, + Hinweis "RBA in Abschnitt 2 erfassen")
+  - `Rufdienst (Sonntag/Feiertag)` → RBD2 (wie Samstag)
+  Auswahl füllt automatisch Dienstbeginn/planmäßiges Dienstende via `data-start`/`data-end`
+  Attributen auf den `<option>`-Elementen.
+- **Cookie-Persistenz**: Alle editierbaren Felder (nicht: readonly/`.ro`/`.rowcalc`)
+  werden bei jedem `input`/`change` in einem JSON-Cookie (`tagesdoku_formdata`,
+  90 Tage) gespeichert und beim Laden der Seite automatisch wiederhergestellt
+  (`loadFormFromCookie()`), inkl. Checkbox-Support (FRN).
