@@ -417,7 +417,7 @@ document.getElementById('frn_check').addEventListener('change', (e) => {
 
 document.getElementById('downloadBtn').addEventListener('click', async () => {
   try {
-    const { PDFDocument } = PDFLib;
+    const { PDFDocument, StandardFonts, rgb } = PDFLib;
     const bytes = Uint8Array.from(atob(PDF_B64), c => c.charCodeAt(0));
     const pdfDoc = await PDFDocument.load(bytes);
     const form = pdfDoc.getForm();
@@ -451,6 +451,14 @@ document.getElementById('downloadBtn').addEventListener('click', async () => {
     });
 
     form.updateFieldAppearances();
+
+    // Heutiges Datum links unten bei "Datum, Unterschrift Ärztin/Arzt" eintragen
+    const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const page0 = pdfDoc.getPage(0);
+    const today = new Date();
+    const todayStr = `${String(today.getDate()).padStart(2,'0')}.${String(today.getMonth()+1).padStart(2,'0')}.${today.getFullYear()}`;
+    page0.drawText(todayStr, { x: 40, y: 148, size: 9, font: helv, color: rgb(0,0,0) });
+
     const outBytes = await pdfDoc.save();
     const blob = new Blob([outBytes], {type:'application/pdf'});
     const url = URL.createObjectURL(blob);
