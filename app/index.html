@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tagesdoku">
+<meta name="theme-color" content="#00636e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Tagesdokumentation</title>
+<style>
+:root{
+  --bg:#f2f4f5; --card:#fff; --ink:#1c2426; --muted:#68787c;
+  --line:#dbe2e4; --accent:#00636e; --accent-l:#e3eff0;
+  --go:#1d7a4c; --stop:#a3402f; --warn:#8a5a00; --warn-bg:#fff6e3;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--ink);padding-bottom:env(safe-area-inset-bottom)}
+header{background:var(--accent);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  position:sticky;top:0;z-index:10}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.2px}
+nav{display:flex;background:var(--accent);padding:0 8px 8px;position:sticky;top:0;z-index:9;gap:6px}
+nav button{flex:1;background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:8px;
+  padding:9px 4px;font-size:13px;font-weight:600}
+nav button.on{background:#fff;color:var(--accent)}
+main{padding:12px 12px 40px;max-width:640px;margin:0 auto}
+section{display:none} section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.datebar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.datebar button{width:44px;height:44px;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:20px;color:var(--accent)}
+.datebar input{flex:1;height:44px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font-size:16px;background:#fff;color:var(--ink)}
+.duty{background:var(--accent-l);border-radius:10px;padding:11px 12px;margin-bottom:12px}
+.duty b{font-size:17px} .duty small{display:block;color:var(--muted);margin-top:2px}
+.stampgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.stamp{border:0;border-radius:12px;color:#fff;padding:18px 6px;font-size:17px;font-weight:700}
+.stamp small{display:block;font-weight:400;font-size:13px;opacity:.85;margin-top:3px}
+.stamp.go{background:var(--go)} .stamp.stop{background:var(--stop)}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.row label{flex:0 0 42%;font-size:14px;color:var(--muted)}
+input,select,textarea{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:8px;
+  padding:9px;background:#fff;color:var(--ink);width:100%;min-width:0}
+textarea{min-height:64px}
+input[readonly]{background:#f6f8f8;color:var(--muted)}
+.btn{display:block;width:100%;border:0;border-radius:12px;background:var(--accent);color:#fff;
+  padding:15px;font-size:16px;font-weight:700;margin-top:6px}
+.btn.sec{background:#fff;color:var(--accent);border:1.5px solid var(--accent)}
+.btn.ghost{background:transparent;color:var(--muted);font-weight:500;padding:10px;font-size:14px}
+.einsatz{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;background:#fbfcfc}
+.einsatz .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.einsatz .hd b{font-size:14px}
+.del{background:none;border:0;color:var(--stop);font-size:13px;padding:4px}
+.note{background:var(--warn-bg);border-left:3px solid var(--warn);color:var(--warn);
+  padding:9px 11px;border-radius:6px;font-size:13.5px;margin-bottom:10px}
+.ok{color:var(--go);font-size:13.5px}
+.list{font-size:14px} .list div{padding:7px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.list div:last-child{border:0}
+.tag{font-size:12px;background:var(--accent-l);color:var(--accent);border-radius:5px;padding:2px 7px;font-weight:600}
+.chk{display:flex;align-items:center;gap:10px;margin:10px 0}
+.chk input{width:22px;height:22px}
+.hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<header><h1>Tagesdokumentation – Überstunden &amp; Rufdienst</h1></header>
+<nav>
+  <button data-tab="tag" class="on">Tag</button>
+  <button data-tab="plan">Dienstplan</button>
+  <button data-tab="cfg">Einstellungen</button>
+</nav>
+
+<main>
+<!-- ================= TAG ================= -->
+<section id="tag" class="on">
+  <div class="datebar">
+    <button id="dPrev">‹</button>
+    <input type="date" id="datum">
+    <button id="dNext">›</button>
+  </div>
+  <button class="btn ghost" id="heuteBtn">Heute</button>
+
+  <div class="duty" id="dutyBox"><b>–</b><small>Kein Dienstplan importiert</small></div>
+
+  <div class="card">
+    <h2>Kommen / Gehen</h2>
+    <div class="stampgrid">
+      <button class="stamp go" id="btnKommen">Kommen<small id="lblKommen">–</small></button>
+      <button class="stamp stop" id="btnGehen">Gehen<small id="lblGehen">–</small></button>
+    </div>
+    <div class="row"><label>Dienstart</label><select id="dienstartSel"></select></div>
+    <div class="row"><label>Dienstbeginn</label><input type="time" id="dienstbeginn"></div>
+    <div class="row"><label>Plan-Dienstende</label><input type="time" id="plan_dienstende"></div>
+    <div class="row"><label>Tatsächl. Ende</label><input type="time" id="tats_dienstende"></div>
+    <div class="row"><label>Überstunden (Std.)</label><input id="ueberstunden_std" readonly></div>
+    <div class="row"><label>Grund</label><input id="grund_ueberstunden" placeholder="Grund der Überstunden"></div>
+    <div class="chk"><input type="checkbox" id="frn"><label style="flex:1">FRN – frei nach Dienst</label></div>
+  </div>
+
+  <div class="card">
+    <h2>Rufdienst-Einsätze</h2>
+    <div id="einsaetze"></div>
+    <button class="btn sec" id="btnEinsatzStart">+ Einsatz jetzt starten</button>
+    <button class="btn ghost" id="btnEinsatzLeer">Leere Zeile hinzufügen</button>
+    <div class="row" style="margin-top:10px"><label>Summe (Std.)</label><input id="summe_inanspruchnahme" readonly></div>
+    <div class="row"><label>Anzahl Einsätze</label><input id="anzahl_einsaetze" readonly></div>
+  </div>
+
+  <div class="card">
+    <h2>Zusammenfassung</h2>
+    <div class="row"><label>Überstunden gesamt</label><input id="ueberstunden_gesamt" readonly></div>
+    <div class="row"><label>Ruhezeit eingehalten</label>
+      <select id="ruhezeit_eingehalten"><option value=""></option><option>ja</option><option>nein</option></select></div>
+    <div class="row"><label>Gewünschter Ausgleich</label><input id="gewuenschter_ausgleich"></div>
+    <div class="row"><label>Geplanter Ausgleichstag</label><input id="geplanter_ausgleichstag"></div>
+    <div class="row" style="display:block"><label style="display:block;margin-bottom:5px">Erläuterung</label>
+      <textarea id="erlaeuterung"></textarea></div>
+    <div class="row"><label>Angeordnet durch</label><input id="angeordnet_durch"></div>
+  </div>
+
+  <button class="btn" id="pdfBtn">PDF erzeugen</button>
+  <button class="btn ghost" id="resetTag">Diesen Tag zurücksetzen</button>
+</section>
+
+<!-- ================= PLAN ================= -->
+<section id="plan">
+  <div class="card">
+    <h2>Dienstplan importieren</h2>
+    <input type="file" id="xlsFile" accept=".xls,.xlsx">
+    <div class="hint">Offizielle Monatsdatei (Spalten: Datum · Wochentag · OÄ · Urlaub). Ein Import pro Monat; alte Monate bleiben erhalten.</div>
+    <div id="importMsg" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h2>Meine Dienste</h2>
+    <div class="list" id="planList"><div>Noch kein Plan importiert.</div></div>
+    <button class="btn ghost" id="planClear">Alle Pläne löschen</button>
+  </div>
+</section>
+
+<!-- ================= EINSTELLUNGEN ================= -->
+<section id="cfg">
+  <div class="card">
+    <h2>Kopfdaten für das PDF</h2>
+    <div class="row"><label>Name, Vorname</label><input id="cfg_name"></div>
+    <div class="row"><label>Personalnummer</label><input id="cfg_pnr"></div>
+    <div class="row"><label>Funktion</label>
+      <select id="cfg_funktion"><option>Oberarzt</option><option>Assistenzarzt</option><option>Physician Assistant</option></select></div>
+    <div class="row"><label>Klinik/Abteilung</label>
+      <select id="cfg_klinik"><option>Allgemein-, Viszeral- u. Gefäßchirurgie</option><option>Unfallchirurgie</option></select></div>
+  </div>
+  <div class="card">
+    <h2>Erkennung im Dienstplan</h2>
+    <div class="row"><label>Nachname (Spalte OÄ)</label><input id="cfg_nachname"></div>
+    <div class="row"><label>Kürzel (Spalte Urlaub)</label><input id="cfg_kuerzel"></div>
+    <div class="hint">Steht der Nachname in der Spalte OÄ → Rufdienst. Steht das Kürzel in der Spalte Urlaub → abwesend. Sonst Regeldienst.</div>
+  </div>
+  <div class="card">
+    <h2>Daten</h2>
+    <button class="btn sec" id="exportData">Alle Daten als JSON sichern</button>
+    <div class="hint">Alles liegt ausschließlich lokal auf diesem Gerät (localStorage). Zur Startseite hinzufügen, damit iOS die Daten nicht nach 7 Tagen löscht.</div>
+  </div>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ---------- Konstanten ---------- */
+const DUTY = {
+  amb2:{label:'Regeldienst (Montag)',           start:'07:10', end:'16:05'},
+  amb4:{label:'Regeldienst',                    start:'07:25', end:'16:05'},
+  ZD1: {label:'Rufdienst (Mo–Do)',              start:'11:00', end:'18:00'},
+  ZD2: {label:'Rufdienst',                      start:'11:00', end:'18:00'},
+  RBD: {label:'Rufdienst (Samstag)',            start:'09:00', end:'10:30'},
+  RBD2:{label:'Rufdienst (Sonntag/Feiertag)',   start:'09:00', end:'10:30'}
+};
+const ART_OPTS = ['','telefonisch','Präsenz im Haus','Operation','Sonstiges'];
+const MONTHS = ['januar','februar','märz','april','mai','juni','juli','august','september','oktober','november','dezember'];
+const WDAY = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+const LS = {cfg:'tagesdoku_cfg', plan:'tagesdoku_plan', days:'tagesdoku_days'};
+
+/* ---------- Speicher ---------- */
+const load = (k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } };
+const save = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
+let cfg   = load(LS.cfg, {name:'',pnr:'',funktion:'Oberarzt',klinik:'Allgemein-, Viszeral- u. Gefäßchirurgie',nachname:'',kuerzel:''});
+let plan  = load(LS.plan, {});   // "2026-09-07" -> {wd, oa, urlaub}
+let days  = load(LS.days, {});   // "2026-09-07" -> Tagesdaten
+
+/* ---------- Datum / Feiertage ---------- */
+const pad = n => String(n).padStart(2,'0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function easter(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),
+        g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,
+        l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+        mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;
+  return new Date(y,mo-1,da);
+}
+function holidaysBW(y){
+  const o = easter(y), add = n => { const d=new Date(o); d.setDate(d.getDate()+n); return iso(d); };
+  return new Set([`${y}-01-01`,`${y}-01-06`,add(-2),add(1),`${y}-05-01`,add(39),add(50),add(60),
+                  `${y}-10-03`,`${y}-11-01`,`${y}-12-25`,`${y}-12-26`]);
+}
+const holCache = {};
+const isHoliday = isoDate => {
+  const y = +isoDate.slice(0,4);
+  if(!holCache[y]) holCache[y] = holidaysBW(y);
+  return holCache[y].has(isoDate);
+};
+
+/* ---------- Dienstart aus Plan ableiten ---------- */
+function derive(isoDate){
+  const p = plan[isoDate];
+  const dow = new Date(isoDate+'T12:00:00').getDay();
+  const feiertag = isHoliday(isoDate);
+  if(!p) return {code:null, info:'Kein Plan für diesen Tag'};
+  const kz = (cfg.kuerzel||'').toLowerCase().trim();
+  const nn = (cfg.nachname||'').toLowerCase().trim();
+  if(kz && String(p.urlaub||'').toLowerCase().split(/[,;]/).some(s=>s.trim()===kz))
+    return {code:'abwesend', info:'Abwesend laut Spalte Urlaub'};
+  const rufdienst = nn && String(p.oa||'').toLowerCase().includes(nn);
+  if(rufdienst){
+    if(feiertag || dow===0) return {code:'RBD2', info:'Rufdienst Sonntag/Feiertag'};
+    if(dow===6)             return {code:'RBD',  info:'Rufdienst Samstag'};
+    if(dow===5)             return {code:'ZD2',  info:'Rufdienst Freitag'};
+    return {code:'ZD1', info:'Rufdienst Mo–Do'};
+  }
+  if(feiertag || dow===0 || dow===6) return {code:'frei', info:'Kein Dienst eingetragen'};
+  return dow===1 ? {code:'amb2', info:'Regeldienst Montag'} : {code:'amb4', info:'Regeldienst'};
+}
+
+/* ---------- Tagesdaten ---------- */
+const blank = () => ({dienstart:'', dienstbeginn:'', plan_dienstende:'', tats_dienstende:'',
+  grund_ueberstunden:'', frn:false, erlaeuterung:'', angeordnet_durch:'', einsaetze:[],
+  ruhezeit_eingehalten:'', gewuenschter_ausgleich:'', geplanter_ausgleichstag:''});
+let cur = iso(new Date());
+const day = () => (days[cur] ||= blank());
+const persist = () => save(LS.days, days);
+
+/* ---------- Rechnen (identisch zum Desktop-Tool) ---------- */
+const dec = t => { if(!t) return null; const [h,m]=t.split(':').map(Number); return h+m/60; };
+const fmt = v => (v===null||isNaN(v)) ? '' : v.toFixed(2);
+function calc(){
+  const d = day();
+  const p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
+  let ue = null;
+  if(p!==null && t!==null){ ue = t-p; if(ue<0) ue+=24; }
+  let summe=0, anzahl=0;
+  d.einsaetze.forEach(e=>{
+    const b=dec(e.beginn), en=dec(e.ende);
+    if(b!==null && en!==null){ let x=en-b; if(x<0)x+=24; e.dauer=fmt(x); summe+=x; anzahl++; }
+    else e.dauer='';
+  });
+  $('ueberstunden_std').value    = fmt(ue);
+  $('summe_inanspruchnahme').value = anzahl ? fmt(summe) : '';
+  $('anzahl_einsaetze').value      = anzahl || '';
+  $('ueberstunden_gesamt').value   = ue ? fmt(ue) : '';
+}
+
+/* ---------- UI ---------- */
+const $ = id => document.getElementById(id);
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id===b.dataset.tab));
+});
+
+const sel = $('dienstartSel');
+sel.innerHTML = '<option value="">– keine –</option>' +
+  Object.entries(DUTY).map(([k,v])=>`<option value="${k}">${v.label} (${k})</option>`).join('');
+
+function renderDuty(){
+  const d = derive(cur);
+  const box = $('dutyBox');
+  const wd = WDAY[new Date(cur+'T12:00:00').getDay()];
+  if(d.code && DUTY[d.code]) box.innerHTML = `<b>${wd} · ${DUTY[d.code].label}</b><small>${d.info} · ${DUTY[d.code].start}–${DUTY[d.code].end}</small>`;
+  else if(d.code==='abwesend') box.innerHTML = `<b>${wd} · Abwesend</b><small>${d.info}</small>`;
+  else if(d.code==='frei')     box.innerHTML = `<b>${wd} · Frei</b><small>${d.info}</small>`;
+  else                         box.innerHTML = `<b>${wd}</b><small>${d.info}</small>`;
+}
+
+function renderEinsaetze(){
+  const d = day();
+  $('einsaetze').innerHTML = d.einsaetze.map((e,i)=>`
+    <div class="einsatz">
+      <div class="hd"><b>Einsatz ${i+1}</b><button class="del" data-del="${i}">löschen</button></div>
+      <div class="row"><label>Beginn</label><input type="time" data-e="${i}" data-f="beginn" value="${e.beginn||''}"></div>
+      <div class="row"><label>Ende</label><input type="time" data-e="${i}" data-f="ende" value="${e.ende||''}">
+        ${e.ende?'':`<button class="btn sec" style="width:auto;padding:9px 12px;margin:0" data-stop="${i}">jetzt</button>`}</div>
+      <div class="row"><label>Dauer</label><input value="${e.dauer||''}" readonly></div>
+      <div class="row"><label>Art</label><select data-e="${i}" data-f="art">${
+        ART_OPTS.map(o=>`<option${o===e.art?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="row"><label>Grund/Anlass</label><input data-e="${i}" data-f="grund_anlass" value="${e.grund_anlass||''}"></div>
+      <div class="row"><label>Fall-Nr.</label><input data-e="${i}" data-f="fallnr" value="${e.fallnr||''}"></div>
+    </div>`).join('') || '<div class="hint">Noch keine Einsätze erfasst.</div>';
+}
+
+const FIELDS = ['dienstbeginn','plan_dienstende','tats_dienstende','grund_ueberstunden',
+  'erlaeuterung','angeordnet_durch','ruhezeit_eingehalten','gewuenschter_ausgleich','geplanter_ausgleichstag'];
+
+function renderDay(){
+  const d = day();
+  $('datum').value = cur;
+  if(!d.dienstart){
+    const der = derive(cur);
+    if(DUTY[der.code]){ d.dienstart = der.code; d.plan_dienstende ||= DUTY[der.code].end; d.dienstbeginn ||= DUTY[der.code].start; }
+  }
+  sel.value = d.dienstart || '';
+  FIELDS.forEach(f => $(f).value = d[f] || '');
+  $('frn').checked = !!d.frn;
+  $('lblKommen').textContent = d.dienstbeginn || '–';
+  $('lblGehen').textContent  = d.tats_dienstende || '–';
+  renderDuty(); renderEinsaetze(); calc(); persist();
+}
+
+/* Feld-Bindings */
+FIELDS.forEach(f => $(f).oninput = e => {
+  day()[f] = e.target.value;
+  if(f==='dienstbeginn') $('lblKommen').textContent = e.target.value || '–';
+  if(f==='tats_dienstende') $('lblGehen').textContent = e.target.value || '–';
+  calc(); persist();
+});
+$('frn').onchange = e => {
+  const d = day(); d.frn = e.target.checked;
+  const mark = 'FRN – frei nach Dienst';
+  if(d.frn && !(d.erlaeuterung||'').includes(mark)) d.erlaeuterung = (d.erlaeuterung ? d.erlaeuterung+' – ' : '') + mark;
+  if(!d.frn) d.erlaeuterung = (d.erlaeuterung||'').replace(mark,'').replace(/^ – | – $/g,'').trim();
+  $('erlaeuterung').value = d.erlaeuterung; persist();
+};
+sel.onchange = e => {
+  const d = day(); d.dienstart = e.target.value;
+  if(DUTY[d.dienstart]){ d.dienstbeginn = DUTY[d.dienstart].start; d.plan_dienstende = DUTY[d.dienstart].end; }
+  renderDay();
+};
+$('einsaetze').addEventListener('input', e=>{
+  const i = e.target.dataset.e; if(i===undefined) return;
+  day().einsaetze[i][e.target.dataset.f] = e.target.value; calc(); persist();
+});
+$('einsaetze').addEventListener('change', e=>{
+  const i = e.target.dataset.e; if(i===undefined) return;
+  day().einsaetze[i][e.target.dataset.f] = e.target.value; calc(); persist();
+});
+$('einsaetze').addEventListener('click', e=>{
+  if(e.target.dataset.del!==undefined){ day().einsaetze.splice(+e.target.dataset.del,1); persist(); renderEinsaetze(); calc(); }
+  if(e.target.dataset.stop!==undefined){ day().einsaetze[+e.target.dataset.stop].ende = now(); persist(); renderEinsaetze(); calc(); }
+});
+
+const now = () => new Date().toTimeString().slice(0,5);
+$('btnKommen').onclick = ()=>{ day().dienstbeginn = now(); renderDay(); };
+$('btnGehen').onclick  = ()=>{ day().tats_dienstende = now(); renderDay(); };
+$('btnEinsatzStart').onclick = ()=>{
+  const d = day();
+  if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
+  d.einsaetze.push({beginn:now(),ende:'',art:'',grund_anlass:'',fallnr:''}); persist(); renderEinsaetze();
+};
+$('btnEinsatzLeer').onclick = ()=>{
+  const d = day();
+  if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
+  d.einsaetze.push({beginn:'',ende:'',art:'',grund_anlass:'',fallnr:''}); persist(); renderEinsaetze();
+};
+$('resetTag').onclick = ()=>{ if(confirm('Alle Eingaben dieses Tages löschen?')){ delete days[cur]; persist(); renderDay(); } };
+
+function shift(n){ const d = new Date(cur+'T12:00:00'); d.setDate(d.getDate()+n); cur = iso(d); renderDay(); }
+$('dPrev').onclick = ()=>shift(-1);
+$('dNext').onclick = ()=>shift(1);
+$('heuteBtn').onclick = ()=>{ cur = iso(new Date()); renderDay(); };
+$('datum').onchange = e => { if(e.target.value){ cur = e.target.value; renderDay(); } };
+
+/* ---------- Einstellungen ---------- */
+const CFGMAP = {cfg_name:'name', cfg_pnr:'pnr', cfg_funktion:'funktion', cfg_klinik:'klinik',
+                cfg_nachname:'nachname', cfg_kuerzel:'kuerzel'};
+Object.entries(CFGMAP).forEach(([id,key])=>{
+  $(id).value = cfg[key] || '';
+  $(id).oninput = $(id).onchange = e => { cfg[key] = e.target.value; save(LS.cfg,cfg); renderDuty(); };
+});
+$('exportData').onclick = ()=>{
+  const blob = new Blob([JSON.stringify({cfg,plan,days},null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'tagesdoku_backup.json'; a.click();
+};
+
+/* ---------- Dienstplan-Import ---------- */
+$('xlsFile').onchange = async e => {
+  const file = e.target.files[0]; if(!file) return;
+  const msg = $('importMsg');
+  try{
+    const wb = XLSX.read(new Uint8Array(await file.arrayBuffer()), {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, blankrows:true, defval:''});
+
+    // Monat/Jahr aus der Kopfzeile – NICHT aus den Datumszellen (dort steht z.T. ein altes Jahr)
+    let monat=-1, jahr=null;
+    for(const r of rows.slice(0,6)){
+      for(const c of r){
+        const s = String(c).toLowerCase().trim();
+        const mi = MONTHS.indexOf(s); if(mi>=0) monat = mi;
+        const n = Number(c); if(Number.isInteger(n) && n>2000 && n<2100) jahr = n;
+      }
+      if(monat>=0 && jahr) break;
+    }
+    if(monat<0 || !jahr) throw new Error('Monat/Jahr in der Kopfzeile nicht gefunden.');
+
+    const hdr = rows.findIndex(r => String(r[0]).trim().toLowerCase()==='datum');
+    if(hdr<0) throw new Error('Kopfzeile "Datum" nicht gefunden.');
+
+    let n=0, mismatch=0;
+    for(const r of rows.slice(hdr+1)){
+      const raw = r[0]; if(raw==='' || raw===undefined) continue;
+      let tag = null;
+      if(typeof raw === 'number'){ const p = XLSX.SSF.parse_date_code(raw); if(p) tag = p.d; }
+      else { const m = String(raw).match(/(\d{1,2})/); if(m) tag = +m[1]; }
+      if(!tag) continue;
+      const key = `${jahr}-${pad(monat+1)}-${pad(tag)}`;
+      plan[key] = {wd:String(r[1]||''), oa:String(r[2]||''), urlaub:String(r[3]||'')};
+      const soll = WDAY[new Date(key+'T12:00:00').getDay()];
+      if(r[1] && String(r[1]).trim() && String(r[1]).trim()!==soll) mismatch++;
+      n++;
+    }
+    save(LS.plan, plan);
+    msg.innerHTML = `<div class="ok">${MONTHS[monat][0].toUpperCase()+MONTHS[monat].slice(1)} ${jahr}: ${n} Tage übernommen.</div>` +
+      (mismatch ? `<div class="note">⚠️ Bei ${mismatch} Zeilen passt der Wochentag in Spalte B nicht zum errechneten Datum. Bitte Monat/Jahr in der Kopfzeile prüfen.</div>` : '');
+    renderPlanList(); renderDay();
+  }catch(err){ msg.innerHTML = `<div class="note">Import fehlgeschlagen: ${err.message}</div>`; }
+};
+
+function renderPlanList(){
+  const keys = Object.keys(plan).sort();
+  const out = [];
+  for(const k of keys){
+    const d = derive(k);
+    if(!d.code || d.code==='frei') continue;
+    if(d.code==='abwesend'){ out.push(`<div><span>${k}</span><span class="tag">Abwesend</span></div>`); continue; }
+    if(d.code==='amb2'||d.code==='amb4') continue;
+    out.push(`<div><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${d.code}</span></div>`);
+  }
+  $('planList').innerHTML = out.join('') || '<div>Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.</div>';
+}
+$('planClear').onclick = ()=>{ if(confirm('Alle importierten Pläne löschen?')){ plan={}; save(LS.plan,plan); renderPlanList(); renderDay(); } };
+
+/* ---------- PDF ---------- */
+$('pdfBtn').onclick = async ()=>{
+  try{
+    const d = day();
+    const res = await fetch('Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf');
+    const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
+    const form = pdfDoc.getForm();
+    const [y,m,dd] = cur.split('-');
+    const vals = {
+      name_vorname: cfg.name, personalnummer: cfg.pnr, funktion: cfg.funktion,
+      klinik_abteilung: cfg.klinik, datum: `${dd}.${m}.${y}`,
+      dienstart: DUTY[d.dienstart] ? DUTY[d.dienstart].label : '',
+      dienstbeginn: d.dienstbeginn, plan_dienstende: d.plan_dienstende,
+      tats_dienstende: d.tats_dienstende, ueberstunden_std: $('ueberstunden_std').value,
+      grund_ueberstunden: d.grund_ueberstunden, erlaeuterung: d.erlaeuterung,
+      angeordnet_durch: d.angeordnet_durch,
+      summe_inanspruchnahme: $('summe_inanspruchnahme').value,
+      anzahl_einsaetze: String($('anzahl_einsaetze').value||''),
+      ueberstunden_gesamt: $('ueberstunden_gesamt').value,
+      ruhezeit_eingehalten: d.ruhezeit_eingehalten,
+      gewuenschter_ausgleich: d.gewuenschter_ausgleich,
+      geplanter_ausgleichstag: d.geplanter_ausgleichstag
+    };
+    d.einsaetze.slice(0,8).forEach((e,i)=>{
+      const n = i+1;
+      vals[`rufdienst_${n}_beginn`]=e.beginn||''; vals[`rufdienst_${n}_ende`]=e.ende||'';
+      vals[`rufdienst_${n}_dauer`]=e.dauer||'';   vals[`rufdienst_${n}_art`]=e.art||'';
+      vals[`rufdienst_${n}_grund_anlass`]=e.grund_anlass||''; vals[`rufdienst_${n}_fallnr`]=e.fallnr||'';
+    });
+    Object.entries(vals).forEach(([id,v])=>{
+      try{ const f = form.getTextField(id); f.setFontSize(id==='klinik_abteilung'?6.5:8); f.setText(v||''); }catch(e){}
+    });
+    form.updateFieldAppearances();
+    const bytes = await pdfDoc.save();
+    const blob = new Blob([bytes],{type:'application/pdf'});
+    const fname = `Tagesdokumentation_${cur}.pdf`;
+    const file = new File([blob], fname, {type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:fname});
+    }else{
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = fname; a.click();
+    }
+  }catch(err){ alert('Fehler beim Erzeugen der PDF: ' + err.message); }
+};
+
+/* ---------- Start ---------- */
+renderDay(); renderPlanList();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
