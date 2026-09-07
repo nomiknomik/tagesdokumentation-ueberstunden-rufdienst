@@ -81,12 +81,12 @@
         <td>
           <select id="dienstart">
             <option value=""></option>
-            <option value="Regeldienst (Montag)" data-start="07:10" data-end="16:05">Regeldienst (Montag)</option>
-            <option value="Regeldienst" data-start="07:25" data-end="16:05">Regeldienst</option>
-            <option value="Rufdienst (Mo–Do)" data-start="11:00" data-end="18:00">Rufdienst (Mo–Do)</option>
-            <option value="Rufdienst" data-start="11:00" data-end="18:00">Rufdienst</option>
-            <option value="Rufdienst (Samstag)" data-start="09:00" data-end="10:30" data-note="RBD">Rufdienst (Samstag)</option>
-            <option value="Rufdienst (Sonntag/Feiertag)" data-start="09:00" data-end="10:30" data-note="RBD2">Rufdienst (Sonntag/Feiertag)</option>
+            <option value="Regeldienst (Montag, AMB2)" data-start="07:10" data-end="16:05">Regeldienst (Montag, AMB2)</option>
+            <option value="Regeldienst (AMB4)" data-start="07:25" data-end="16:05">Regeldienst (AMB4)</option>
+            <option value="Rufdienst (Mo–Do, ZD1)" data-start="11:00" data-end="18:00">Rufdienst (Mo–Do, ZD1)</option>
+            <option value="Rufdienst (ZD2)" data-start="11:00" data-end="18:00">Rufdienst (ZD2)</option>
+            <option value="Rufdienst (Samstag, RBD)" data-start="09:00" data-end="10:30">Rufdienst (Samstag, RBD)</option>
+            <option value="Rufdienst (Sonntag/Feiertag, RBD2)" data-start="09:00" data-end="10:30">Rufdienst (Sonntag/Feiertag, RBD2)</option>
             <option>Bereitschaftsdienst</option>
             <option>Spätdienst</option>
             <option>Sonstiges</option>
@@ -135,6 +135,11 @@
             <option>Patienten-/Angehörigengespräch</option>
             <option>Angeordnete Zusatzaufgabe</option>
             <option>Sonstiges (bitte erläutern)</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td class="label">Erläuterung / Bemerkung:</td>
         <td colspan="4"><input id="erlaeuterung"></td>
       </tr>
       <tr>
@@ -174,7 +179,7 @@
         <td style="width:25%">
           <select id="ruhezeit_eingehalten">
             <option value=""></option>
-            <option>Ja</option>
+            <option selected>Ja</option>
             <option>Nein</option>
           </select>
         </td>
@@ -363,7 +368,7 @@ function resetBelowHeader(){
   RESET_IDS.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+    if (el.tagName === 'SELECT') el.value = (id === 'ruhezeit_eingehalten') ? 'Ja' : el.options[0].value;
     else if (el.type === 'checkbox') el.checked = false;
     else el.value = '';
   });
@@ -382,12 +387,6 @@ document.getElementById('dienstart').addEventListener('change', (e) => {
     document.getElementById('dienstbeginn').value = start;
     document.getElementById('plan_dienstende').value = end;
     recalcDuty();
-  }
-  if (opt.dataset.note === 'RBD' || opt.dataset.note === 'RBD2') {
-    const err = document.getElementById('erlaeuterung');
-    if (!err.value.includes('darüber hinaus RBA')) {
-      err.value = (err.value ? err.value + ' – ' : '') + 'darüber hinaus RBA in Abschnitt 2 erfassen';
-    }
   }
   saveFormToCookie();
 });
