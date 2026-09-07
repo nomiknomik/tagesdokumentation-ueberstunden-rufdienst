@@ -49,14 +49,46 @@ Dokument, Weiterleitung an Personalabteilung + Chefarzt-Unterschrift).
   (Hex-String) statt `TextStringObject` schreiben.
 - **AcroForm braucht `/DR` (Default Resources) mit Font-Ressource `/Helv`**,
   sonst kann pdf-lib `setFontSize()` nicht anwenden.
+- **Fehlendes `/BS` (Border Style, W:0) bei editierbaren Feldern**: Edge und
+  PDF24 (beide nutzen die Rendering-Engine "pdfium") zeichnen dann einen
+  sichtbaren Standard-Rahmen um jedes Feld, der versetzt zu den Tabellenlinien
+  liegt ("alles verschoben"). Poppler zeigt diesen Fehler NICHT an – bei
+  Sichtprüfung also nicht nur mit poppler/pdf2image testen, sondern wenn
+  möglich auch mit einem pdfium-basierten Viewer. **Fix**: `/BS {W:0}` auf
+  JEDES Feld setzen (nicht nur readonly-Felder), plus leeres `/MK`.
+- **Feldkoordinaten NIEMALS aus Textposition/Augenmaß schätzen** – das führt zu
+  Versätzen zwischen Feld und tatsächlicher Zelle (z. B. Name/Personalnummer-Bug).
+  **Fix**: `page.get_drawings()` (PyMuPDF) nutzen, um die echten Fill-Rechtecke
+  und Trennlinien der Vorlage auszulesen, und Feldkoordinaten exakt daran
+  ausrichten. Beispiel-Workflow:
+  ```python
+  import fitz
+  doc = fitz.open(SRC)
+  page = doc[0]
+  for p in page.get_drawings():
+      r = p['rect']
+      print(r.x0, r.y0, r.x1, r.y1, 'FILL' if p.get('fill') else 'LINE')
+  ```
+  Damit lassen sich Zellgrenzen (farbige Fill-Rechtecke) UND Trennlinien
+  (schmale Linien-Rechtecke) exakt bestimmen – zuverlässiger als
+  `extract_form_structure.py`-Zeilenschätzungen oder Label-Textpositionen.
 - Beim Erzeugen der Feld-Koordinaten immer die **Linien-/Zeilengrenzen aus
-  `extract_form_structure.py` bzw. `page.search_for()` (PyMuPDF)** verwenden,
-  NICHT die Position des Spalten-Headers – sonst landen Werte in der
-  Kopfzeile statt der Datenzeile (siehe Abschnitt 1 „Dienstzeit" – erster Bug).
+  `extract_form_structure.py` bzw. `page.search_for()` (PyMuPDF)** nur als
+  groben Anhaltspunkt nehmen, NICHT als finale Wahrheit – siehe oben.
 - Koordinatensystem in `add_fields.py`: top-down (y=0 oben), Konvertierung nach
   PDF-Standard (y=0 unten) über `top_rect_to_pdf()`, `PAGE_H = 841.89`.
 - Kein Acrobat/pikepdf-Formularfeld-Ersteller in pypdf vorhanden – Felder werden
   manuell als `/Widget`-Annotation-Dictionaries gebaut (siehe `add_fields.py`).
+- **Vor jeder Auslieferung**: mit `node` + `pdf-lib` testweise Felder befüllen
+  und per `pdf2image` rendern (siehe `test_final2.pdf`-Workflow im Verlauf),
+  UND den Nutzer explizit bitten, in Edge/PDF24 zu prüfen (pdfium-Rendering
+  weicht von poppler ab).
+
+## Status: verifiziert (Stand: aktueller Commit)
+Alle Feldkoordinaten wurden gegen die exakten Vektor-Zellgrenzen der
+Original-PDF geprüft (Kopfteil, Abschnitt 1, 2, 3). Kein bekannter
+Layout-Bug mehr offen. Bei künftigen Änderungen an Koordinaten immer
+`page.get_drawings()` verwenden (siehe oben), nicht schätzen.
 
 ## Dateien in diesem Repo
 - `add_fields.py` – Python-Skript: nimmt Original-PDF, fügt 67 AcroForm-Felder
