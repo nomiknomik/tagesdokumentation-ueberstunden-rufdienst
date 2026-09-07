@@ -77,6 +77,9 @@ def add_text_field(name, rect, value="", font_size=7, readonly=False, multiline=
     })
     if readonly:
         field[NameObject("/BS")] = DictionaryObject({NameObject("/W"): NumberObject(0)})
+    else:
+        field[NameObject("/BS")] = DictionaryObject({NameObject("/W"): NumberObject(0)})
+    field[NameObject("/MK")] = DictionaryObject({})
     ref = writer._add_object(field)
     page["/Annots"].append(ref)
     acroform["/Fields"].append(ref)
