@@ -70,26 +70,15 @@
         <td>
           <select id="dienstart">
             <option value=""></option>
-            <option>Regeldienst</option>
-            <option>Rufdienst (Werktag)</option>
-            <option>Rufdienst (Wochenende/Feiertag)</option>
+            <option value="Regeldienst (Montag)" data-start="07:10" data-end="16:05">Regeldienst (Montag)</option>
+            <option value="Regeldienst" data-start="07:25" data-end="16:05">Regeldienst</option>
+            <option value="Rufdienst (Mo–Do)" data-start="11:00" data-end="18:00">Rufdienst (Mo–Do)</option>
+            <option value="Rufdienst" data-start="11:00" data-end="18:00">Rufdienst</option>
+            <option value="Rufdienst (Samstag)" data-start="09:00" data-end="10:30" data-note="RBD">Rufdienst (Samstag)</option>
+            <option value="Rufdienst (Sonntag/Feiertag)" data-start="09:00" data-end="10:30" data-note="RBD2">Rufdienst (Sonntag/Feiertag)</option>
             <option>Bereitschaftsdienst</option>
             <option>Spätdienst</option>
             <option>Sonstiges</option>
-          </select>
-        </td>
-      </tr>
-      <tr>
-        <td class="label">Zeitvorlage:</td>
-        <td colspan="3">
-          <select id="zeitvorlage">
-            <option value="">– Schnellauswahl für Dienstbeginn/-ende –</option>
-            <option value="amb2">amb2 (Mo, 07:10–16:05)</option>
-            <option value="amb4">amb4 (07:25–16:05)</option>
-            <option value="ZD1">ZD1 (Mo–Do, 11:00–18:00)</option>
-            <option value="ZD2">ZD2 (11:00–18:00)</option>
-            <option value="RBD">RBD (Sa, 09:00–10:30 + RBA)</option>
-            <option value="RBD2">RBD2 (So/Feiertag, wie Sa)</option>
           </select>
         </td>
       </tr>
@@ -283,28 +272,61 @@ document.querySelectorAll('.rd-beginn, .rd-ende').forEach(el=>{
   el.addEventListener('input', ()=>recalcRow(el.dataset.i));
 });
 
-// Feste Zeiten je Dienstart automatisch eintragen
-const DIENSTART_ZEITEN = {
-  "amb2": ["07:10", "16:05"],
-  "amb4": ["07:25", "16:05"],
-  "ZD1":  ["11:00", "18:00"],
-  "ZD2":  ["11:00", "18:00"],
-  "RBD":  ["09:00", "10:30"],
-  "RBD2": ["09:00", "10:30"],
-};
-document.getElementById('zeitvorlage').addEventListener('change', (e) => {
-  const zeiten = DIENSTART_ZEITEN[e.target.value];
-  if (zeiten) {
-    document.getElementById('dienstbeginn').value = zeiten[0];
-    document.getElementById('plan_dienstende').value = zeiten[1];
+// ---- Cookie-Speicherung aller aktuell eingegebenen Werte ----
+function setCookie(name, value, days){
+  const d = new Date();
+  d.setTime(d.getTime() + days*24*60*60*1000);
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+}
+function getCookie(name){
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+const COOKIE_NAME = 'tagesdoku_formdata';
+function saveFormToCookie(){
+  const data = {};
+  document.querySelectorAll('.block input, .block select').forEach(el => {
+    if (!el.id || el.readOnly || el.classList.contains('ro') || el.classList.contains('rowcalc')) return;
+    if (el.type === 'checkbox') { data[el.id] = el.checked; return; }
+    data[el.id] = el.value;
+  });
+  setCookie(COOKIE_NAME, JSON.stringify(data), 90);
+}
+function loadFormFromCookie(){
+  const raw = getCookie(COOKIE_NAME);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    Object.keys(data).forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || el.readOnly) return;
+      if (el.type === 'checkbox') { el.checked = !!data[id]; }
+      else { el.value = data[id]; }
+    });
+  } catch(e){ console.warn('Cookie-Daten konnten nicht geladen werden', e); }
+}
+loadFormFromCookie();
+recalcDuty();
+for (let i=1;i<=8;i++){ recalcRow(i); }
+document.querySelector('.block').addEventListener('input', saveFormToCookie);
+document.querySelector('.block').addEventListener('change', saveFormToCookie);
+
+// Feste Zeiten je Dienstart automatisch eintragen (ersetzt die frühere separate Zeitvorlage)
+document.getElementById('dienstart').addEventListener('change', (e) => {
+  const opt = e.target.selectedOptions[0];
+  const start = opt.dataset.start, end = opt.dataset.end;
+  if (start && end) {
+    document.getElementById('dienstbeginn').value = start;
+    document.getElementById('plan_dienstende').value = end;
     recalcDuty();
   }
-  if (e.target.value === 'RBD' || e.target.value === 'RBD2') {
+  if (opt.dataset.note === 'RBD' || opt.dataset.note === 'RBD2') {
     const err = document.getElementById('erlaeuterung');
     if (!err.value.includes('darüber hinaus RBA')) {
       err.value = (err.value ? err.value + ' – ' : '') + 'darüber hinaus RBA in Abschnitt 2 erfassen';
     }
   }
+  saveFormToCookie();
 });
 
 // FRN-Hinweis in Erläuterung übernehmen
