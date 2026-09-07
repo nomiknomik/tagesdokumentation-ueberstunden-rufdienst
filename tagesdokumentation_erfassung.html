@@ -119,9 +119,9 @@
         <th style="width:40%">Grund der Überstunden</th>
       </tr>
       <tr>
-        <td><input type="time" id="dienstbeginn"></td>
-        <td><input type="time" id="plan_dienstende"></td>
-        <td><input type="time" id="tats_dienstende"></td>
+        <td><input type="text" class="time-input" inputmode="numeric" placeholder="hh:mm" maxlength="5" id="dienstbeginn"></td>
+        <td><input type="text" class="time-input" inputmode="numeric" placeholder="hh:mm" maxlength="5" id="plan_dienstende"></td>
+        <td><input type="text" class="time-input" inputmode="numeric" placeholder="hh:mm" maxlength="5" id="tats_dienstende"></td>
         <td><input class="rowcalc" id="ueberstunden_std" readonly></td>
         <td>
           <select id="grund_ueberstunden">
@@ -204,8 +204,8 @@ for (let i = 1; i <= 8; i++) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td class="row-nr">${i}</td>
-    <td><input type="time" id="rufdienst_${i}_beginn" class="rd-beginn" data-i="${i}"></td>
-    <td><input type="time" id="rufdienst_${i}_ende" class="rd-ende" data-i="${i}"></td>
+    <td><input type="text" class="time-input rd-beginn" inputmode="numeric" placeholder="hh:mm" maxlength="5" id="rufdienst_${i}_beginn" data-i="${i}"></td>
+    <td><input type="text" class="time-input rd-ende" inputmode="numeric" placeholder="hh:mm" maxlength="5" id="rufdienst_${i}_ende" data-i="${i}"></td>
     <td><input class="rowcalc" id="rufdienst_${i}_dauer" readonly></td>
     <td><select id="rufdienst_${i}_art">${artOptions.map(o=>`<option>${o}</option>`).join('')}</select></td>
     <td><input id="rufdienst_${i}_grund_anlass"></td>
@@ -223,6 +223,27 @@ function fmt(dec){
   if (dec === null || isNaN(dec)) return "";
   return dec.toFixed(2);
 }
+
+// ---- Uhrzeit-Eingabe: nach 2 Ziffern Stunde automatisch zu Minuten springen ----
+function attachTimeAutoJump(el){
+  el.addEventListener('input', () => {
+    let digits = el.value.replace(/\D/g, '').slice(0, 4);
+    let formatted = digits;
+    if (digits.length >= 3){
+      formatted = digits.slice(0,2) + ':' + digits.slice(2);
+    } else if (digits.length === 2){
+      formatted = digits + ':';
+    }
+    el.value = formatted;
+    const pos = el.value.length;
+    requestAnimationFrame(() => { try { el.setSelectionRange(pos, pos); } catch(e){} });
+  });
+  el.addEventListener('blur', () => {
+    // Beim Verlassen des Feldes: unvollständige Eingaben bereinigen (z.B. "07:" -> "07:00")
+    if (/^\d{1,2}:$/.test(el.value)) el.value += '00';
+  });
+}
+document.querySelectorAll('.time-input').forEach(attachTimeAutoJump);
 
 function recalcDuty(){
   const plan = timeToDec(document.getElementById('plan_dienstende').value);
