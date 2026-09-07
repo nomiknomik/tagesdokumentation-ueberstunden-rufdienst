@@ -124,7 +124,8 @@
         <td><input type="text" class="time-input" inputmode="numeric" placeholder="hh:mm" maxlength="5" id="tats_dienstende"></td>
         <td><input class="rowcalc" id="ueberstunden_std" readonly></td>
         <td>
-          <select id="grund_ueberstunden" multiple size="4" style="height:auto;">
+          <select id="grund_ueberstunden">
+            <option value=""></option>
             <option>Notfall / Notoperation</option>
             <option>OP-Verlängerung</option>
             <option>Aufnahme / Ambulanz</option>
@@ -135,7 +136,6 @@
             <option>Angeordnete Zusatzaufgabe</option>
             <option>Sonstiges (bitte erläutern)</option>
           </select>
-          <small style="display:block; margin-top:2px;">Strg/Cmd-Klick für Mehrfachauswahl – 1. Auswahl geht ins Feld, weitere automatisch in Erläuterung</small>
         </td>
       </tr>
       <tr>
@@ -204,7 +204,8 @@ const PDF_B64 = "JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5cGRmKQo+Pgp
 
 // Rufdienst-Zeilen dynamisch erzeugen (1-8)
 const tbody = document.getElementById('rufdienst-table');
-const artOptions = ["", "telefonisch (von zu Hause)", "Präsenz im Haus", "Operation / Eingriff", "Sonstiges"];
+const artOptions = ["", "telefonisch (von zu Hause, RBT)", "Präsenz im Haus (RBA)", "Operation / Eingriff", "Sonstiges"];
+const grundOptions = ["", "Notfall / Notoperation", "OP-Verlängerung", "Aufnahme / Ambulanz", "Konsil / Anforderung anderer Abteilung", "Personalausfall / Unterbesetzung", "Übergabe / Nachbereitung / Dokumentation", "Patienten-/Angehörigengespräch", "Angeordnete Zusatzaufgabe", "Sonstiges (bitte erläutern)"];
 for (let i = 1; i <= 8; i++) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
@@ -213,7 +214,7 @@ for (let i = 1; i <= 8; i++) {
     <td><input type="text" class="time-input rd-ende" inputmode="numeric" placeholder="hh:mm" maxlength="5" id="rufdienst_${i}_ende" data-i="${i}"></td>
     <td><input class="rowcalc" id="rufdienst_${i}_dauer" readonly></td>
     <td><select id="rufdienst_${i}_art">${artOptions.map(o=>`<option>${o}</option>`).join('')}</select></td>
-    <td><input id="rufdienst_${i}_grund_anlass"></td>
+    <td><select id="rufdienst_${i}_grund_anlass">${grundOptions.map(o=>`<option>${o}</option>`).join('')}</select></td>
     <td><input id="rufdienst_${i}_fallnr"></td>
   `;
   tbody.appendChild(tr);
@@ -400,23 +401,6 @@ document.getElementById('dienstart').addEventListener('change', (e) => {
   saveFormToCookie();
 });
 
-// Grund der Überstunden: Mehrfachauswahl – 1. Auswahl bleibt im Feld (für PDF-Textfeld),
-// alle weiteren werden automatisch in die Erläuterung übernommen
-document.getElementById('grund_ueberstunden').addEventListener('change', (e) => {
-  const selected = Array.from(e.target.selectedOptions).map(o => o.value).filter(v => v);
-  const err = document.getElementById('erlaeuterung');
-  const extra = selected.slice(1).join(', ');
-  let val = err.value;
-  if (err.dataset.autoGrund) {
-    val = val.replace(err.dataset.autoGrund, '').replace(/^ – | – $/, '').trim();
-  }
-  if (extra) {
-    val = val ? val + ' – ' + extra : extra;
-  }
-  err.value = val;
-  err.dataset.autoGrund = extra;
-  saveFormToCookie();
-});
 
 // FRN-Hinweis in Erläuterung übernehmen
 document.getElementById('frn_check').addEventListener('change', (e) => {
