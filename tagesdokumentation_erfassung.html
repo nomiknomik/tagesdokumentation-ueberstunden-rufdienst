@@ -47,7 +47,7 @@
     <table class="grid">
       <tr>
         <td class="label" style="width:16%">Name, Vorname:</td>
-        <td style="width:34%"><input id="name_vorname" value="Zabelyshenskiy, Alexander"></td>
+        <td style="width:34%"><input id="name_vorname" value=""></td>
         <td class="label" style="width:10%">Datum:</td>
         <td style="width:40%">
           <div class="date-wrap">
@@ -59,7 +59,7 @@
       </tr>
       <tr>
         <td class="label">Personalnummer:</td>
-        <td><input id="personalnummer" value="421761"></td>
+        <td><input id="personalnummer" value=""></td>
         <td class="label">Klinik / Abteilung:</td>
         <td>
           <select id="klinik_abteilung">
@@ -80,15 +80,6 @@
         <td class="label">Dienstart:</td>
         <td>
           <select id="dienstart"></select>
-        </td>
-      </tr>
-      <tr>
-        <td class="label">FRN:</td>
-        <td colspan="3" style="background:#f5f5f5;">
-          <label style="font-weight:normal; font-size:12px;">
-            <input type="checkbox" id="frn_check" style="width:auto; vertical-align:middle;">
-            frei nach Dienst (Nachtoperation – normale Arbeitszeit trotzdem eintragen, kein Minusstunden-Abzug; wird als Bemerkung vermerkt)
-          </label>
         </td>
       </tr>
       <tr>
@@ -185,7 +176,7 @@
   <div class="footer">
     <button id="downloadBtn">PDF ausfüllen &amp; herunterladen</button>
     <p><small>Erzeugt das offizielle Formular als ausgefüllte PDF-Datei (Original-Layout unverändert).</small></p>
-    <p><small style="color:#999;">v1.5 &middot; Dr. Alexander Zabelyshenskiy</small></p>
+    <p><small style="color:#999;">v1.5 &middot; <a href="mailto:Alexander.Zabelyshenskiy@klf-net.de" style="color:#999;">Alexander Zabelyshenskiy</a></small></p>
   </div>
 </div>
 
@@ -202,6 +193,7 @@ const DIENSTART_OPTIONS = {
     { value: "Rufdienst (ZD2)", label: "Rufdienst (ZD2)", start: "11:00", end: "18:00" },
     { value: "Rufdienst (Samstag, RBD)", label: "Rufdienst (Samstag, RBD)", start: "09:00", end: "10:30" },
     { value: "Rufdienst (Sonntag/Feiertag, RBD2)", label: "Rufdienst (Sonntag/Feiertag, RBD2)", start: "09:00", end: "10:30" },
+    { value: "FRN (frei nach Dienst)", label: "FRN (frei nach Dienst)", start: "07:25", end: "16:05" },
   ],
   "Assistenzarzt": [
     { value: "", label: "" },
@@ -395,7 +387,7 @@ document.querySelector('.block').addEventListener('change', saveFormToCookie);
 
 // ---- Reset: Dienstart und alles darunter (Kopfdaten bleiben erhalten) ----
 const RESET_IDS = [
-  "dienstart","frn_check",
+  "dienstart",
   "dienstbeginn","plan_dienstende","tats_dienstende","ueberstunden_std","grund_ueberstunden",
   "erlaeuterung","angeordnet_durch",
   "summe_inanspruchnahme","anzahl_einsaetze",
@@ -436,19 +428,6 @@ document.getElementById('dienstart').addEventListener('change', (e) => {
   saveFormToCookie();
 });
 
-
-// FRN-Hinweis in Erläuterung übernehmen
-document.getElementById('frn_check').addEventListener('change', (e) => {
-  const err = document.getElementById('erlaeuterung');
-  const marker = 'FRN – frei nach Dienst';
-  if (e.target.checked) {
-    if (!err.value.includes(marker)) {
-      err.value = (err.value ? err.value + ' – ' : '') + marker;
-    }
-  } else {
-    err.value = err.value.replace(marker, '').replace(/^ – | – $/g, '').trim();
-  }
-});
 
 document.getElementById('downloadBtn').addEventListener('click', async () => {
   try {
