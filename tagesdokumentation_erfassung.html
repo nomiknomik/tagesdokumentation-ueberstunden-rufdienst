@@ -43,6 +43,11 @@
     <p>Ärztlicher Dienst – pro Kalendertag ein Bogen. Gelbe Felder ausfüllen, graue Felder berechnen sich automatisch.</p>
   </div>
 
+  <div id="cookieWarning" style="display:none; background:#fdecea; border:1px solid #d93025; color:#611a15; padding:8px 12px; margin:0 0 10px 0; font-size:12px; border-radius:4px;">
+    ⚠️ Cookies sind in diesem Browser/dieser Umgebung deaktiviert oder werden blockiert – Eingaben werden <b>nicht</b> automatisch gespeichert.
+    Bitte Cookies für diese Seite aktivieren, oder unten den Link mit Ihren Kopfdaten kopieren und als Verknüpfung speichern.
+  </div>
+
   <div class="block">
     <table class="grid">
       <tr>
@@ -176,6 +181,8 @@
   <div class="footer">
     <button id="downloadBtn">PDF ausfüllen &amp; herunterladen</button>
     <p><small>Erzeugt das offizielle Formular als ausgefüllte PDF-Datei (Original-Layout unverändert).</small></p>
+    <button id="copyLinkBtn" style="background:#607d8b; margin-top:6px;">Link mit Kopfdaten kopieren (für Desktop-Verknüpfung)</button>
+    <p><small style="color:#999;">Kopiert einen Link mit Name, Personalnummer, Funktion und Klinik/Abteilung – als Desktop-Verknüpfung nutzbar, unabhängig von Cookies.</small></p>
     <p><small style="color:#999;">v1.5 &middot; <a href="mailto:Alexander.Zabelyshenskiy@klf-net.de" style="color:#999;">Alexander Zabelyshenskiy</a></small></p>
   </div>
 </div>
@@ -380,6 +387,67 @@ function loadFormFromCookie(){
   } catch(e){ console.warn('Cookie-Daten konnten nicht geladen werden', e); }
 }
 loadFormFromCookie();
+
+// ---- Kopfdaten per URL-Parameter übernehmen (funktioniert auch ohne Cookies) ----
+// Beispiel: ?name=Zabelyshenskiy,%20Alexander&personalnummer=421761&funktion=Oberarzt&klinik=Allgemein-,%20Viszeral-%20u.%20Gefäßchirurgie
+function applyUrlParams(){
+  const p = new URLSearchParams(window.location.search);
+  const map = { name: 'name_vorname', personalnummer: 'personalnummer', funktion: 'funktion', klinik: 'klinik_abteilung' };
+  let funktionChanged = false;
+  Object.keys(map).forEach(key => {
+    if (p.has(key)) {
+      const el = document.getElementById(map[key]);
+      if (el) { el.value = p.get(key); if (key === 'funktion') funktionChanged = true; }
+    }
+  });
+  if (funktionChanged) {
+    renderDienstartOptions(document.getElementById('funktion').value);
+  }
+}
+applyUrlParams();
+
+// ---- Cookie-Verfügbarkeit prüfen ----
+function cookiesEnabled(){
+  try {
+    document.cookie = 'cookietest=1; path=/; SameSite=Lax';
+    const ok = document.cookie.indexOf('cookietest=') !== -1;
+    document.cookie = 'cookietest=1; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    return ok;
+  } catch(e) { return false; }
+}
+if (!cookiesEnabled()) {
+  document.getElementById('cookieWarning').style.display = 'block';
+}
+
+// ---- Link mit aktuellen Kopfdaten für Desktop-Verknüpfung erzeugen & kopieren ----
+document.getElementById('copyLinkBtn').addEventListener('click', async () => {
+  const params = new URLSearchParams();
+  const name = document.getElementById('name_vorname').value;
+  const pnr = document.getElementById('personalnummer').value;
+  const funk = document.getElementById('funktion').value;
+  const klinik = document.getElementById('klinik_abteilung').value;
+  if (name) params.set('name', name);
+  if (pnr) params.set('personalnummer', pnr);
+  if (funk) params.set('funktion', funk);
+  if (klinik) params.set('klinik', klinik);
+  const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  const btn = document.getElementById('copyLinkBtn');
+  try {
+    await navigator.clipboard.writeText(url);
+    btn.textContent = 'Link kopiert ✓';
+  } catch(e) {
+    // Fallback für Umgebungen ohne Clipboard-API
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = 'Link kopiert ✓';
+  }
+  setTimeout(() => { btn.textContent = 'Link mit Kopfdaten kopieren (für Desktop-Verknüpfung)'; }, 2500);
+});
+
 recalcDuty();
 for (let i=1;i<=8;i++){ recalcRow(i); }
 document.querySelector('.block').addEventListener('input', saveFormToCookie);
