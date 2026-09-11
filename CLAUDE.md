@@ -165,14 +165,14 @@ Layout-Bug mehr offen. Bei künftigen Änderungen an Koordinaten immer
    Betrifft `saveFormToCookie()`/`loadFormFromCookie()` in BEIDEN Dateien
    (Selektor `.block` müsste auf einen engeren Container eingeschränkt
    werden, der nur die Kopfdaten umfasst).
-2. **Minusstunden-Logik**: Wenn tatsächliches Dienstende < geplantes
-   Dienstende ist (d. h. früher gegangen als geplant), soll das Feld
-   "Überstunden (Std.)" NEGATIV befüllt werden (Minusstunden), nicht nur
-   bei Überschreitung positiv rechnen. Aktuelle Berechnung (Stand
-   Screenshot-Beispiel: Beginn 07:25, geplant 16:05, tatsächlich 11:26 →
-   müsste -4:39 Std. ergeben statt vermutlich 0 oder falschem Wert).
-   Muss in der Überstunden-Berechnungsfunktion beider Dateien geprüft/
-   korrigiert werden.
+2. ~~**Minusstunden-Logik**~~ – erledigt (11.09.2026): `recalcDuty()`/`calc()`
+   haben bei negativer Differenz pauschal 24h addiert (Mitternacht-Wrap-Annahme
+   für den regulären Dienst), dadurch kam bei frühem Dienstende ein falscher
+   großer positiver Wert raus statt Minusstunden. Fix in BEIDEN Dateien
+   (Desktop `tagesdokumentation_erfassung.html`/`build_html.py` + PWA
+   `app/index.html`): kein `+24`-Wrap mehr bei `tats_dienstende < plan_dienstende`.
+   Hinweis: Falls der reguläre Dienst je über Mitternacht gehen sollte, würde
+   das jetzt fälschlich negativ berechnet – bisher kein bekannter Anwendungsfall.
 3. **Dienstart-Label "Regeldienst (AMB4)"**: Am 11.09.2026 umbenannt in
    "Regeldienst (Di–Fr, AMB4)" (Desktop-Tool) bzw. "Regeldienst (Di–Fr)"
    (PWA) – bereits erledigt und gepusht (Desktop-Commit `5af1987b`,
