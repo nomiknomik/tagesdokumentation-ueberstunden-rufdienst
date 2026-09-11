@@ -1,5 +1,12 @@
 # Projekt: Tagesdokumentation Überstunden & Rufdienst (Klinikum Freudenstadt)
 
+## Versionsnummer im Footer
+`tagesdokumentation_erfassung.html` hat im Footer eine Versionsnummer
+(„vX.Y · Alexander Zabelyshenskiy"), identisch in `build_html.py` gepflegt.
+**Bei jeder inhaltlichen Änderung an HTML/JS (nicht bei reinen Doku-Änderungen)
+die Versionsnummer in BEIDEN Dateien hochzählen** (Bugfix → Patch, z.B. 1.5→1.6;
+neues Feature → Minor, z.B. 1.6→1.7).
+
 ## Kontext
 Dr. Alexander Zabelyshenskiy (Oberarzt, Allgemein-, Viszeral- und Gefäßchirurgie,
 Klinikum Landkreis Freudenstadt) muss täglich einen offiziellen Klinikum-Bogen

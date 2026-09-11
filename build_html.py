@@ -191,6 +191,7 @@ html_template = r'''<!DOCTYPE html>
   <div class="footer">
     <button id="downloadBtn">PDF ausfüllen &amp; herunterladen</button>
     <p><small>Erzeugt das offizielle Formular als ausgefüllte PDF-Datei (Original-Layout unverändert).</small></p>
+    <p><small style="color:#999;">v1.6 &middot; <a href="mailto:Alexander.Zabelyshenskiy@klf-net.de" style="color:#999;">Alexander Zabelyshenskiy</a></small></p>
   </div>
 </div>
 
