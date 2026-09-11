@@ -230,7 +230,6 @@ function recalcDuty(){
   let diff = null;
   if (plan !== null && tats !== null){
     diff = tats - plan;
-    if (diff < 0) diff += 24;
   }
   document.getElementById('ueberstunden_std').value = diff !== null ? fmt(diff) : "";
   recalcTotal();
