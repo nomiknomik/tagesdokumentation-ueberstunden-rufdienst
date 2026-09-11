@@ -246,7 +246,7 @@ function calc(){
   const d = day();
   const p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
   let ue = null;
-  if(p!==null && t!==null){ ue = t-p; if(ue<0) ue+=24; }
+  if(p!==null && t!==null){ ue = t-p; }
   let summe=0, anzahl=0;
   d.einsaetze.forEach(e=>{
     const b=dec(e.beginn), en=dec(e.ende);
