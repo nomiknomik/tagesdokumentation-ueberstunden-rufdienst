@@ -121,3 +121,52 @@ Layout-Bug mehr offen. Bei künftigen Änderungen an Koordinaten immer
   werden bei jedem `input`/`change` in einem JSON-Cookie (`tagesdoku_formdata`,
   90 Tage) gespeichert und beim Laden der Seite automatisch wiederhergestellt
   (`loadFormFromCookie()`), inkl. Checkbox-Support (FRN).
+
+## Zwei parallele Dateien – IMMER BEIDE pflegen!
+- `tagesdokumentation_erfassung.html` (Root) – Desktop-Tool, wird per GitHub
+  Pages unter `https://nomiknomik.github.io/tagesdokumentation-ueberstunden-rufdienst/tagesdokumentation_erfassung.html`
+  ausgeliefert. Hat eigene Kopie der Dienstart-Optionsliste (`DIENSTART_OPTIONS`).
+- `app/index.html` – PWA-Variante (separates Manifest/Service Worker), hat
+  EIGENE, unabhängige Kopie der gleichen Logik (`amb2`/`amb4`/... Objekt).
+  Änderungen an Dienstart-Labels, Zeiten, Cookie-Verhalten etc. müssen in
+  BEIDEN Dateien parallel gemacht werden – es gibt keine gemeinsame
+  JS-Datei/kein Include.
+
+## GitHub-Push-Learning (Fehlerquelle!)
+- Beim Batch-Push mehrerer Dateien per Shell-Loop mit `curl -d "{...}"` kann
+  bei großen Dateien (hier: `app/index.html` mit eingebettetem Base64-PDF,
+  >100 KB) die Fehlermeldung `curl: Argument list too long` auftreten. Die
+  Shell bricht dabei NICHT den ganzen Loop ab, sondern nur den einzelnen
+  Befehl – das kann dazu führen, dass eine Datei im Loop übersprungen wird,
+  obwohl der Log scheinbar "OK" für eine andere Datei zeigt. **Fix**: Bei
+  Dateien >~50 KB immer den Payload zuerst per `python3` in eine JSON-Datei
+  schreiben (`base64.b64encode` + `json.dump`) und dann
+  `curl --data @payload.json` verwenden, NIE `-d "$(base64 ...)"` inline.
+  Nach jedem Push den Commit-Diff prüfen (`GET /commits/{sha}` → `files[]`),
+  um zu verifizieren, welche Datei wirklich verändert wurde – nicht nur auf
+  die "OK"-Ausgabe verlassen.
+- GitHub Pages braucht nach einem Push ca. 30–60 Sekunden zum Neu-Deployen;
+  ein sofortiger Fetch der Pages-URL kann noch den alten Stand zeigen.
+
+## Offene, noch nicht umgesetzte Nutzer-Anforderungen (Stand 11.09.2026)
+1. **Cookie-Speicherung einschränken**: Ab dem Feld "Dienstart" und allen
+   darunterliegenden Feldern (Dienstzeit-Block, 8 Rufdienst-Zeilen,
+   Zusammenfassung/Ausgleich) soll NICHT mehr automatisch in Cookies
+   gespeichert werden – hat sich in der Praxis nicht bewährt (Grund: soll
+   pro Tag neu/leer starten). Nur die Kopfdaten (Name, Personalnummer,
+   Funktion, Klinik/Abteilung) sollen weiterhin persistiert werden.
+   Betrifft `saveFormToCookie()`/`loadFormFromCookie()` in BEIDEN Dateien
+   (Selektor `.block` müsste auf einen engeren Container eingeschränkt
+   werden, der nur die Kopfdaten umfasst).
+2. **Minusstunden-Logik**: Wenn tatsächliches Dienstende < geplantes
+   Dienstende ist (d. h. früher gegangen als geplant), soll das Feld
+   "Überstunden (Std.)" NEGATIV befüllt werden (Minusstunden), nicht nur
+   bei Überschreitung positiv rechnen. Aktuelle Berechnung (Stand
+   Screenshot-Beispiel: Beginn 07:25, geplant 16:05, tatsächlich 11:26 →
+   müsste -4:39 Std. ergeben statt vermutlich 0 oder falschem Wert).
+   Muss in der Überstunden-Berechnungsfunktion beider Dateien geprüft/
+   korrigiert werden.
+3. **Dienstart-Label "Regeldienst (AMB4)"**: Am 11.09.2026 umbenannt in
+   "Regeldienst (Di–Fr, AMB4)" (Desktop-Tool) bzw. "Regeldienst (Di–Fr)"
+   (PWA) – bereits erledigt und gepusht (Desktop-Commit `5af1987b`,
+   PWA-Commit `03d5d531`).
