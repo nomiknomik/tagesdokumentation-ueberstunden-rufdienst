@@ -756,7 +756,19 @@ function syncHeaderPad(){
 window.addEventListener('resize', syncHeaderPad);
 syncHeaderPad();
 renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    reg.update();
+    reg.addEventListener('updatefound', ()=>{
+      const nw = reg.installing;
+      if(nw) nw.addEventListener('statechange', ()=>{ if(nw.state==='activated') location.reload(); });
+    });
+  });
+  let swReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(swReloaded) return; swReloaded = true; location.reload();
+  });
+}
 </script>
 </body>
 </html>
