@@ -242,6 +242,8 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="calendar"></span>Meine Dienste</h2>
     <div class="list" id="planList"><div class="li">Noch kein Plan importiert.</div></div>
+    <button class="btn outline" id="icsBtn"><span data-icon="calendar"></span>Dienste in den Kalender</button>
+    <div class="hint" id="icsInfo">Erzeugt eine Kalender-Datei (.ics) aller oben gelisteten Dienste und Abwesenheiten – auf dem iPhone über „Teilen“ → Kalender hinzufügen.</div>
     <button class="btn ghost" id="planClear">Alle Pläne löschen</button>
   </div>
   <div class="card">
@@ -274,6 +276,9 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="save"></span>Daten</h2>
     <button class="btn outline" id="exportData">Alle Daten als JSON sichern</button>
+    <button class="btn outline" id="importDataBtn" style="margin-top:8px">Backup aus JSON laden</button>
+    <input type="file" id="importData" accept=".json,application/json" style="display:none">
+    <div class="hint" id="importDataMsg"></div>
     <div class="hint">Alles liegt ausschließlich lokal auf diesem Gerät (localStorage). Zur Startseite hinzufügen, damit iOS die Daten nicht nach 7 Tagen löscht.</div>
     <div class="hint" id="storageInfo"></div>
   </div>
@@ -597,6 +602,31 @@ $('exportData').onclick = ()=>{
   a.href = URL.createObjectURL(blob); a.download = 'tagesdoku_backup.json'; a.click();
 };
 
+$('importDataBtn').onclick = ()=> $('importData').click();
+$('importData').onchange = async e => {
+  const file = e.target.files[0]; if(!file) return;
+  const msg = $('importDataMsg');
+  try{
+    const data = JSON.parse(await file.text());
+    if(!data || typeof data !== 'object' || (!data.cfg && !data.plan && !data.days))
+      throw new Error('Keine Sicherungsdatei dieser App.');
+    const nPlan = Object.keys(data.plan||{}).length, nDays = Object.keys(data.days||{}).length;
+    if(!confirm(`Backup laden?\n\nDienstplan: ${nPlan} Tage\nErfasste Tage: ${nDays}\n\nDie aktuell gespeicherten Daten werden dadurch ersetzt.`)){
+      e.target.value = ''; return;
+    }
+    if(data.cfg  && typeof data.cfg  === 'object'){ cfg  = Object.assign(cfg, data.cfg); save(LS.cfg,  cfg);  }
+    if(data.plan && typeof data.plan === 'object'){ plan = data.plan;  save(LS.plan, plan); }
+    if(data.days && typeof data.days === 'object'){ days = data.days;  save(LS.days, days); }
+    Object.entries(CFGMAP).forEach(([id,key])=> $(id).value = cfg[key] || '');
+    expanded = new Set(); lastRenderedDay = null;
+    renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDuty();
+    msg.innerHTML = `<span class="ok">Backup geladen: ${nPlan} Plantage, ${nDays} erfasste Tage.</span>`;
+  }catch(err){
+    msg.innerHTML = `<span class="note">Laden fehlgeschlagen: ${err.message}</span>`;
+  }
+  e.target.value = '';
+};
+
 /* ---------- Dienstplan-Import ---------- */
 $('xlsFile').onchange = async e => {
   const file = e.target.files[0]; if(!file) return;
@@ -652,23 +682,39 @@ function monthLabel(mk){
   const name = MONTHS[+m-1];
   return `${name[0].toUpperCase()+name.slice(1)} ${y}`;
 }
+/* Aufgeklappte Monate merken: Gruppen starten zugeklappt und behalten ihren
+   Zustand ueber Re-Renders und App-Starts hinweg. */
+const OPEN_KEY = 'tagesdoku_open_groups';
+const openGroups = load(OPEN_KEY, {});
 function renderGroupedList(containerId, keys, rowFn, emptyMsg){
   const el = $(containerId);
   if(!keys.length){ el.innerHTML = `<div class="li">${emptyMsg}</div>`; return; }
   const groups = {};
   keys.forEach(k=>{ const mk = k.slice(0,7); (groups[mk] ||= []).push(k); });
   const monthKeys = Object.keys(groups).sort().reverse();
-  el.innerHTML = monthKeys.map((mk,idx)=>`
-    <details class="monthgroup"${idx===0?' open':''}>
+  const openSet = new Set(openGroups[containerId] || []);
+  el.innerHTML = monthKeys.map(mk=>`
+    <details class="monthgroup" data-month="${mk}"${openSet.has(mk)?' open':''}>
       <summary><span>${monthLabel(mk)}<span class="cnt">(${groups[mk].length})</span></span>${icon('chevronRight')}</summary>
       <div class="list">${groups[mk].map(rowFn).join('')}</div>
     </details>`).join('');
+  el.querySelectorAll('details.monthgroup').forEach(d=>{
+    d.addEventListener('toggle', ()=>{
+      const cur = new Set(openGroups[containerId] || []);
+      d.open ? cur.add(d.dataset.month) : cur.delete(d.dataset.month);
+      openGroups[containerId] = [...cur];
+      save(OPEN_KEY, openGroups);
+    });
+  });
 }
-function renderPlanList(){
-  const keys = Object.keys(plan).filter(k=>{
+function myDutyKeys(){
+  return Object.keys(plan).filter(k=>{
     const d = derive(k);
     return d.code && d.code!=='frei' && d.code!=='amb2' && d.code!=='amb4';
   }).sort();
+}
+function renderPlanList(){
+  const keys = myDutyKeys();
   renderGroupedList('planList', keys, k=>{
     const d = derive(k);
     const label = d.code==='abwesend' ? 'Abwesend' : d.code;
@@ -710,6 +756,66 @@ function updateStorageInfo(){
   if(el) el.textContent = `Belegter Speicher: ca. ${(bytes/1024).toFixed(1)} KB (Richtwert-Limit meist 5–10 MB pro Website).`;
 }
 $('planClear').onclick = ()=>{ if(confirm('Alle importierten Pläne löschen?')){ plan={}; save(LS.plan,plan); renderPlanList(); renderTeamList(); renderDay(); } };
+
+/* ---------- Kalender-Export (.ics) ---------- */
+const icsEsc = t => String(t).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+function icsFold(line){                       // RFC 5545: max. 75 Oktette je Zeile
+  const out = [];
+  let buf = '';
+  for(const ch of line){
+    if(new Blob([buf + ch]).size > 73){ out.push(buf); buf = ' ' + ch; }
+    else buf += ch;
+  }
+  out.push(buf);
+  return out.join('\r\n');
+}
+const icsDate = isoDate => isoDate.replace(/-/g,'');
+function nextDay(isoDate){
+  const d = new Date(isoDate + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  return iso(d);
+}
+function buildIcs(keys){
+  const stamp = new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Tagesdokumentation//Dienstplan//DE',
+                 'CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:Dienste'];
+  keys.forEach(k=>{
+    const d = derive(k);
+    const duty = DUTY[d.code];
+    const title = d.code==='abwesend' ? 'Abwesend' : (duty ? duty.label : d.code);
+    const desc  = duty ? `Dienstzeit laut Vorgabe: ${duty.start}–${duty.end} Uhr` : d.info || '';
+    lines.push('BEGIN:VEVENT',
+      `UID:tagesdoku-${k}-${d.code}@klf`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${icsDate(k)}`,
+      `DTEND;VALUE=DATE:${icsDate(nextDay(k))}`,
+      icsFold(`SUMMARY:${icsEsc(title)}`),
+      icsFold(`DESCRIPTION:${icsEsc(desc)}`),
+      'TRANSP:TRANSPARENT',
+      'END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n') + '\r\n';
+}
+$('icsBtn').onclick = async ()=>{
+  const info = $('icsInfo');
+  const keys = myDutyKeys();
+  if(!keys.length){ info.innerHTML = '<span class="note">Keine Dienste vorhanden – erst einen Dienstplan importieren.</span>'; return; }
+  const fname = 'Dienste.ics';
+  const blob = new Blob([buildIcs(keys)], {type:'text/calendar;charset=utf-8'});
+  const file = new File([blob], fname, {type:'text/calendar'});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Dienste'});
+    }else{
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = fname; a.click();
+    }
+    info.innerHTML = `<span class="ok">${keys.length} Termine als Ganztages-Einträge erzeugt (Dienstzeit steht in den Notizen).</span>`;
+  }catch(err){
+    if(err.name !== 'AbortError') info.innerHTML = `<span class="note">Kalender-Export fehlgeschlagen: ${err.message}</span>`;
+  }
+};
 
 /* ---------- PDF ---------- */
 $('pdfBtn').onclick = async ()=>{
@@ -759,7 +865,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const APP_BUILD   = '13.09.2026';
 
 function showVersion(){

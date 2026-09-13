@@ -244,6 +244,24 @@ Nachvollziehbarkeit für künftige Sessions:
   (`calc(96px + env(safe-area-inset-bottom))`), `syncHeaderPad()` setzt
   `main.style.paddingBottom` anhand der gemessenen Nav-Höhe (nicht mehr `body`).
 
+### PWA: Backup-Import, Monatsgruppen, Kalender-Export (13.09.2026, v1.8.0)
+- **JSON-Backup laden**: Einstellungen → Daten → „Backup aus JSON laden"
+  (`#importDataBtn` → verstecktes `#importData`). Liest `{cfg, plan, days}`,
+  fragt mit Anzahl Plantage/erfasster Tage nach und **ersetzt** danach `plan`
+  und `days` (cfg wird gemerged), schreibt in localStorage und rendert neu.
+- **Monatsgruppen bleiben zugeklappt**: `renderGroupedList()` öffnet nicht mehr
+  automatisch den ersten Monat. Der Auf-/Zuklapp-Zustand wird je Container in
+  `tagesdoku_open_groups` (localStorage, `openGroups`) gemerkt und beim Rendern
+  wiederhergestellt – überlebt Re-Render und App-Neustart.
+- **Kalender-Export (.ics)**: Dienstplan → „Dienste in den Kalender"
+  (`#icsBtn`, `buildIcs()`). Exportiert genau die Einträge der Karte „Meine
+  Dienste" (`myDutyKeys()` – Rufdienste + Abwesenheiten, keine Regeldienste)
+  als **Ganztages-VEVENTs** (`DTSTART;VALUE=DATE`, `DTEND` = Folgetag), die
+  Soll-Dienstzeit aus `DUTY` steht in `DESCRIPTION`. Ausgabe über
+  `navigator.share({files})` (iOS: Teilen → Kalender), sonst Blob-Download.
+  UIDs sind stabil (`tagesdoku-<datum>-<code>@klf`), ein erneuter Import legt
+  dieselben Termine also nicht doppelt an.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).
