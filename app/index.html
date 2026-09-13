@@ -666,7 +666,8 @@ $('btnEinsatz').onclick = ()=>{
     expanded.add(i);
   }else{                                      // neuen Einsatz starten
     if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
-    d.einsaetze.push({beginn:now(),ende:'',art:'',grund_anlass:'',fallnr:''});
+    d.einsaetze.push({beginn:now(), ende:'', art:'Präsenz im Haus (RBA)',
+                      grund_anlass:'Notfall / Notoperation', fallnr:''});
     expanded.add(d.einsaetze.length-1);
   }
   calc(); persist(); renderEinsaetze();
@@ -981,7 +982,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.10.1';
 const APP_BUILD   = '13.09.2026';
 
 function showVersion(){

@@ -296,6 +296,10 @@ Nachvollziehbarkeit für künftige Sessions:
   über den `renderPlanList()` in JEDE Monatsgruppe einen Button
   `data-ics="<YYYY-MM>"` setzt. Ein delegierter Click-Handler auf `#planList`
   filtert `myDutyKeys()` auf diesen Monat und erzeugt `Dienste_<YYYY-MM>.ics`.
+- **Vorbelegung „Einsatz starten" (v1.10.1)**: ein per Stempel-Button
+  gestarteter Einsatz bekommt sofort `art:'Präsenz im Haus (RBA)'` und
+  `grund_anlass:'Notfall / Notoperation'` (beides im Formular änderbar).
+  „Nachtragen" bleibt bewusst leer, „Telefonat" setzt RBT.
 - **Telefonat-Button** (`#btnTelefonat`) in der Einsatz-Karte: legt sofort
   einen fertigen Einsatz an mit `art:'telefonisch (RBT)'`, `ende` = jetzt,
   `beginn` = jetzt minus 5 Minuten (Dauer 0.08 h), und klappt ihn zum
