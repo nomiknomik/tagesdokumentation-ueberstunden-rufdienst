@@ -751,6 +751,7 @@ $('pdfBtn').onclick = async ()=>{
 /* ---------- Start ---------- */
 function syncHeaderPad(){
   document.querySelector('main').style.paddingTop = (document.querySelector('header').offsetHeight + 16) + 'px';
+  document.body.style.paddingBottom = (document.querySelector('nav').offsetHeight + 16) + 'px';
 }
 window.addEventListener('resize', syncHeaderPad);
 syncHeaderPad();
