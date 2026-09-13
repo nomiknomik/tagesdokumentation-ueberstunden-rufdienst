@@ -308,6 +308,23 @@ Nachvollziehbarkeit für künftige Sessions:
   laufenden Einsatzes (`expanded.delete(i)`). Aufgeklappt wird nur der
   gerade GESTARTETE Einsatz, damit Fallnummer o.ä. ergänzt werden kann.
 
+### PWA v1.11.0 – Diensttausch nach dem Excel-Import (13.09.2026)
+- Neuer Speicher `swap` (`localStorage: tagesdoku_swap`): `{ "JJJJ-MM-TT": Code }`
+  mit Code aus `DUTY` bzw. `'frei'` / `'abwesend'`.
+- `derive()` prüft `swap` ZUERST und liefert dann `{code, info:'Diensttausch –
+  von Hand gesetzt', swapped:true}`. Damit schlägt ein Tausch den importierten
+  Excel-Plan überall: Karte „Meine Dienste" (mit Markierung „· getauscht"),
+  monatsweiser Kalender-Export, Box „Aktueller Dienst" und die Ableitung der
+  Dienstart im Tagesbogen.
+- `myDutyKeys()` vereinigt jetzt die Keys aus `plan` UND `swap` – so taucht auch
+  ein übernommener Dienst auf, der im Excel gar nicht dem Nutzer zugeordnet war.
+- UI: Karte „Diensttausch" im Dienstplan-Tab (Datum + Dienstart + Übernehmen /
+  Eintrag löschen, darunter die Liste der Abweichungen; Antippen einer Zeile
+  lädt sie zurück ins Formular). `swap` wird im JSON-Backup mitgesichert und
+  von „Alle Pläne löschen" mit geleert.
+- Wird ein Tag getauscht, zieht der zugehörige Tagesbogen nach (Dienstart +
+  Soll-Zeiten), sofern dort nicht bereits `dienstart_manuell` gesetzt ist.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).

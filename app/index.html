@@ -257,6 +257,17 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <button class="btn ghost" id="planClear">Alle Pläne löschen</button>
   </div>
   <div class="card">
+    <h2><span data-icon="refresh"></span>Diensttausch</h2>
+    <div class="hint">Nach dem Excel-Import getauschte Tage hier eintragen – die Angabe schlägt den importierten Plan (Liste „Meine Dienste“, Kalender-Export und die Tagesansicht).</div>
+    <div class="row" style="margin-top:10px"><label>Tag</label><input type="date" id="swapDate"></div>
+    <div class="row"><label>Dienstart</label><select id="swapSel"></select></div>
+    <div class="row2">
+      <button class="btn outline" id="swapSave">Übernehmen</button>
+      <button class="btn ghost" id="swapDel">Eintrag löschen</button>
+    </div>
+    <div class="list" id="swapList" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
     <h2><span data-icon="users"></span>Rufdienst – wer hat wann Dienst</h2>
     <div class="list" id="teamList"><div class="li">Noch kein Plan importiert.</div></div>
   </div>
@@ -331,7 +342,8 @@ const ICONS = {
   save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>',
   user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
   info:'<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>',
-  phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path>'
+  refresh:'<polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>',
+  phone:'<path d="M22 16.92v3a2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path>'
 };
 function icon(name){
   return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
@@ -374,7 +386,7 @@ function optsWith(list, val){
 }
 const MONTHS = ['januar','februar','märz','april','mai','juni','juli','august','september','oktober','november','dezember'];
 const WDAY = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
-const LS = {cfg:'tagesdoku_cfg', plan:'tagesdoku_plan', days:'tagesdoku_days'};
+const LS = {cfg:'tagesdoku_cfg', plan:'tagesdoku_plan', days:'tagesdoku_days', swap:'tagesdoku_swap'};
 
 /* ---------- Speicher ---------- */
 const load = (k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } };
@@ -382,6 +394,7 @@ const save = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
 let cfg   = load(LS.cfg, {name:'',pnr:'',funktion:'Oberarzt',klinik:'Allgemein-, Viszeral- u. Gefäßchirurgie',nachname:'',kuerzel:''});
 let plan  = load(LS.plan, {});   // "2026-09-07" -> {wd, oa, urlaub}
 let days  = load(LS.days, {});   // "2026-09-07" -> Tagesdaten
+let swap  = load(LS.swap, {});   // "2026-09-07" -> Code (Diensttausch nach dem Excel-Import)
 
 /* ---------- Datum / Feiertage ---------- */
 const pad = n => String(n).padStart(2,'0');
@@ -407,6 +420,11 @@ const isHoliday = isoDate => {
 
 /* ---------- Dienstart aus Plan ableiten ---------- */
 function derive(isoDate){
+  if(swap[isoDate]){
+    const c = swap[isoDate];
+    const label = c==='frei' ? 'Frei' : c==='abwesend' ? 'Abwesend' : (DUTY[c] ? DUTY[c].label : c);
+    return {code:c, info:'Diensttausch – von Hand gesetzt', swapped:true, label};
+  }
   const p = plan[isoDate];
   const dow = new Date(isoDate+'T12:00:00').getDay();
   const feiertag = isHoliday(isoDate);
@@ -463,7 +481,7 @@ const $ = id => document.getElementById(id);
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id===b.dataset.tab));
-  if(b.dataset.tab==='plan'){ renderPlanList(); renderTeamList(); renderHistory(); }
+  if(b.dataset.tab==='plan'){ renderPlanList(); renderTeamList(); renderHistory(); renderSwapOptions(); renderSwapList(); }
 });
 
 const sel = $('dienstartSel');
@@ -704,11 +722,11 @@ Object.entries(CFGMAP).forEach(([id,key])=>{
   $(id).value = cfg[key] || '';
   $(id).oninput = $(id).onchange = e => {
     cfg[key] = e.target.value; save(LS.cfg,cfg);
-    if(key==='funktion') renderDay(); else renderDuty();
+    if(key==='funktion'){ renderSwapOptions(); renderDay(); } else renderDuty();
   };
 });
 $('exportData').onclick = ()=>{
-  const blob = new Blob([JSON.stringify({cfg,plan,days},null,2)],{type:'application/json'});
+  const blob = new Blob([JSON.stringify({cfg,plan,days,swap},null,2)],{type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'tagesdoku_backup.json'; a.click();
 };
@@ -728,9 +746,10 @@ $('importData').onchange = async e => {
     if(data.cfg  && typeof data.cfg  === 'object'){ cfg  = Object.assign(cfg, data.cfg); save(LS.cfg,  cfg);  }
     if(data.plan && typeof data.plan === 'object'){ plan = data.plan;  save(LS.plan, plan); }
     if(data.days && typeof data.days === 'object'){ days = data.days;  save(LS.days, days); }
+    if(data.swap && typeof data.swap === 'object'){ swap = data.swap;  save(LS.swap, swap); }
     Object.entries(CFGMAP).forEach(([id,key])=> $(id).value = cfg[key] || '');
     expanded = new Set(); lastRenderedDay = null;
-    renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDuty();
+    renderDay(); renderPlanList(); renderTeamList(); renderHistory(); renderSwapList(); updateStorageInfo(); renderDuty();
     msg.innerHTML = `<span class="ok">Backup geladen: ${nPlan} Plantage, ${nDays} erfasste Tage.</span>`;
   }catch(err){
     msg.innerHTML = `<span class="note">Laden fehlgeschlagen: ${err.message}</span>`;
@@ -820,7 +839,7 @@ function renderGroupedList(containerId, keys, rowFn, emptyMsg, footerFn){
   });
 }
 function myDutyKeys(){
-  return Object.keys(plan).filter(k=>{
+  return [...new Set([...Object.keys(plan), ...Object.keys(swap)])].filter(k=>{
     const d = derive(k);
     return d.code && d.code!=='frei' && d.code!=='amb2' && d.code!=='amb4';
   }).sort();
@@ -830,10 +849,58 @@ function renderPlanList(){
   renderGroupedList('planList', keys, k=>{
     const d = derive(k);
     const label = d.code==='abwesend' ? 'Abwesend' : d.code;
-    return `<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${label}</span></div>`;
+    return `<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}${d.swapped?' · getauscht':''}</span><span class="tag${d.swapped?' tag-amber':''}">${label}</span></div>`;
   }, 'Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.',
   (mk, ks)=>`<div style="padding:0 14px 12px"><button class="btn outline" style="font-size:14px;min-height:44px" data-ics="${mk}">${icon('calendar')}In den Kalender</button></div>`);
 }
+/* ---------- Diensttausch ---------- */
+function renderSwapOptions(){
+  const codes = DIENSTART_BY_FUNKTION[cfg.funktion] || DIENSTART_BY_FUNKTION['Oberarzt'];
+  $('swapSel').innerHTML =
+    codes.map(k=>`<option value="${k}">${DUTY[k].label}</option>`).join('') +
+    '<option value="abwesend">Abwesend (Urlaub/frei)</option>' +
+    '<option value="frei">Kein Dienst</option>';
+}
+function renderSwapList(){
+  const keys = Object.keys(swap).sort();
+  $('swapList').innerHTML = keys.length
+    ? keys.map(k=>{
+        const c = swap[k];
+        const label = c==='frei' ? 'Kein Dienst' : c==='abwesend' ? 'Abwesend' : (DUTY[c] ? DUTY[c].label : c);
+        return `<div class="li" data-swap="${k}" style="cursor:pointer"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag tag-amber">${label}</span></div>`;
+      }).join('')
+    : '<div class="li">Keine getauschten Tage.</div>';
+}
+$('swapDate').onchange = ()=>{
+  const k = $('swapDate').value;
+  if(k && swap[k]) $('swapSel').value = swap[k];
+};
+$('swapSave').onclick = ()=>{
+  const k = $('swapDate').value;
+  if(!k){ alert('Bitte zuerst den Tag auswählen.'); return; }
+  swap[k] = $('swapSel').value;
+  save(LS.swap, swap);
+  const d = days[k];                       // Tagesbogen nachziehen, wenn dort nichts von Hand gesetzt ist
+  if(d && !d.dienstart_manuell){
+    const c = swap[k];
+    d.dienstart = DUTY[c] ? c : '';
+    if(DUTY[c] && DUTY[c].start){ d.dienstbeginn = DUTY[c].start; d.plan_dienstende = DUTY[c].end; }
+    persist();
+  }
+  renderSwapList(); renderPlanList(); renderDay();
+};
+$('swapDel').onclick = ()=>{
+  const k = $('swapDate').value;
+  if(!k || !swap[k]){ alert('Für diesen Tag ist kein Tausch gespeichert.'); return; }
+  delete swap[k]; save(LS.swap, swap);
+  renderSwapList(); renderPlanList(); renderDay();
+};
+$('swapList').addEventListener('click', e=>{
+  const row = e.target.closest('[data-swap]'); if(!row) return;
+  $('swapDate').value = row.dataset.swap;
+  $('swapSel').value = swap[row.dataset.swap];
+});
+
 function renderTeamList(){
   const keys = Object.keys(plan).filter(k=>plan[k].oa && plan[k].oa.trim()).sort();
   renderGroupedList('teamList', keys,
@@ -868,7 +935,13 @@ function updateStorageInfo(){
   const el = $('storageInfo');
   if(el) el.textContent = `Belegter Speicher: ca. ${(bytes/1024).toFixed(1)} KB (Richtwert-Limit meist 5–10 MB pro Website).`;
 }
-$('planClear').onclick = ()=>{ if(confirm('Alle importierten Pläne löschen?')){ plan={}; save(LS.plan,plan); renderPlanList(); renderTeamList(); renderDay(); } };
+$('planClear').onclick = ()=>{
+  if(confirm('Alle importierten Pläne und die eingetragenen Diensttausche löschen?')){
+    plan={}; save(LS.plan,plan);
+    swap={}; save(LS.swap,swap);
+    renderPlanList(); renderTeamList(); renderSwapList(); renderDay();
+  }
+};
 
 /* ---------- Kalender-Export (.ics) ---------- */
 const icsEsc = t => String(t).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
@@ -982,7 +1055,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.10.2';
+const APP_VERSION = '1.11.0';
 const APP_BUILD   = '13.09.2026';
 
 function showVersion(){
@@ -1000,7 +1073,8 @@ function syncHeaderPad(){
 window.addEventListener('resize', syncHeaderPad);
 syncHeaderPad();
 showVersion();
-renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
+renderSwapOptions();
+renderDay(); renderPlanList(); renderTeamList(); renderHistory(); renderSwapList(); updateStorageInfo();
 $('checkUpdate').onclick = async ()=>{
   const info = $('updateInfo');
   info.textContent = 'Suche nach Update …';
