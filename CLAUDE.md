@@ -325,6 +325,9 @@ Nachvollziehbarkeit für künftige Sessions:
   farbigem Tag markiert.
 - Entspricht die Auswahl wieder dem Excel-Wert, wird der Tausch automatisch
   gelöscht statt gespeichert.
+- **v1.12.1**: Die Box „Aktueller Dienst" zeigt bei einem Tausch nicht mehr den
+  Excel-Namen, sondern eine farbige Notiz „Getauscht: Rufdienst hat <Name>
+  (laut Plan: <Original>)"; ohne Tausch bleibt es bei „Rufdienst lt. Plan: …".
 - Wirkung wie zuvor: Karte „Meine Dienste", monatsweiser Kalender-Export,
   Box „Aktueller Dienst" und die Dienstart-Ableitung im Tagesbogen (nur wenn
   dort nicht `dienstart_manuell` gesetzt ist). `swap` liegt im JSON-Backup und

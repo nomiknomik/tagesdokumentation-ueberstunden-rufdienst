@@ -501,7 +501,14 @@ function renderDuty(){
   else if(d.code==='abwesend') html = `<b>${wd} · Abwesend</b><small>${d.info}</small>`;
   else if(d.code==='frei')     html = `<b>${wd} · Frei</b><small>${d.info}</small>`;
   else                         html = `<b>${wd}</b><small>${d.info}</small>`;
-  if(p && p.oa && p.oa.trim()) html += `<small style="margin-top:4px">Rufdienst lt. Plan: ${p.oa}</small>`;
+  const wer = oaOf(cur).trim();
+  if(d.swapped){
+    const orig = ((p && p.oa) || '').trim();
+    html += `<small style="margin-top:4px;color:var(--color-warning)">Getauscht: Rufdienst hat ${wer || 'niemand'}` +
+            `${orig ? ` (laut Plan: ${orig})` : ' (laut Plan: niemand)'}</small>`;
+  }else if(wer){
+    html += `<small style="margin-top:4px">Rufdienst lt. Plan: ${wer}</small>`;
+  }
   $('dutyText').innerHTML = html;
 }
 
@@ -1070,7 +1077,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.12.0';
+const APP_VERSION = '1.12.1';
 const APP_BUILD   = '13.09.2026';
 
 function showVersion(){
