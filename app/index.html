@@ -6,162 +6,244 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tagesdoku">
-<meta name="theme-color" content="#0b2a30">
+<meta name="theme-color" content="#0F2D32">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <title>Tagesdokumentation</title>
 <style>
 :root{
-  --bg:#0b2a30; --card:#123a42; --card2:#0e323a; --ink:#eaf4f5; --muted:#8fb0b5;
-  --line:#1d4b53; --primary:#00636e; --primary-br:#2ba7b3;
-  --go:#16a34a; --stop:#e76f51; --warn:#f2b84b; --warn-bg:#2a2410;
+  --color-primary:#00636E;
+  --color-primary-dark:#004A56;
+  --color-primary-light:#168895;
+  --color-success:#16A34A;
+  --color-warning:#F59E0B;
+  --color-danger:#E76F51;
+  --color-background:#0F2D32;
+  --color-card:#123C42;
+  --color-text:#FFFFFF;
+  --color-text-secondary:#B7CDD0;
+  --color-text-muted:#7F9A9E;
+  --color-border:rgba(255,255,255,.12);
+  --radius-card:16px;
+  --radius-button:28px;
+  --radius-input:12px;
+  --spacing-page:16px;
+  --spacing-card:16px;
+  --spacing-section:12px;
+  --touch-target:44px;
+  --button-height:56px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;font:16px/1.5 'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  background:var(--bg);color:var(--ink);padding-bottom:calc(78px + env(safe-area-inset-bottom))}
-header{background:var(--card2);color:var(--ink);padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
-  position:sticky;top:0;z-index:10;border-bottom:1px solid var(--line)}
-h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.1px}
-nav{display:flex;background:var(--card2);border-top:1px solid var(--line);
-  padding:8px 6px calc(8px + env(safe-area-inset-bottom));position:fixed;left:0;right:0;bottom:0;z-index:20;gap:4px}
-nav button{flex:1;background:transparent;color:var(--muted);border:0;border-radius:12px;
-  padding:8px 4px;font-size:11.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px}
-nav button .ic{font-size:20px;line-height:1}
-nav button.on{color:var(--primary-br)}
-main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
+html,body{height:100%}
+body{margin:0;min-height:100dvh;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Arial,sans-serif;
+  background:var(--color-background);color:var(--color-text);
+  padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+header{background:var(--color-background);color:var(--color-text);
+  padding:calc(env(safe-area-inset-top) + 12px) var(--spacing-page) 10px;
+  position:sticky;top:0;z-index:10;border-bottom:1px solid var(--color-border)}
+h1{margin:0;font-size:20px;line-height:24px;font-weight:700}
+main{padding:var(--spacing-page) var(--spacing-page) 24px;max-width:480px;margin:0 auto}
 section{display:none} section.on{display:block}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
-.card h2{margin:0 0 12px;font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
-.card h2 .ic{font-size:17px}
-.datebar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.datebar button{width:44px;height:44px;border:1px solid var(--line);background:var(--card);border-radius:14px;font-size:20px;color:var(--ink)}
-.datebar input{flex:1;height:44px;border:1px solid var(--line);border-radius:14px;padding:0 12px;font-size:16px;background:var(--card);color:var(--ink)}
-.datebar input::-webkit-calendar-picker-indicator{filter:invert(1)}
-.duty{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:14px}
-.duty b{font-size:16px} .duty small{display:block;color:var(--muted);margin-top:3px;font-size:13px}
-.stamp{border:0;border-radius:28px;color:#fff;padding:18px 6px;font-size:19px;font-weight:700;width:100%;margin-bottom:12px;
-  height:64px;background:var(--stop)}
-.stamp small{display:block;font-weight:400;font-size:12.5px;opacity:.85;margin-top:2px}
+
+.card{background:var(--color-card);border:1px solid var(--color-border);border-radius:var(--radius-card);
+  padding:var(--spacing-card);margin-bottom:var(--spacing-section);box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.card h2{margin:0 0 var(--spacing-section);font-size:16px;line-height:20px;font-weight:600;color:var(--color-text);
+  display:flex;align-items:center;gap:8px}
+.ic{width:18px;height:18px;flex:0 0 auto;display:inline-block}
+.card h2 .ic{width:18px;height:18px;color:var(--color-primary-light)}
+
+.datebar{display:flex;align-items:center;gap:8px;margin-bottom:var(--spacing-section);
+  background:var(--color-card);border:1px solid var(--color-border);border-radius:var(--radius-button);padding:6px}
+.datebar button{width:var(--touch-target);height:var(--touch-target);border:0;background:transparent;border-radius:999px;
+  color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.datebar button .ic{width:20px;height:20px}
+.datebar input[type=date]{flex:1;height:var(--touch-target);border:0;background:transparent;
+  text-align:center;font-size:16px;font-weight:600;color:var(--color-text);padding:0 6px;min-width:0}
+
+.duty{background:var(--color-card);border:1px solid var(--color-border);border-radius:var(--radius-card);
+  padding:var(--spacing-card);margin-bottom:var(--spacing-section);display:flex;gap:12px;align-items:flex-start}
+.duty>.ic{width:22px;height:22px;color:var(--color-primary-light);margin-top:2px}
+.duty .label{font-size:12px;line-height:16px;font-weight:500;color:var(--color-text-muted);
+  text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.duty b{font-size:20px;line-height:24px;font-weight:700;display:block}
+.duty small{display:block;color:var(--color-text-secondary);margin-top:3px;font-size:13px;line-height:18px}
+
+.stamp{border:0;border-radius:var(--radius-button);color:#fff;font-size:20px;line-height:24px;font-weight:700;
+  width:100%;margin-bottom:var(--spacing-section);min-height:var(--button-height);background:var(--color-danger);
+  display:flex;align-items:center;gap:14px;padding:0 20px;transition:transform .15s ease}
+.stamp:active{transform:scale(.98)}
+.stamp .ic{width:24px;height:24px}
+.stamp .stxt{text-align:left;flex:1}
+.stamp small{display:block;font-weight:400;font-size:13px;line-height:18px;opacity:.85;margin-top:2px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:var(--spacing-section)}
+.field label{display:block;font-size:13px;line-height:18px;color:var(--color-text-muted);margin-bottom:6px}
+.field.full{grid-column:1 / -1}
 .row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-.row label{flex:0 0 42%;font-size:13.5px;color:var(--muted)}
-input,select,textarea{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:10px;
-  padding:9px 10px;background:var(--card2);color:var(--ink);width:100%;min-width:0}
+.row label{flex:0 0 42%;font-size:13px;color:var(--color-text-muted)}
+
+input,select,textarea{font:inherit;font-size:16px;border:1px solid var(--color-border);border-radius:var(--radius-input);
+  padding:11px 12px;background:rgba(255,255,255,.04);color:var(--color-text);width:100%;min-width:0}
 textarea{min-height:64px}
-input[readonly]{background:transparent;color:var(--muted);border-color:var(--line)}
+input[readonly]{background:transparent;color:var(--color-text-secondary)}
 select{color-scheme:dark}
-.btn{display:block;width:100%;border:0;border-radius:28px;background:var(--primary);color:#fff;
-  padding:16px;font-size:16px;font-weight:700;margin-top:8px;height:56px}
-.btn.sec{background:transparent;color:var(--primary-br);border:1.5px solid var(--primary-br)}
-.btn.ghost{background:transparent;color:var(--muted);font-weight:500;padding:10px;font-size:14px;height:auto}
-.einsatz{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--card2)}
-.einsatz .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:var(--radius-button);
+  background:var(--color-primary);color:#fff;padding:0 16px;min-height:var(--button-height);
+  font-size:16px;font-weight:700;margin-top:8px;transition:transform .15s ease}
+.btn:active{transform:scale(.98)}
+.btn .ic{width:18px;height:18px}
+.btn.sec{background:var(--color-success)}
+.btn.outline{background:transparent;color:var(--color-text-secondary);border:1.5px solid var(--color-border)}
+.btn.ghost{background:transparent;color:var(--color-text-muted);font-weight:500;padding:10px;min-height:auto;margin-top:6px}
+
+.row2{display:flex;gap:8px}
+.row2 .btn{flex:1;font-size:14px}
+
+.einsatz-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 4px;
+  border-bottom:1px solid var(--color-border)}
+.einsatz-row:last-child{border-bottom:0}
+.er-time{font-size:15px;font-weight:600;color:var(--color-text)}
+.er-time .er-dauer{font-weight:400;color:var(--color-text-secondary);margin-left:8px;font-size:13px}
+.er-sub{font-size:13px;color:var(--color-text-muted);margin-top:2px}
+.er-right{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.er-right .ic{width:18px;height:18px;color:var(--color-text-muted)}
+
+.einsatz{border:1px solid var(--color-border);border-radius:var(--radius-input);padding:12px;margin-bottom:10px;background:rgba(255,255,255,.03)}
+.einsatz .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}
 .einsatz .hd b{font-size:14px;flex:1}
-.del{background:none;border:0;color:var(--stop);font-size:13px;padding:4px}
-.note{background:var(--warn-bg);border-left:3px solid var(--warn);color:var(--warn);
-  padding:10px 12px;border-radius:8px;font-size:13.5px;margin-bottom:10px}
-.ok{color:var(--go);font-size:13.5px}
-.list{font-size:14px} .list div{padding:14px 4px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
-.list div:last-child{border:0}
-.tag{font-size:12px;background:#123a42;color:#bfe3e6;border-radius:20px;padding:4px 10px;font-weight:600}
-.tag-blue{background:#1e3a5f;color:#8ecbff}
-.tag-amber{background:#4a3410;color:#f2b84b}
-.tag-red{background:#4a1f1f;color:#f2a09a}
-.tag-grey{background:#2a3538;color:#9fb8bc}
-.chk{display:flex;align-items:center;gap:10px;margin:10px 0}
-.chk input{width:22px;height:22px}
-.hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+.linkbtn{background:none;border:0;color:var(--color-primary-light);font-size:13px;font-weight:600;padding:4px;display:flex;align-items:center;gap:4px}
+.del{background:none;border:0;color:var(--color-danger);font-size:13px;padding:4px;display:flex;align-items:center;gap:4px}
+
+.note{background:rgba(245,158,11,.12);border-left:3px solid var(--color-warning);color:var(--color-warning);
+  padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:10px}
+.ok{color:var(--color-success);font-size:13px}
+
+.status{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;padding:10px 12px;border-radius:var(--radius-input);margin-top:8px}
+.status.good{background:rgba(22,163,74,.12);color:var(--color-success)}
+.status.bad{background:rgba(231,111,81,.14);color:var(--color-danger)}
+.status .ic{width:18px;height:18px}
+
+.list{font-size:14px}
+.list .li{display:flex;justify-content:space-between;align-items:center;padding:14px 4px;border-bottom:1px solid var(--color-border);gap:8px}
+.list .li:last-child{border-bottom:0}
+.list .li .ic{width:16px;height:16px;color:var(--color-text-muted)}
+
+.tag{font-size:12px;font-weight:600;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--color-text-secondary)}
+.tag-blue{background:rgba(59,130,246,.16);color:#8ecbff}
+.tag-amber{background:rgba(245,158,11,.16);color:#f5c164}
+.tag-red{background:rgba(231,111,81,.18);color:#f2a09a}
+.tag-grey{background:rgba(255,255,255,.08);color:var(--color-text-secondary)}
+
+.chk{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
+.chk input{width:22px;height:22px;accent-color:var(--color-primary)}
+.hint{font-size:12px;line-height:16px;color:var(--color-text-muted);margin-top:6px}
+
+nav{display:flex;background:var(--color-card);border-top:1px solid var(--color-border);
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));position:fixed;left:0;right:0;bottom:0;z-index:20;gap:4px}
+nav button{flex:1;background:transparent;color:var(--color-text-muted);border:0;border-radius:12px;
+  padding:8px 4px;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:4px}
+nav button .ic{width:22px;height:22px}
+nav button.on{color:var(--color-primary-light)}
 </style>
 </head>
 <body>
 <header><h1>Tagesdokumentation – Überstunden &amp; Rufdienst</h1></header>
-<nav>
-  <button data-tab="tag" class="on"><span class="ic">📅</span>Tag</button>
-  <button data-tab="plan"><span class="ic">🗓️</span>Dienstplan</button>
-  <button data-tab="cfg"><span class="ic">⚙️</span>Einstellungen</button>
-</nav>
 
 <main>
 <!-- ================= TAG ================= -->
 <section id="tag" class="on">
   <div class="datebar">
-    <button id="dPrev">‹</button>
+    <button id="dPrev"><span data-icon="chevronLeft"></span></button>
     <input type="date" id="datum">
-    <button id="dNext">›</button>
+    <button id="dNext"><span data-icon="chevronRight"></span></button>
   </div>
   <button class="btn ghost" id="heuteBtn">Heute</button>
 
-  <div class="duty" id="dutyBox"><b>–</b><small>Kein Dienstplan importiert</small></div>
-
-  <div class="card">
-    <h2><span class="ic">🕐</span>Kommen / Gehen</h2>
-    <button class="stamp stop" id="btnGehen">Gehen<small id="lblGehen">–</small></button>
-    <div class="row"><label>Dienstart</label><select id="dienstartSel"></select></div>
-    <div class="row"><label>Dienstbeginn</label><input type="time" id="dienstbeginn"></div>
-    <div class="row"><label>Plan-Dienstende</label><input type="time" id="plan_dienstende"></div>
-    <div class="row"><label>Tatsächl. Ende</label><input type="time" id="tats_dienstende"></div>
-    <div class="row"><label>Überstunden (Std.)</label><input id="ueberstunden_std" readonly></div>
-    <div class="row"><label>Grund</label><input id="grund_ueberstunden" placeholder="Grund der Überstunden"></div>
-    <div class="chk"><input type="checkbox" id="frn"><label style="flex:1">FRN – frei nach Dienst</label></div>
-    <div class="row" id="frnKommentarRow" style="display:none"><label>Kommentar (Pflicht)</label><input id="frnKommentar" placeholder="z.B. Nachtoperation bis 03:40 Uhr"></div>
+  <div class="duty" id="dutyBox">
+    <span data-icon="calendar"></span>
+    <div style="flex:1">
+      <div class="label">Aktueller Dienst</div>
+      <div id="dutyText"><b>–</b><small>Kein Dienstplan importiert</small></div>
+    </div>
   </div>
 
   <div class="card">
-    <h2><span class="ic">🛡️</span>Rufdienst-Einsätze</h2>
-    <div style="display:flex;gap:8px">
-      <button class="btn sec" id="btnEinsatzStart" style="flex:1;font-size:14px">+ Einsatz jetzt starten</button>
-      <button class="btn" id="btnEinsatzLeer" style="flex:1;font-size:14px;background:transparent;border:1.5px solid var(--line);color:var(--muted)">+ Leere Zeile</button>
+    <h2><span data-icon="clock"></span>Kommen/Gehen</h2>
+    <button class="stamp" id="btnGehen">
+      <span data-icon="square"></span>
+      <span class="stxt">Gehen<small id="lblGehen">–</small></span>
+    </button>
+    <div class="row"><label>Dienstart</label><select id="dienstartSel"></select></div>
+    <div class="grid2">
+      <div class="field"><label>Dienstbeginn</label><input type="time" id="dienstbeginn"></div>
+      <div class="field"><label>Plan-Ende</label><input type="time" id="plan_dienstende"></div>
+      <div class="field"><label>Ist-Ende</label><input type="time" id="tats_dienstende"></div>
+      <div class="field"><label>Überstunden</label><input id="ueberstunden_std" readonly></div>
+      <div class="field full"><label>Grund</label><input id="grund_ueberstunden" placeholder="Grund der Überstunden"></div>
     </div>
-    <div id="einsaetze" style="margin-top:10px"></div>
+    <div class="chk"><input type="checkbox" id="frn"><label style="flex:1">FRN – frei nach Dienst</label></div>
+    <div class="field full" id="frnKommentarRow" style="display:none">
+      <label>Kommentar (Pflicht)</label><input id="frnKommentar" placeholder="z.B. Nachtoperation bis 03:40 Uhr">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span data-icon="star"></span>Rufdienst-Einsätze</h2>
+    <div class="row2">
+      <button class="btn sec" id="btnEinsatzStart"><span data-icon="plus"></span>Einsatz jetzt starten</button>
+      <button class="btn outline" id="btnEinsatzLeer"><span data-icon="plus"></span>Leere Zeile</button>
+    </div>
+    <div id="einsaetze" style="margin-top:8px"></div>
     <div class="row" style="margin-top:10px"><label>Summe (Std.)</label><input id="summe_inanspruchnahme" readonly></div>
     <div class="row"><label>Anzahl Einsätze</label><input id="anzahl_einsaetze" readonly></div>
   </div>
 
   <div class="card">
-    <h2><span class="ic">⭐</span>Zusammenfassung</h2>
+    <h2><span data-icon="checkCircle"></span>Zusammenfassung</h2>
     <div class="row"><label>Überstunden gesamt</label><input id="ueberstunden_gesamt" readonly></div>
     <div class="row"><label>Ruhezeit eingehalten</label>
       <select id="ruhezeit_eingehalten"><option value=""></option><option>ja</option><option>nein</option></select></div>
-    <div class="row"><label>Gewünschter Ausgleich</label><input id="gewuenschter_ausgleich"></div>
+    <div id="ruhezeitStatus"></div>
+    <div class="row" style="margin-top:10px"><label>Gewünschter Ausgleich</label><input id="gewuenschter_ausgleich"></div>
     <div class="row"><label>Geplanter Ausgleichstag</label><input id="geplanter_ausgleichstag"></div>
-    <div class="row" style="display:block"><label style="display:block;margin-bottom:5px">Erläuterung</label>
+    <div class="row" style="display:block"><label style="display:block;margin-bottom:6px">Erläuterung</label>
       <textarea id="erlaeuterung"></textarea></div>
     <div class="row"><label>Angeordnet durch</label><input id="angeordnet_durch"></div>
   </div>
 
-  <button class="btn" id="pdfBtn">📄 PDF erzeugen</button>
+  <button class="btn" id="pdfBtn"><span data-icon="fileText"></span>PDF erzeugen</button>
   <button class="btn ghost" id="resetTag">Diesen Tag zurücksetzen</button>
 </section>
 
 <!-- ================= PLAN ================= -->
 <section id="plan">
   <div class="card">
-    <h2><span class="ic">📥</span>Dienstplan importieren</h2>
+    <h2><span data-icon="upload"></span>Dienstplan importieren</h2>
     <input type="file" id="xlsFile" accept=".xls,.xlsx">
     <div class="hint">Offizielle Monatsdatei (Spalten: Datum · Wochentag · OÄ · Urlaub). Ein Import pro Monat; alte Monate bleiben erhalten.</div>
     <div id="importMsg" style="margin-top:10px"></div>
   </div>
   <div class="card">
-    <h2><span class="ic">📅</span>Meine Dienste</h2>
-    <div class="list" id="planList"><div>Noch kein Plan importiert.</div></div>
+    <h2><span data-icon="calendar"></span>Meine Dienste</h2>
+    <div class="list" id="planList"><div class="li">Noch kein Plan importiert.</div></div>
     <button class="btn ghost" id="planClear">Alle Pläne löschen</button>
   </div>
   <div class="card">
-    <h2><span class="ic">👥</span>Rufdienst – wer hat wann Dienst</h2>
-    <div class="list" id="teamList"><div>Noch kein Plan importiert.</div></div>
+    <h2><span data-icon="users"></span>Rufdienst – wer hat wann Dienst</h2>
+    <div class="list" id="teamList"><div class="li">Noch kein Plan importiert.</div></div>
   </div>
   <div class="card">
-    <h2><span class="ic">🗂️</span>Erfasste Tage</h2>
-    <div class="list" id="historyList"><div>Noch keine Tage erfasst.</div></div>
+    <h2><span data-icon="archive"></span>Erfasste Tage</h2>
+    <div class="list" id="historyList"><div class="li">Noch keine Tage erfasst.</div></div>
   </div>
 </section>
 
 <!-- ================= EINSTELLUNGEN ================= -->
 <section id="cfg">
   <div class="card">
-    <h2><span class="ic">🧾</span>Kopfdaten für das PDF</h2>
+    <h2><span data-icon="user"></span>Kopfdaten für das PDF</h2>
     <div class="row"><label>Name, Vorname</label><input id="cfg_name"></div>
     <div class="row"><label>Personalnummer</label><input id="cfg_pnr"></div>
     <div class="row"><label>Funktion</label>
@@ -170,23 +252,54 @@ select{color-scheme:dark}
       <select id="cfg_klinik"><option>Allgemein-, Viszeral- u. Gefäßchirurgie</option><option>Unfallchirurgie</option></select></div>
   </div>
   <div class="card">
-    <h2><span class="ic">🔍</span>Erkennung im Dienstplan</h2>
+    <h2><span data-icon="search"></span>Erkennung im Dienstplan</h2>
     <div class="row"><label>Nachname (Spalte OÄ)</label><input id="cfg_nachname"></div>
     <div class="row"><label>Kürzel (Spalte Urlaub)</label><input id="cfg_kuerzel"></div>
     <div class="hint">Steht der Nachname in der Spalte OÄ → Rufdienst. Steht das Kürzel in der Spalte Urlaub → abwesend. Sonst Regeldienst.</div>
   </div>
   <div class="card">
-    <h2><span class="ic">💾</span>Daten</h2>
-    <button class="btn sec" id="exportData">Alle Daten als JSON sichern</button>
+    <h2><span data-icon="save"></span>Daten</h2>
+    <button class="btn outline" id="exportData">Alle Daten als JSON sichern</button>
     <div class="hint">Alles liegt ausschließlich lokal auf diesem Gerät (localStorage). Zur Startseite hinzufügen, damit iOS die Daten nicht nach 7 Tagen löscht.</div>
     <div class="hint" id="storageInfo"></div>
   </div>
 </section>
 </main>
 
+<nav>
+  <button data-tab="tag" class="on"><span data-icon="clock"></span>Tag</button>
+  <button data-tab="plan"><span data-icon="calendar"></span>Dienstplan</button>
+  <button data-tab="cfg"><span data-icon="settings"></span>Einstellungen</button>
+</nav>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+/* ---------- Icons (Lucide/Feather-Stil, inline SVG) ---------- */
+const ICONS = {
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>',
+  chevronLeft:'<polyline points="15 18 9 12 15 6"></polyline>',
+  chevronRight:'<polyline points="9 18 15 12 9 6"></polyline>',
+  clock:'<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',
+  square:'<rect x="3" y="3" width="18" height="18" rx="2"></rect>',
+  star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
+  fileText:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>',
+  settings:'<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
+  checkCircle:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 17"></polyline>',
+  alertTriangle:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
+  plus:'<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+  archive:'<polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line>',
+  search:'<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',
+  save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>',
+  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>'
+};
+function icon(name){
+  return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
+}
+document.querySelectorAll('[data-icon]').forEach(el=>{ el.outerHTML = icon(el.dataset.icon); });
+
 /* ---------- Konstanten ---------- */
 const DUTY = {
   amb2:{label:'Regeldienst (Montag)',           start:'07:10', end:'16:05'},
@@ -256,6 +369,8 @@ const blank = () => ({dienstart:'', dienstbeginn:'', plan_dienstende:'', tats_di
   grund_ueberstunden:'', frn:false, frn_kommentar:'', erlaeuterung:'', angeordnet_durch:'', einsaetze:[],
   ruhezeit_eingehalten:'', gewuenschter_ausgleich:'', geplanter_ausgleichstag:''});
 let cur = iso(new Date());
+let lastRenderedDay = null;
+let expanded = new Set();
 const day = () => (days[cur] ||= blank());
 const persist = () => save(LS.days, days);
 
@@ -296,15 +411,14 @@ sel.innerHTML = '<option value="">– keine –</option>' +
 function renderDuty(){
   const d = derive(cur);
   const p = plan[cur];
-  const box = $('dutyBox');
   const wd = WDAY[new Date(cur+'T12:00:00').getDay()];
   let html;
-  if(d.code && DUTY[d.code]) html = `<b>📅 ${wd} · ${DUTY[d.code].label}</b><small>${d.info} · ${DUTY[d.code].start}–${DUTY[d.code].end}</small>`;
-  else if(d.code==='abwesend') html = `<b>📅 ${wd} · Abwesend</b><small>${d.info}</small>`;
-  else if(d.code==='frei')     html = `<b>📅 ${wd} · Frei</b><small>${d.info}</small>`;
-  else                         html = `<b>📅 ${wd}</b><small>${d.info}</small>`;
-  if(p && p.oa && p.oa.trim()) html += `<small style="display:block;margin-top:4px">Rufdienst lt. Plan: ${p.oa}</small>`;
-  box.innerHTML = html;
+  if(d.code && DUTY[d.code]) html = `<b>${wd} · ${DUTY[d.code].label}</b><small>${d.info} · ${DUTY[d.code].start}–${DUTY[d.code].end}</small>`;
+  else if(d.code==='abwesend') html = `<b>${wd} · Abwesend</b><small>${d.info}</small>`;
+  else if(d.code==='frei')     html = `<b>${wd} · Frei</b><small>${d.info}</small>`;
+  else                         html = `<b>${wd}</b><small>${d.info}</small>`;
+  if(p && p.oa && p.oa.trim()) html += `<small style="margin-top:4px">Rufdienst lt. Plan: ${p.oa}</small>`;
+  $('dutyText').innerHTML = html;
 }
 
 function artClass(a){
@@ -313,9 +427,27 @@ function artClass(a){
 function renderEinsaetze(){
   const d = day();
   const idxs = d.einsaetze.map((_,i)=>i).reverse();
-  $('einsaetze').innerHTML = idxs.map(i=>{ const e = d.einsaetze[i]; return `
+  $('einsaetze').innerHTML = idxs.map(i=>{
+    const e = d.einsaetze[i];
+    if(!expanded.has(i)){
+      const range = `${e.beginn||'–'} – ${e.ende||'…'}`;
+      const sub = [e.art, e.grund_anlass, e.fallnr?('Fall '+e.fallnr):''].filter(Boolean).join(' · ');
+      return `<div class="einsatz-row" data-expand="${i}">
+        <div>
+          <div class="er-time">${range}${e.dauer?`<span class="er-dauer">${e.dauer} h</span>`:''}</div>
+          <div class="er-sub">${sub||'Antippen zum Bearbeiten'}</div>
+        </div>
+        <div class="er-right">
+          ${e.art?`<span class="tag ${artClass(e.art)}">${e.art}</span>`:''}
+          ${icon('chevronRight')}
+        </div>
+      </div>`;
+    }
+    return `
     <div class="einsatz">
-      <div class="hd"><b>Einsatz ${i+1}</b>${e.art?`<span class="tag ${artClass(e.art)}">${e.art}</span>`:''}<button class="del" data-del="${i}">löschen</button></div>
+      <div class="hd"><b>Einsatz ${i+1}</b>${e.art?`<span class="tag ${artClass(e.art)}">${e.art}</span>`:''}
+        <button class="del" data-del="${i}">Löschen</button>
+        <button class="linkbtn" data-collapse="${i}">Fertig</button></div>
       <div class="row"><label>Beginn</label><input type="time" data-e="${i}" data-f="beginn" value="${e.beginn||''}"></div>
       <div class="row"><label>Ende</label><input type="time" data-e="${i}" data-f="ende" value="${e.ende||''}">
         ${e.ende?'':`<button class="btn sec" style="width:auto;height:auto;padding:9px 12px;margin:0" data-stop="${i}">jetzt</button>`}</div>
@@ -324,15 +456,25 @@ function renderEinsaetze(){
         ART_OPTS.map(o=>`<option${o===e.art?' selected':''}>${o}</option>`).join('')}</select></div>
       <div class="row"><label>Grund/Anlass</label><input data-e="${i}" data-f="grund_anlass" value="${e.grund_anlass||''}"></div>
       <div class="row"><label>Fall-Nr.</label><input data-e="${i}" data-f="fallnr" value="${e.fallnr||''}"></div>
-    </div>`; }).join('') || '<div class="hint">Noch keine Einsätze erfasst.</div>';
+    </div>`;
+  }).join('') || '<div class="hint">Noch keine Einsätze erfasst.</div>';
 }
 
 const FIELDS = ['dienstbeginn','plan_dienstende','tats_dienstende','grund_ueberstunden',
   'erlaeuterung','angeordnet_durch','ruhezeit_eingehalten','gewuenschter_ausgleich','geplanter_ausgleichstag'];
 
+function renderRuhezeitStatus(){
+  const v = $('ruhezeit_eingehalten').value;
+  const el = $('ruhezeitStatus');
+  if(v==='ja') el.innerHTML = `<div class="status good">${icon('checkCircle')}Ruhezeit eingehalten</div>`;
+  else if(v==='nein') el.innerHTML = `<div class="status bad">${icon('alertTriangle')}Ruhezeit nicht eingehalten</div>`;
+  else el.innerHTML = '';
+}
+
 function renderDay(){
   const d = day();
   $('datum').value = cur;
+  if(lastRenderedDay !== cur){ expanded = new Set(); lastRenderedDay = cur; }
   if(!d.dienstart){
     const der = derive(cur);
     if(DUTY[der.code]){ d.dienstart = der.code; d.plan_dienstende ||= DUTY[der.code].end; d.dienstbeginn ||= DUTY[der.code].start; }
@@ -341,15 +483,16 @@ function renderDay(){
   FIELDS.forEach(f => $(f).value = d[f] || '');
   $('frn').checked = !!d.frn;
   $('frnKommentar').value = d.frn_kommentar || '';
-  $('frnKommentarRow').style.display = d.frn ? 'flex' : 'none';
+  $('frnKommentarRow').style.display = d.frn ? 'block' : 'none';
   $('lblGehen').textContent  = d.tats_dienstende || '–';
-  renderDuty(); renderEinsaetze(); calc(); persist();
+  renderDuty(); renderEinsaetze(); renderRuhezeitStatus(); calc(); persist();
 }
 
 /* Feld-Bindings */
 FIELDS.forEach(f => $(f).oninput = e => {
   day()[f] = e.target.value;
   if(f==='tats_dienstende') $('lblGehen').textContent = e.target.value || '–';
+  if(f==='ruhezeit_eingehalten') renderRuhezeitStatus();
   calc(); persist();
 });
 function syncFrnText(){
@@ -364,7 +507,7 @@ function syncFrnText(){
 }
 $('frn').onchange = e => {
   const d = day(); d.frn = e.target.checked;
-  $('frnKommentarRow').style.display = d.frn ? 'flex' : 'none';
+  $('frnKommentarRow').style.display = d.frn ? 'block' : 'none';
   syncFrnText(); persist();
 };
 $('frnKommentar').oninput = e => {
@@ -385,8 +528,14 @@ $('einsaetze').addEventListener('change', e=>{
   day().einsaetze[i][e.target.dataset.f] = e.target.value; calc(); persist();
 });
 $('einsaetze').addEventListener('click', e=>{
-  if(e.target.dataset.del!==undefined){ day().einsaetze.splice(+e.target.dataset.del,1); persist(); renderEinsaetze(); calc(); }
-  if(e.target.dataset.stop!==undefined){ day().einsaetze[+e.target.dataset.stop].ende = now(); persist(); renderEinsaetze(); calc(); }
+  const delBtn = e.target.closest('[data-del]');
+  if(delBtn){ day().einsaetze.splice(+delBtn.dataset.del,1); persist(); renderEinsaetze(); calc(); return; }
+  const stopBtn = e.target.closest('[data-stop]');
+  if(stopBtn){ day().einsaetze[+stopBtn.dataset.stop].ende = now(); persist(); renderEinsaetze(); calc(); return; }
+  const collapseBtn = e.target.closest('[data-collapse]');
+  if(collapseBtn){ expanded.delete(+collapseBtn.dataset.collapse); renderEinsaetze(); return; }
+  const row = e.target.closest('[data-expand]');
+  if(row){ expanded.add(+row.dataset.expand); renderEinsaetze(); }
 });
 
 const now = () => new Date().toTimeString().slice(0,5);
@@ -394,14 +543,18 @@ $('btnGehen').onclick  = ()=>{ day().tats_dienstende = now(); renderDay(); };
 $('btnEinsatzStart').onclick = ()=>{
   const d = day();
   if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
-  d.einsaetze.push({beginn:now(),ende:'',art:'',grund_anlass:'',fallnr:''}); persist(); renderEinsaetze();
+  d.einsaetze.push({beginn:now(),ende:'',art:'',grund_anlass:'',fallnr:''});
+  expanded.add(d.einsaetze.length-1);
+  persist(); renderEinsaetze();
 };
 $('btnEinsatzLeer').onclick = ()=>{
   const d = day();
   if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
-  d.einsaetze.push({beginn:'',ende:'',art:'',grund_anlass:'',fallnr:''}); persist(); renderEinsaetze();
+  d.einsaetze.push({beginn:'',ende:'',art:'',grund_anlass:'',fallnr:''});
+  expanded.add(d.einsaetze.length-1);
+  persist(); renderEinsaetze();
 };
-$('resetTag').onclick = ()=>{ if(confirm('Alle Eingaben dieses Tages löschen?')){ delete days[cur]; persist(); renderDay(); } };
+$('resetTag').onclick = ()=>{ if(confirm('Alle Eingaben dieses Tages löschen?')){ delete days[cur]; expanded = new Set(); renderDay(); } };
 
 function shift(n){ const d = new Date(cur+'T12:00:00'); d.setDate(d.getDate()+n); cur = iso(d); renderDay(); }
 $('dPrev').onclick = ()=>shift(-1);
@@ -462,7 +615,7 @@ $('xlsFile').onchange = async e => {
     save(LS.plan, plan);
     const st = planStats();
     msg.innerHTML = `<div class="ok">${MONTHS[monat][0].toUpperCase()+MONTHS[monat].slice(1)} ${jahr}: ${n} Tage übernommen. Insgesamt gespeichert: ${st.days} Tage in ${st.months} Monaten.</div>` +
-      (mismatch ? `<div class="note">⚠️ Bei ${mismatch} Zeilen passt der Wochentag in Spalte B nicht zum errechneten Datum. Bitte Monat/Jahr in der Kopfzeile prüfen.</div>` : '');
+      (mismatch ? `<div class="note">${icon('alertTriangle')} Bei ${mismatch} Zeilen passt der Wochentag in Spalte B nicht zum errechneten Datum. Bitte Monat/Jahr in der Kopfzeile prüfen.</div>` : '');
     renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDay();
   }catch(err){ msg.innerHTML = `<div class="note">Import fehlgeschlagen: ${err.message}</div>`; }
 };
@@ -478,17 +631,17 @@ function renderPlanList(){
   for(const k of keys){
     const d = derive(k);
     if(!d.code || d.code==='frei') continue;
-    if(d.code==='abwesend'){ out.push(`<div><span>${k}</span><span class="tag">Abwesend</span></div>`); continue; }
+    if(d.code==='abwesend'){ out.push(`<div class="li"><span>${k}</span><span class="tag">Abwesend</span></div>`); continue; }
     if(d.code==='amb2'||d.code==='amb4') continue;
-    out.push(`<div><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${d.code}</span></div>`);
+    out.push(`<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${d.code}</span></div>`);
   }
-  $('planList').innerHTML = out.join('') || '<div>Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.</div>';
+  $('planList').innerHTML = out.join('') || '<div class="li">Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.</div>';
 }
 function renderTeamList(){
   const keys = Object.keys(plan).sort();
   const out = keys.filter(k=>plan[k].oa && plan[k].oa.trim())
-    .map(k=>`<div><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${plan[k].oa}</span></div>`);
-  $('teamList').innerHTML = out.join('') || '<div>Keine Rufdienst-Einträge gefunden.</div>';
+    .map(k=>`<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${plan[k].oa}</span></div>`);
+  $('teamList').innerHTML = out.join('') || '<div class="li">Keine Rufdienst-Einträge gefunden.</div>';
 }
 function renderHistory(){
   const keys = Object.keys(days).filter(k=>{
@@ -502,9 +655,9 @@ function renderHistory(){
     const parts = [];
     if(ue) parts.push('Ü '+ue+'h');
     if(d.einsaetze && d.einsaetze.length) parts.push(d.einsaetze.length+' Einsatz');
-    return `<div data-goto="${k}" style="cursor:pointer"><span>${k}</span><span class="tag">${parts.join(' · ')||'erfasst'}</span></div>`;
+    return `<div class="li" data-goto="${k}" style="cursor:pointer"><span>${k}</span><span style="display:flex;align-items:center;gap:8px"><span class="tag">${parts.join(' · ')||'erfasst'}</span>${icon('chevronRight')}</span></div>`;
   });
-  $('historyList').innerHTML = out.join('') || '<div>Noch keine Tage erfasst.</div>';
+  $('historyList').innerHTML = out.join('') || '<div class="li">Noch keine Tage erfasst.</div>';
 }
 $('historyList').addEventListener('click', e=>{
   const row = e.target.closest('[data-goto]'); if(!row) return;
