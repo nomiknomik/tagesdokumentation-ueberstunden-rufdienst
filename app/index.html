@@ -41,9 +41,9 @@ body{margin:0;min-height:100dvh;
   padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 header{background:var(--color-background);color:var(--color-text);
   padding:calc(env(safe-area-inset-top) + 12px) var(--spacing-page) 10px;
-  position:sticky;top:0;z-index:10;border-bottom:1px solid var(--color-border)}
+  position:fixed;top:0;left:0;right:0;z-index:10;border-bottom:1px solid var(--color-border)}
 h1{margin:0;font-size:20px;line-height:24px;font-weight:700}
-main{padding:var(--spacing-page) var(--spacing-page) 24px;max-width:480px;margin:0 auto}
+main{padding:0 var(--spacing-page) 24px;max-width:480px;margin:0 auto}
 section{display:none} section.on{display:block}
 
 .card{background:var(--color-card);border:1px solid var(--color-border);border-radius:var(--radius-card);
@@ -87,6 +87,7 @@ input,select,textarea{font:inherit;font-size:16px;border:1px solid var(--color-b
   padding:11px 12px;background:rgba(255,255,255,.04);color:var(--color-text);width:100%;min-width:0}
 textarea{min-height:64px}
 input[readonly]{background:transparent;color:var(--color-text-secondary)}
+input[type=time],input[type=date]{background:transparent;border-color:transparent;padding-left:2px;padding-right:2px}
 select{color-scheme:dark}
 
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:var(--radius-button);
@@ -129,6 +130,15 @@ select{color-scheme:dark}
 .list .li{display:flex;justify-content:space-between;align-items:center;padding:14px 4px;border-bottom:1px solid var(--color-border);gap:8px}
 .list .li:last-child{border-bottom:0}
 .list .li .ic{width:16px;height:16px;color:var(--color-text-muted)}
+
+.monthgroup{border:1px solid var(--color-border);border-radius:var(--radius-input);margin-bottom:8px;overflow:hidden}
+.monthgroup summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;
+  font-weight:600;font-size:14px;color:var(--color-text)}
+.monthgroup summary::-webkit-details-marker{display:none}
+.monthgroup summary .cnt{color:var(--color-text-muted);font-weight:400;margin-left:6px}
+.monthgroup summary .ic{width:16px;height:16px;color:var(--color-text-muted);transition:transform .15s ease}
+.monthgroup[open] summary .ic{transform:rotate(90deg)}
+.monthgroup .list{padding:0 14px}
 
 .tag{font-size:12px;font-weight:600;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--color-text-secondary)}
 .tag-blue{background:rgba(59,130,246,.16);color:#8ecbff}
@@ -625,30 +635,46 @@ function planStats(){
   return {days: keys.length, months: new Set(keys.map(k=>k.slice(0,7))).size};
 }
 
+function monthLabel(mk){
+  const [y,m] = mk.split('-');
+  const name = MONTHS[+m-1];
+  return `${name[0].toUpperCase()+name.slice(1)} ${y}`;
+}
+function renderGroupedList(containerId, keys, rowFn, emptyMsg){
+  const el = $(containerId);
+  if(!keys.length){ el.innerHTML = `<div class="li">${emptyMsg}</div>`; return; }
+  const groups = {};
+  keys.forEach(k=>{ const mk = k.slice(0,7); (groups[mk] ||= []).push(k); });
+  const monthKeys = Object.keys(groups).sort().reverse();
+  el.innerHTML = monthKeys.map((mk,idx)=>`
+    <details class="monthgroup"${idx===0?' open':''}>
+      <summary><span>${monthLabel(mk)}<span class="cnt">(${groups[mk].length})</span></span>${icon('chevronRight')}</summary>
+      <div class="list">${groups[mk].map(rowFn).join('')}</div>
+    </details>`).join('');
+}
 function renderPlanList(){
-  const keys = Object.keys(plan).sort();
-  const out = [];
-  for(const k of keys){
+  const keys = Object.keys(plan).filter(k=>{
     const d = derive(k);
-    if(!d.code || d.code==='frei') continue;
-    if(d.code==='abwesend'){ out.push(`<div class="li"><span>${k}</span><span class="tag">Abwesend</span></div>`); continue; }
-    if(d.code==='amb2'||d.code==='amb4') continue;
-    out.push(`<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${d.code}</span></div>`);
-  }
-  $('planList').innerHTML = out.join('') || '<div class="li">Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.</div>';
+    return d.code && d.code!=='frei' && d.code!=='amb2' && d.code!=='amb4';
+  }).sort();
+  renderGroupedList('planList', keys, k=>{
+    const d = derive(k);
+    const label = d.code==='abwesend' ? 'Abwesend' : d.code;
+    return `<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${label}</span></div>`;
+  }, 'Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.');
 }
 function renderTeamList(){
-  const keys = Object.keys(plan).sort();
-  const out = keys.filter(k=>plan[k].oa && plan[k].oa.trim())
-    .map(k=>`<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${plan[k].oa}</span></div>`);
-  $('teamList').innerHTML = out.join('') || '<div class="li">Keine Rufdienst-Einträge gefunden.</div>';
+  const keys = Object.keys(plan).filter(k=>plan[k].oa && plan[k].oa.trim()).sort();
+  renderGroupedList('teamList', keys,
+    k=>`<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${plan[k].oa}</span></div>`,
+    'Keine Rufdienst-Einträge gefunden.');
 }
 function renderHistory(){
   const keys = Object.keys(days).filter(k=>{
     const d = days[k];
     return d.dienstbeginn || d.tats_dienstende || (d.einsaetze && d.einsaetze.length) || (d.erlaeuterung||'').trim();
-  }).sort().reverse();
-  const out = keys.slice(0,60).map(k=>{
+  }).sort();
+  renderGroupedList('historyList', keys, k=>{
     const d = days[k];
     const p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
     const ue = (p!==null && t!==null) ? fmt(t-p) : '';
@@ -656,8 +682,7 @@ function renderHistory(){
     if(ue) parts.push('Ü '+ue+'h');
     if(d.einsaetze && d.einsaetze.length) parts.push(d.einsaetze.length+' Einsatz');
     return `<div class="li" data-goto="${k}" style="cursor:pointer"><span>${k}</span><span style="display:flex;align-items:center;gap:8px"><span class="tag">${parts.join(' · ')||'erfasst'}</span>${icon('chevronRight')}</span></div>`;
-  });
-  $('historyList').innerHTML = out.join('') || '<div class="li">Noch keine Tage erfasst.</div>';
+  }, 'Noch keine Tage erfasst.');
 }
 $('historyList').addEventListener('click', e=>{
   const row = e.target.closest('[data-goto]'); if(!row) return;
@@ -722,6 +747,11 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
+function syncHeaderPad(){
+  document.querySelector('main').style.paddingTop = (document.querySelector('header').offsetHeight + 16) + 'px';
+}
+window.addEventListener('resize', syncHeaderPad);
+syncHeaderPad();
 renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
