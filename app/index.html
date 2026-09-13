@@ -36,7 +36,7 @@ section{display:none} section.on{display:block}
 .duty{background:var(--accent-l);border-radius:10px;padding:11px 12px;margin-bottom:12px}
 .duty b{font-size:17px} .duty small{display:block;color:var(--muted);margin-top:2px}
 .stampgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.stamp{border:0;border-radius:12px;color:#fff;padding:18px 6px;font-size:17px;font-weight:700}
+.stamp{border:0;border-radius:12px;color:#fff;padding:18px 6px;font-size:17px;font-weight:700;width:100%;margin-bottom:10px}
 .stamp small{display:block;font-weight:400;font-size:13px;opacity:.85;margin-top:3px}
 .stamp.go{background:var(--go)} .stamp.stop{background:var(--stop)}
 .row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
@@ -86,10 +86,7 @@ input[readonly]{background:#f6f8f8;color:var(--muted)}
 
   <div class="card">
     <h2>Kommen / Gehen</h2>
-    <div class="stampgrid">
-      <button class="stamp go" id="btnKommen">Kommen<small id="lblKommen">–</small></button>
-      <button class="stamp stop" id="btnGehen">Gehen<small id="lblGehen">–</small></button>
-    </div>
+    <button class="stamp stop" id="btnGehen">Gehen<small id="lblGehen">–</small></button>
     <div class="row"><label>Dienstart</label><select id="dienstartSel"></select></div>
     <div class="row"><label>Dienstbeginn</label><input type="time" id="dienstbeginn"></div>
     <div class="row"><label>Plan-Dienstende</label><input type="time" id="plan_dienstende"></div>
@@ -97,13 +94,14 @@ input[readonly]{background:#f6f8f8;color:var(--muted)}
     <div class="row"><label>Überstunden (Std.)</label><input id="ueberstunden_std" readonly></div>
     <div class="row"><label>Grund</label><input id="grund_ueberstunden" placeholder="Grund der Überstunden"></div>
     <div class="chk"><input type="checkbox" id="frn"><label style="flex:1">FRN – frei nach Dienst</label></div>
+    <div class="row" id="frnKommentarRow" style="display:none"><label>Kommentar (Pflicht)</label><input id="frnKommentar" placeholder="z.B. Nachtoperation bis 03:40 Uhr"></div>
   </div>
 
   <div class="card">
     <h2>Rufdienst-Einsätze</h2>
-    <div id="einsaetze"></div>
     <button class="btn sec" id="btnEinsatzStart">+ Einsatz jetzt starten</button>
     <button class="btn ghost" id="btnEinsatzLeer">Leere Zeile hinzufügen</button>
+    <div id="einsaetze" style="margin-top:10px"></div>
     <div class="row" style="margin-top:10px"><label>Summe (Std.)</label><input id="summe_inanspruchnahme" readonly></div>
     <div class="row"><label>Anzahl Einsätze</label><input id="anzahl_einsaetze" readonly></div>
   </div>
@@ -137,6 +135,14 @@ input[readonly]{background:#f6f8f8;color:var(--muted)}
     <div class="list" id="planList"><div>Noch kein Plan importiert.</div></div>
     <button class="btn ghost" id="planClear">Alle Pläne löschen</button>
   </div>
+  <div class="card">
+    <h2>Rufdienst – wer hat wann Dienst</h2>
+    <div class="list" id="teamList"><div>Noch kein Plan importiert.</div></div>
+  </div>
+  <div class="card">
+    <h2>Erfasste Tage</h2>
+    <div class="list" id="historyList"><div>Noch keine Tage erfasst.</div></div>
+  </div>
 </section>
 
 <!-- ================= EINSTELLUNGEN ================= -->
@@ -160,6 +166,7 @@ input[readonly]{background:#f6f8f8;color:var(--muted)}
     <h2>Daten</h2>
     <button class="btn sec" id="exportData">Alle Daten als JSON sichern</button>
     <div class="hint">Alles liegt ausschließlich lokal auf diesem Gerät (localStorage). Zur Startseite hinzufügen, damit iOS die Daten nicht nach 7 Tagen löscht.</div>
+    <div class="hint" id="storageInfo"></div>
   </div>
 </section>
 </main>
@@ -233,7 +240,7 @@ function derive(isoDate){
 
 /* ---------- Tagesdaten ---------- */
 const blank = () => ({dienstart:'', dienstbeginn:'', plan_dienstende:'', tats_dienstende:'',
-  grund_ueberstunden:'', frn:false, erlaeuterung:'', angeordnet_durch:'', einsaetze:[],
+  grund_ueberstunden:'', frn:false, frn_kommentar:'', erlaeuterung:'', angeordnet_durch:'', einsaetze:[],
   ruhezeit_eingehalten:'', gewuenschter_ausgleich:'', geplanter_ausgleichstag:''});
 let cur = iso(new Date());
 const day = () => (days[cur] ||= blank());
@@ -248,10 +255,12 @@ function calc(){
   let ue = null;
   if(p!==null && t!==null){ ue = t-p; }
   let summe=0, anzahl=0;
-  d.einsaetze.forEach(e=>{
+  d.einsaetze.forEach((e,i)=>{
     const b=dec(e.beginn), en=dec(e.ende);
     if(b!==null && en!==null){ let x=en-b; if(x<0)x+=24; e.dauer=fmt(x); summe+=x; anzahl++; }
     else e.dauer='';
+    const el = document.querySelector(`[data-dauer="${i}"]`);
+    if(el) el.value = e.dauer;
   });
   $('ueberstunden_std').value    = fmt(ue);
   $('summe_inanspruchnahme').value = anzahl ? fmt(summe) : '';
@@ -264,6 +273,7 @@ const $ = id => document.getElementById(id);
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id===b.dataset.tab));
+  if(b.dataset.tab==='plan'){ renderPlanList(); renderTeamList(); renderHistory(); }
 });
 
 const sel = $('dienstartSel');
@@ -272,28 +282,33 @@ sel.innerHTML = '<option value="">– keine –</option>' +
 
 function renderDuty(){
   const d = derive(cur);
+  const p = plan[cur];
   const box = $('dutyBox');
   const wd = WDAY[new Date(cur+'T12:00:00').getDay()];
-  if(d.code && DUTY[d.code]) box.innerHTML = `<b>${wd} · ${DUTY[d.code].label}</b><small>${d.info} · ${DUTY[d.code].start}–${DUTY[d.code].end}</small>`;
-  else if(d.code==='abwesend') box.innerHTML = `<b>${wd} · Abwesend</b><small>${d.info}</small>`;
-  else if(d.code==='frei')     box.innerHTML = `<b>${wd} · Frei</b><small>${d.info}</small>`;
-  else                         box.innerHTML = `<b>${wd}</b><small>${d.info}</small>`;
+  let html;
+  if(d.code && DUTY[d.code]) html = `<b>${wd} · ${DUTY[d.code].label}</b><small>${d.info} · ${DUTY[d.code].start}–${DUTY[d.code].end}</small>`;
+  else if(d.code==='abwesend') html = `<b>${wd} · Abwesend</b><small>${d.info}</small>`;
+  else if(d.code==='frei')     html = `<b>${wd} · Frei</b><small>${d.info}</small>`;
+  else                         html = `<b>${wd}</b><small>${d.info}</small>`;
+  if(p && p.oa && p.oa.trim()) html += `<small style="display:block;margin-top:4px">Rufdienst lt. Plan: ${p.oa}</small>`;
+  box.innerHTML = html;
 }
 
 function renderEinsaetze(){
   const d = day();
-  $('einsaetze').innerHTML = d.einsaetze.map((e,i)=>`
+  const idxs = d.einsaetze.map((_,i)=>i).reverse();
+  $('einsaetze').innerHTML = idxs.map(i=>{ const e = d.einsaetze[i]; return `
     <div class="einsatz">
       <div class="hd"><b>Einsatz ${i+1}</b><button class="del" data-del="${i}">löschen</button></div>
       <div class="row"><label>Beginn</label><input type="time" data-e="${i}" data-f="beginn" value="${e.beginn||''}"></div>
       <div class="row"><label>Ende</label><input type="time" data-e="${i}" data-f="ende" value="${e.ende||''}">
         ${e.ende?'':`<button class="btn sec" style="width:auto;padding:9px 12px;margin:0" data-stop="${i}">jetzt</button>`}</div>
-      <div class="row"><label>Dauer</label><input value="${e.dauer||''}" readonly></div>
+      <div class="row"><label>Dauer</label><input data-dauer="${i}" value="${e.dauer||''}" readonly></div>
       <div class="row"><label>Art</label><select data-e="${i}" data-f="art">${
         ART_OPTS.map(o=>`<option${o===e.art?' selected':''}>${o}</option>`).join('')}</select></div>
       <div class="row"><label>Grund/Anlass</label><input data-e="${i}" data-f="grund_anlass" value="${e.grund_anlass||''}"></div>
       <div class="row"><label>Fall-Nr.</label><input data-e="${i}" data-f="fallnr" value="${e.fallnr||''}"></div>
-    </div>`).join('') || '<div class="hint">Noch keine Einsätze erfasst.</div>';
+    </div>`; }).join('') || '<div class="hint">Noch keine Einsätze erfasst.</div>';
 }
 
 const FIELDS = ['dienstbeginn','plan_dienstende','tats_dienstende','grund_ueberstunden',
@@ -309,7 +324,8 @@ function renderDay(){
   sel.value = d.dienstart || '';
   FIELDS.forEach(f => $(f).value = d[f] || '');
   $('frn').checked = !!d.frn;
-  $('lblKommen').textContent = d.dienstbeginn || '–';
+  $('frnKommentar').value = d.frn_kommentar || '';
+  $('frnKommentarRow').style.display = d.frn ? 'flex' : 'none';
   $('lblGehen').textContent  = d.tats_dienstende || '–';
   renderDuty(); renderEinsaetze(); calc(); persist();
 }
@@ -317,16 +333,27 @@ function renderDay(){
 /* Feld-Bindings */
 FIELDS.forEach(f => $(f).oninput = e => {
   day()[f] = e.target.value;
-  if(f==='dienstbeginn') $('lblKommen').textContent = e.target.value || '–';
   if(f==='tats_dienstende') $('lblGehen').textContent = e.target.value || '–';
   calc(); persist();
 });
+function syncFrnText(){
+  const d = day();
+  let txt = (d.erlaeuterung||'').replace(/FRN – frei nach Dienst(: [^–]*)?/,'').replace(/\s*–\s*–\s*/g,' – ').replace(/^\s*–\s*|\s*–\s*$/g,'').trim();
+  if(d.frn){
+    const marker = 'FRN – frei nach Dienst' + (d.frn_kommentar ? ': '+d.frn_kommentar : '');
+    txt = (txt ? txt+' – ' : '') + marker;
+  }
+  d.erlaeuterung = txt;
+  $('erlaeuterung').value = txt;
+}
 $('frn').onchange = e => {
   const d = day(); d.frn = e.target.checked;
-  const mark = 'FRN – frei nach Dienst';
-  if(d.frn && !(d.erlaeuterung||'').includes(mark)) d.erlaeuterung = (d.erlaeuterung ? d.erlaeuterung+' – ' : '') + mark;
-  if(!d.frn) d.erlaeuterung = (d.erlaeuterung||'').replace(mark,'').replace(/^ – | – $/g,'').trim();
-  $('erlaeuterung').value = d.erlaeuterung; persist();
+  $('frnKommentarRow').style.display = d.frn ? 'flex' : 'none';
+  syncFrnText(); persist();
+};
+$('frnKommentar').oninput = e => {
+  day().frn_kommentar = e.target.value;
+  syncFrnText(); persist();
 };
 sel.onchange = e => {
   const d = day(); d.dienstart = e.target.value;
@@ -347,7 +374,6 @@ $('einsaetze').addEventListener('click', e=>{
 });
 
 const now = () => new Date().toTimeString().slice(0,5);
-$('btnKommen').onclick = ()=>{ day().dienstbeginn = now(); renderDay(); };
 $('btnGehen').onclick  = ()=>{ day().tats_dienstende = now(); renderDay(); };
 $('btnEinsatzStart').onclick = ()=>{
   const d = day();
@@ -418,11 +444,17 @@ $('xlsFile').onchange = async e => {
       n++;
     }
     save(LS.plan, plan);
-    msg.innerHTML = `<div class="ok">${MONTHS[monat][0].toUpperCase()+MONTHS[monat].slice(1)} ${jahr}: ${n} Tage übernommen.</div>` +
+    const st = planStats();
+    msg.innerHTML = `<div class="ok">${MONTHS[monat][0].toUpperCase()+MONTHS[monat].slice(1)} ${jahr}: ${n} Tage übernommen. Insgesamt gespeichert: ${st.days} Tage in ${st.months} Monaten.</div>` +
       (mismatch ? `<div class="note">⚠️ Bei ${mismatch} Zeilen passt der Wochentag in Spalte B nicht zum errechneten Datum. Bitte Monat/Jahr in der Kopfzeile prüfen.</div>` : '');
-    renderPlanList(); renderDay();
+    renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDay();
   }catch(err){ msg.innerHTML = `<div class="note">Import fehlgeschlagen: ${err.message}</div>`; }
 };
+
+function planStats(){
+  const keys = Object.keys(plan);
+  return {days: keys.length, months: new Set(keys.map(k=>k.slice(0,7))).size};
+}
 
 function renderPlanList(){
   const keys = Object.keys(plan).sort();
@@ -436,12 +468,41 @@ function renderPlanList(){
   }
   $('planList').innerHTML = out.join('') || '<div>Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.</div>';
 }
-$('planClear').onclick = ()=>{ if(confirm('Alle importierten Pläne löschen?')){ plan={}; save(LS.plan,plan); renderPlanList(); renderDay(); } };
+function renderTeamList(){
+  const keys = Object.keys(plan).sort();
+  const out = keys.filter(k=>plan[k].oa && plan[k].oa.trim())
+    .map(k=>`<div><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${plan[k].oa}</span></div>`);
+  $('teamList').innerHTML = out.join('') || '<div>Keine Rufdienst-Einträge gefunden.</div>';
+}
+function renderHistory(){
+  const keys = Object.keys(days).filter(k=>{
+    const d = days[k];
+    return d.dienstbeginn || d.tats_dienstende || (d.einsaetze && d.einsaetze.length) || (d.erlaeuterung||'').trim();
+  }).sort().reverse();
+  const out = keys.slice(0,60).map(k=>{
+    const d = days[k];
+    const p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
+    const ue = (p!==null && t!==null) ? fmt(t-p) : '';
+    const parts = [];
+    if(ue) parts.push('Ü '+ue+'h');
+    if(d.einsaetze && d.einsaetze.length) parts.push(d.einsaetze.length+' Einsatz');
+    return `<div><span>${k}</span><span class="tag">${parts.join(' · ')||'erfasst'}</span></div>`;
+  });
+  $('historyList').innerHTML = out.join('') || '<div>Noch keine Tage erfasst.</div>';
+}
+function updateStorageInfo(){
+  let bytes = 0;
+  for(const k in localStorage){ if(localStorage.hasOwnProperty(k)) bytes += (localStorage[k].length + k.length); }
+  const el = $('storageInfo');
+  if(el) el.textContent = `Belegter Speicher: ca. ${(bytes/1024).toFixed(1)} KB (Richtwert-Limit meist 5–10 MB pro Website).`;
+}
+$('planClear').onclick = ()=>{ if(confirm('Alle importierten Pläne löschen?')){ plan={}; save(LS.plan,plan); renderPlanList(); renderTeamList(); renderDay(); } };
 
 /* ---------- PDF ---------- */
 $('pdfBtn').onclick = async ()=>{
   try{
     const d = day();
+    if(d.frn && !(d.frn_kommentar||'').trim()){ alert('Bitte bei FRN einen Kommentar eintragen.'); return; }
     const res = await fetch('Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf');
     const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
     const form = pdfDoc.getForm();
@@ -485,7 +546,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-renderDay(); renderPlanList();
+renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>
