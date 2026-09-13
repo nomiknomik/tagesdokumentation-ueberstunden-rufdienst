@@ -227,6 +227,23 @@ Nachvollziehbarkeit für künftige Sessions:
    über Safari neu "Zum Home-Bildschirm hinzufügen" (komplett frische
    Installation ohne alten Service Worker).
 
+### PWA-Versionsanzeige + Bottom-Padding (13.09.2026)
+- `app/index.html` hat jetzt `APP_VERSION`/`APP_BUILD` (JS-Konstanten am Anfang
+  des "Start"-Blocks). Angezeigt als Chip im Header (`#appVersion`) und in der
+  Einstellungen-Karte "App-Version" (`#verNum`/`#verDate`), plus Button
+  "Nach Update suchen" (`#checkUpdate`): lädt `index.html?cb=…` mit
+  `cache:'no-store'`, vergleicht die `APP_VERSION` aus dem Quelltext mit der
+  laufenden und lädt bei Abweichung nach `reg.update()` neu.
+  **Bei jeder inhaltlichen PWA-Änderung `APP_VERSION`/`APP_BUILD` hochzählen** –
+  sonst zeigt die App eine falsche Aktualität an.
+- **Bottom-Padding-Falle (gelöst)**: `html,body{height:100%}` + `padding-bottom`
+  auf `body` funktionierte auf iOS nicht – bei fester Body-Höhe liegt das
+  Padding am 100%-Rand, überlaufender Inhalt (PDF-Button, "Diesen Tag
+  zurücksetzen") ragte darunter und verschwand hinter der fixen Bottom-Nav.
+  **Fix**: nur noch `html{height:100%}`, unteres Padding auf `main`
+  (`calc(96px + env(safe-area-inset-bottom))`), `syncHeaderPad()` setzt
+  `main.style.paddingBottom` anhand der gemessenen Nav-Höhe (nicht mehr `body`).
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).

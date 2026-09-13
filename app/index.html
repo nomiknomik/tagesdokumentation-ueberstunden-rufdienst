@@ -35,16 +35,18 @@
   --button-height:56px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
+html{height:100%}
 body{margin:0;min-height:100dvh;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Arial,sans-serif;
-  background:var(--color-background);color:var(--color-text);
-  padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  background:var(--color-background);color:var(--color-text)}
 header{background:var(--color-background);color:var(--color-text);
   padding:calc(env(safe-area-inset-top) + 12px) var(--spacing-page) 10px;
   position:fixed;top:0;left:0;right:0;z-index:10;border-bottom:1px solid var(--color-border)}
 h1{margin:0;font-size:20px;line-height:24px;font-weight:700}
-main{padding:0 var(--spacing-page) 24px;max-width:480px;margin:0 auto}
+.vchip{display:inline-block;margin-top:4px;font-size:11px;line-height:14px;font-weight:600;letter-spacing:.02em;
+  color:var(--color-text-muted);background:var(--color-card);border:1px solid var(--color-border);
+  border-radius:999px;padding:2px 8px}
+main{padding:0 var(--spacing-page) calc(96px + env(safe-area-inset-bottom));max-width:480px;margin:0 auto}
 section{display:none} section.on{display:block}
 
 .card{background:linear-gradient(180deg,#FFFFFF,#FFFCF6);border:1px solid var(--color-border);border-radius:var(--radius-card);
@@ -161,7 +163,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 </style>
 </head>
 <body>
-<header><h1>Tagesdokumentation – Überstunden &amp; Rufdienst</h1></header>
+<header><h1>Tagesdokumentation – Überstunden &amp; Rufdienst</h1><span class="vchip" id="appVersion">v–</span></header>
 
 <main>
 <!-- ================= TAG ================= -->
@@ -275,6 +277,13 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="hint">Alles liegt ausschließlich lokal auf diesem Gerät (localStorage). Zur Startseite hinzufügen, damit iOS die Daten nicht nach 7 Tagen löscht.</div>
     <div class="hint" id="storageInfo"></div>
   </div>
+  <div class="card">
+    <h2><span data-icon="info"></span>App-Version</h2>
+    <div class="row"><label>Version</label><input class="ro" id="verNum" readonly></div>
+    <div class="row"><label>Stand</label><input class="ro" id="verDate" readonly></div>
+    <button class="btn outline" id="checkUpdate">Nach Update suchen</button>
+    <div class="hint" id="updateInfo">Die Versionsnummer steht auch oben im Kopf der App. Stimmt sie nicht mit der erwarteten überein, hier auf „Nach Update suchen“ tippen.</div>
+  </div>
 </section>
 </main>
 
@@ -305,7 +314,8 @@ const ICONS = {
   upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line>',
   search:'<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',
   save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>',
-  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>'
+  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
+  info:'<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'
 };
 function icon(name){
   return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
@@ -749,15 +759,52 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
+const APP_VERSION = '1.7.0';
+const APP_BUILD   = '13.09.2026';
+
+function showVersion(){
+  $('appVersion').textContent = 'v' + APP_VERSION;
+  $('verNum').value  = 'v' + APP_VERSION;
+  $('verDate').value = APP_BUILD;
+}
+
 function syncHeaderPad(){
-  document.querySelector('main').style.paddingTop = (document.querySelector('header').offsetHeight + 16) + 'px';
-  document.body.style.paddingBottom = (document.querySelector('nav').offsetHeight + 16) + 'px';
+  const nav = document.querySelector('nav');
+  const main = document.querySelector('main');
+  main.style.paddingTop = (document.querySelector('header').offsetHeight + 16) + 'px';
+  main.style.paddingBottom = (nav.offsetHeight + 24) + 'px';
 }
 window.addEventListener('resize', syncHeaderPad);
 syncHeaderPad();
+showVersion();
 renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
+$('checkUpdate').onclick = async ()=>{
+  const info = $('updateInfo');
+  info.textContent = 'Suche nach Update …';
+  try{
+    const res = await fetch('index.html?cb=' + Date.now(), {cache:'no-store'});
+    const txt = await res.text();
+    const m = txt.match(/const APP_VERSION = '([^']+)'/);
+    if(m && m[1] !== APP_VERSION){
+      info.textContent = 'Neue Version v' + m[1] + ' gefunden – App wird neu geladen.';
+      if('serviceWorker' in navigator){
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r=>r.update()));
+      }
+      setTimeout(()=>location.reload(), 800);
+    }else if(m){
+      info.textContent = 'Die App ist aktuell (v' + APP_VERSION + ', Stand ' + APP_BUILD + ').';
+    }else{
+      info.textContent = 'Version konnte nicht geprüft werden.';
+    }
+  }catch(err){
+    info.textContent = 'Keine Verbindung – Prüfung nicht möglich (' + err.message + ').';
+  }
+};
+
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg=>{
+    if(!reg) return;
     reg.update();
     reg.addEventListener('updatefound', ()=>{
       const nw = reg.installing;
