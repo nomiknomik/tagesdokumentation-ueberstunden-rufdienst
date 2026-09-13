@@ -213,6 +213,19 @@ Nachvollziehbarkeit für künftige Sessions:
    bleiben cache-first. Dadurch muss die `CACHE`-Konstante bei reinen
    `index.html`-Änderungen NICHT mehr manuell hochgezählt werden – nur noch,
    wenn sich `sw.js` selbst oder die SHELL-Liste ändert.
+   **Zweiter Teil derselben Falle**: Auch mit network-first blieb ein Bugfix
+   (PDF-Button hinter Bottom-Nav) auf dem Gerät unsichtbar, obwohl der Code
+   per GitHub-API nachweislich korrekt auf `main` war – Ursache war der
+   Service-Worker-**Update-Mechanismus** selbst: `register('sw.js')` ohne
+   explizites `reg.update()` unterliegt dem Browser-Throttle, und selbst
+   eine erfolgreich installierte neue SW-Version hat die Seite nicht
+   automatisch neu geladen. **Fix**: `reg.update()` nach der Registrierung
+   explizit aufrufen, plus `location.reload()` bei `controllerchange` bzw.
+   wenn die neu installierte SW den Status `activated` erreicht (siehe
+   Ende von `app/index.html`, Abschnitt "Start"). Zuverlässigster manueller
+   Workaround bei Verdacht auf Cache-Trägheit: Home-Screen-Icon löschen und
+   über Safari neu "Zum Home-Bildschirm hinzufügen" (komplett frische
+   Installation ohne alten Service Worker).
 
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
