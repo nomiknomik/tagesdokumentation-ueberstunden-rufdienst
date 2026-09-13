@@ -129,15 +129,104 @@ Layout-Bug mehr offen. Bei künftigen Änderungen an Koordinaten immer
   90 Tage) gespeichert und beim Laden der Seite automatisch wiederhergestellt
   (`loadFormFromCookie()`), inkl. Checkbox-Support (FRN).
 
-## Zwei parallele Dateien – IMMER BEIDE pflegen!
+## Zwei parallele Dateien – IMMER BEIDE pflegen! (nur für gemeinsame Logik)
 - `tagesdokumentation_erfassung.html` (Root) – Desktop-Tool, wird per GitHub
   Pages unter `https://nomiknomik.github.io/tagesdokumentation-ueberstunden-rufdienst/tagesdokumentation_erfassung.html`
   ausgeliefert. Hat eigene Kopie der Dienstart-Optionsliste (`DIENSTART_OPTIONS`).
 - `app/index.html` – PWA-Variante (separates Manifest/Service Worker), hat
-  EIGENE, unabhängige Kopie der gleichen Logik (`amb2`/`amb4`/... Objekt).
-  Änderungen an Dienstart-Labels, Zeiten, Cookie-Verhalten etc. müssen in
-  BEIDEN Dateien parallel gemacht werden – es gibt keine gemeinsame
-  JS-Datei/kein Include.
+  EIGENE, unabhängige Kopie der gleichen Logik (`DUTY`-Objekt mit
+  `amb2`/`amb4`/`ZD1`/`ZD2`/`RBD`/`RBD2`).
+  Änderungen an Dienstart-Labels, Zeiten, Minusstunden-Berechnung etc. (also
+  Logik, die es in BEIDEN Tools gibt) müssen in BEIDEN Dateien parallel
+  gemacht werden – es gibt keine gemeinsame JS-Datei/kein Include.
+- **WICHTIG (seit PWA-Redesign-Session 13.09.2026)**: Die PWA hat inzwischen
+  viele Features, die es im Desktop-Tool NICHT gibt und die auch NICHT dort
+  nachgezogen werden müssen: Kommen/Gehen-Zeitstempel-Button, Dienstplan-
+  Import (.xls/.xlsx), Team-/Kollegen-Übersicht ("wer hat wann Dienst"),
+  Verlauf ("Erfasste Tage"), das komplette visuelle Design (Farben/Icons/
+  Layout), Monatsgruppierung. Diese sind PWA-exklusiv – die "IMMER BEIDE
+  pflegen"-Regel gilt nur für die tatsächlich geteilte fachliche Logik
+  (Dienstart-Zeiten, Überstunden-/Minusstunden-Berechnung, FRN-Verhalten),
+  nicht für PWA-only UI/UX-Arbeit.
+
+## PWA (app/index.html) – Stand nach Redesign-Session (13.09.2026)
+Ausgangslage war ein Wunsch nach "schönerem Layout". Verlauf zur
+Nachvollziehbarkeit für künftige Sessions:
+1. Erster Versuch: Emoji-Icons + dunkles Petrol-Theme nach einem groben
+   ChatGPT-Mockup-Bild → Nutzer-Feedback: "hast alles nachgezeichnet, kannst
+   du aber sehr schlecht" (Emoji als Icon-Ersatz wirkt billig).
+2. Nutzer hat daraufhin ChatGPT einen sehr detaillierten UI/UX-Redesign-Prompt
+   entlocken lassen (Design-Tokens, Spacing-System, explizit KEIN Emoji/PNG,
+   KEIN Telefon-Icon für Rufdienst, echte SVG-Icons, Ruhezeit-Status als
+   Badge, kompakte Einsatz-Liste). Danach komplett neu umgesetzt:
+   - **Eigenes kleines inline-SVG-Icon-Set** (Lucide/Feather-Stil): `ICONS`-
+     Objekt + `icon(name)`-Helper in `<script>`. Statische Platzhalter im
+     HTML als `<span data-icon="clock"></span>` werden beim Laden per
+     `document.querySelectorAll('[data-icon]')` einmalig durch echtes
+     `<svg>` ersetzt (spart, das SVG-Markup in jedem Card-Header zu
+     duplizieren). Neues Icon hinzufügen = Eintrag in `ICONS` + `data-icon`-
+     Attribut setzen.
+   - **Design-Tokens als CSS Custom Properties** in `:root` (Farben, Radien,
+     Spacing) – dadurch ließ sich der komplette spätere Theme-Wechsel
+     (dunkel → hell) fast nur über die `:root`-Werte erledigen.
+   - **Rufdienst-Einsätze**: kompakte Zeilen (Zeit/Dauer/Art-Badge/Chevron),
+     Antippen klappt die volle Bearbeitungsmaske auf (`expanded`-Set in JS,
+     Reset bei Tageswechsel über `lastRenderedDay`-Tracking). Alle Felder
+     (Beginn/Ende/Art/Grund/Fallnummer) bleiben erhalten, nur die Darstellung
+     ist neu.
+   - **Ruhezeit-Status**: rein visuelles Badge (`renderRuhezeitStatus()`),
+     das nur den Wert des bestehenden ja/nein-Dropdowns farbig darstellt –
+     KEINE neue Berechnungslogik (der offene Punkt "Ruhezeit-Automatik" von
+     weiter oben ist weiterhin NICHT umgesetzt).
+3. Live-Test auf iPhone deckte zwei echte Bugs auf:
+   - `header{position:sticky}` hat auf dem Gerät nicht zuverlässig oben
+     fixiert → Statusleiste überlappte Karteninhalt beim Scrollen. **Fix**:
+     `position:fixed` (wie die Bottom-Nav), `main`-Padding-Top wird per JS
+     (`syncHeaderPad()`) anhand der echten Header-Höhe gesetzt, nicht fest
+     verdrahtet.
+   - `input[type=time/date]` hatte eigenen Rahmen+Hintergrund UND das
+     native iOS-Zeit-Widget zeigt selbst eine abgerundete Kapsel →
+     "Doppelkapsel"-Optik. **Fix**: `border-color:transparent;
+     background:transparent` für diese Input-Typen, nur das native Widget
+     bleibt sichtbar.
+   - Dienstplan-Listen (Meine Dienste/Team/Erfasste Tage) waren eine lange
+     flache Liste → jetzt über `renderGroupedList()` nach Monat gruppiert
+     (natives `<details>`/`<summary>`, kein extra JS-Toggle nötig, CSS
+     rotiert das Chevron-Icon über `.monthgroup[open] summary .ic`).
+4. Nutzer-Feedback zum dunklen Theme: "zu dunkel und zu trivial" → auf
+   Nachfrage explizit **helles "Warm & Ruhig"-Theme** (Creme/Weiß, warme
+   Brauntöne) gewählt, nicht das neutral-graue "Minimalistisch". Umgesetzt
+   rein über die `:root`-Tokens plus:
+   - `apple-mobile-web-app-status-bar-style` von `black-translucent` auf
+     `default` (sonst wäre die Uhrzeit-Anzeige auf hellem Grund unsichtbar).
+   - Tag-Badges (telefonisch/Präsenz/Operation/Sonstiges) von hell-auf-dunkel
+     auf dunkel-auf-hell gedreht (sonst unlesbar auf Weiß).
+   - Gegen "trivial": dezente Farbverläufe + farbige Schatten auf den drei
+     Haupt-Buttons (Gehen/PDF/Einsatz starten), aktiver Bottom-Nav-Tab als
+     Farbpille statt nur Textfarbwechsel.
+5. **Service-Worker-Falle (nicht wiederholen!)**: Nach den beiden letzten
+   Theme-Commits vergessen, `CACHE`-Version in `app/sw.js` hochzuzählen →
+   installierte PWA hat trotz gepushtem Code weiter die alte gecachte
+   `index.html` ausgeliefert ("online, aber nicht sichtbar"-Verwirrung).
+   **Strukturell gefixt**: `index.html` wird jetzt **network-first** geladen
+   (Cache nur Offline-Fallback), alle anderen Assets (PDF, Icons, CDN-Libs)
+   bleiben cache-first. Dadurch muss die `CACHE`-Konstante bei reinen
+   `index.html`-Änderungen NICHT mehr manuell hochgezählt werden – nur noch,
+   wenn sich `sw.js` selbst oder die SHELL-Liste ändert.
+
+### Offene Punkte PWA (Stand 13.09.2026)
+- Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
+  Automatik (siehe oben, gilt für Desktop-Tool genauso).
+- Figma-Anbindung (MCP-Connector „Figma" bzw. Plugin „figma" mit
+  `figma-design-to-code`) wurde besprochen, aber vom Nutzer noch nicht
+  aktiviert/verbunden – falls gewünscht: claude.ai → Connector-Einstellungen.
+- Rufdienst-Einsatz-Darstellung ist eine vereinfachte Umsetzung der
+  ChatGPT-Spec (kompakte Zeile + Aufklapp-Formular), nicht das exakt
+  pixelgenaue "OnCallEntry"-Kartendesign aus dem Prompt.
+- **Git-Workflow-Standing-Instruction**: Nutzer hat explizit gesagt „immer
+  automatisch mergen" – jeder fertige/getestete Stand auf
+  `claude/peaceful-cerf-3v8uke` wird ohne Rückfrage per Fast-Forward-Merge
+  nach `main` gepusht (kein PR-Workflow für dieses Repo).
 
 ## GitHub-Push-Learning (Fehlerquelle!)
 - Beim Batch-Push mehrerer Dateien per Shell-Loop mit `curl -d "{...}"` kann
