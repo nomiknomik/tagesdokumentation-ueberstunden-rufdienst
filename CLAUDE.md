@@ -262,6 +262,34 @@ Nachvollziehbarkeit für künftige Sessions:
   UIDs sind stabil (`tagesdoku-<datum>-<code>@klf`), ein erneuter Import legt
   dieselben Termine also nicht doppelt an.
 
+### PWA v1.9.0 – Wortlaut-Angleich an das Desktop-Tool + Tag-Ansicht (13.09.2026)
+- **Desktop-Wortlaut ist führend**: `DUTY`-Labels, `ART_OPTS` und die neue
+  `GRUND_OPTS` in `app/index.html` entsprechen jetzt exakt
+  `DIENSTART_OPTIONS`/`artOptions`/`grundOptions` in
+  `tagesdokumentation_erfassung.html` (inkl. Kürzel: „Regeldienst (Montag,
+  AMB2)", „telefonisch (RBT)", „Präsenz im Haus (RBA)", „Operation /
+  Eingriff"). `DUTY` kennt zusätzlich `FRN`, `BD`, `SPD`, `SONST`;
+  `DIENSTART_BY_FUNKTION` blendet die Auswahl je Funktion ein (Oberarzt vs.
+  Assistenzarzt/PA) wie im Desktop-Tool.
+  Intern bleiben die Codes (`ZD1` …) als gespeicherter Wert – nur die Labels
+  wurden angeglichen, deshalb war keine Datenmigration nötig. Alte
+  Einsatz-Werte werden über `ART_LEGACY`/`migrateArt()` gehoben, abweichende
+  Altwerte bleiben über `optsWith()` als Zusatz-Option erhalten.
+- **Dienstart manuell überschreibbar**: Eine Auswahl im Dropdown setzt
+  `day().dienstart_manuell = true`; `renderDay()` leitet die Dienstart dann
+  nicht mehr aus dem importierten Plan ab. Unter dem Feld steht ein Hinweis
+  mit dem Plan-Wert und dem Link „Wieder aus Dienstplan übernehmen"
+  (`#dienstartHint` / `#dienstartReset`).
+- **Grund der Überstunden** ist jetzt ein Dropdown (vorher Freitext),
+  **Grund/Anlass** je Einsatz ebenfalls – beide mit `GRUND_OPTS`.
+- **Tag-Ansicht umgestellt**: Karte „Rufdienst-Einsätze" steht vor
+  „Kommen/Gehen". Die beiden Buttons „Einsatz jetzt starten"/„jetzt" sind zu
+  EINEM Stempel-Button `#btnEinsatz` verschmolzen: grün „Einsatz starten",
+  nach dem Start rot „Einsatz beenden (läuft seit hh:mm)"
+  (`offenerEinsatz()` = letzter Einsatz mit Beginn ohne Ende,
+  `renderEinsatzBtn()`). Nachtragen von Hand über den Ghost-Button darunter.
+  Beginn/Ende/Dauer eines Einsatzes liegen über `.grid3` in einer Zeile.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).

@@ -80,6 +80,12 @@ section{display:none} section.on{display:block}
 .stamp .ic{width:24px;height:24px}
 .stamp .stxt{text-align:left;flex:1}
 .stamp small{display:block;font-weight:400;font-size:13px;line-height:18px;opacity:.85;margin-top:2px}
+.stamp.start{background:linear-gradient(135deg,#1a9a52,var(--color-success));box-shadow:0 10px 24px rgba(21,143,71,.26)}
+.stamp.stop{background:linear-gradient(135deg,#DD6A4E,var(--color-danger));box-shadow:0 10px 24px rgba(194,73,46,.28)}
+
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.grid3 .field label{margin-bottom:4px;font-size:12px}
+.grid3 input{padding-left:6px;padding-right:6px;text-align:center}
 
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:var(--spacing-section)}
 .field label{display:block;font-size:13px;line-height:18px;color:var(--color-text-muted);margin-bottom:6px}
@@ -184,34 +190,36 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   </div>
 
   <div class="card">
+    <h2><span data-icon="star"></span>Rufdienst-Einsätze</h2>
+    <button class="stamp start" id="btnEinsatz">
+      <span class="ic" data-icon="plus"></span>
+      <span class="stxt" id="lblEinsatz">Einsatz starten<small id="subEinsatz">–</small></span>
+    </button>
+    <button class="btn ghost" id="btnEinsatzLeer">Einsatz von Hand nachtragen</button>
+    <div id="einsaetze" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:10px"><label>Summe (Std.)</label><input id="summe_inanspruchnahme" readonly></div>
+    <div class="row"><label>Anzahl Einsätze</label><input id="anzahl_einsaetze" readonly></div>
+  </div>
+
+  <div class="card">
     <h2><span data-icon="clock"></span>Kommen/Gehen</h2>
     <button class="stamp" id="btnGehen">
       <span data-icon="square"></span>
       <span class="stxt">Gehen<small id="lblGehen">–</small></span>
     </button>
     <div class="row"><label>Dienstart</label><select id="dienstartSel"></select></div>
+    <div class="hint" id="dienstartHint" style="display:none"></div>
     <div class="grid2">
       <div class="field"><label>Dienstbeginn</label><input type="time" id="dienstbeginn"></div>
       <div class="field"><label>Plan-Ende</label><input type="time" id="plan_dienstende"></div>
       <div class="field"><label>Ist-Ende</label><input type="time" id="tats_dienstende"></div>
       <div class="field"><label>Überstunden</label><input id="ueberstunden_std" readonly></div>
-      <div class="field full"><label>Grund</label><input id="grund_ueberstunden" placeholder="Grund der Überstunden"></div>
+      <div class="field full"><label>Grund der Überstunden</label><select id="grund_ueberstunden"></select></div>
     </div>
     <div class="chk"><input type="checkbox" id="frn"><label style="flex:1">FRN – frei nach Dienst</label></div>
     <div class="field full" id="frnKommentarRow" style="display:none">
       <label>Kommentar (Pflicht)</label><input id="frnKommentar" placeholder="z.B. Nachtoperation bis 03:40 Uhr">
     </div>
-  </div>
-
-  <div class="card">
-    <h2><span data-icon="star"></span>Rufdienst-Einsätze</h2>
-    <div class="row2">
-      <button class="btn sec" id="btnEinsatzStart"><span data-icon="plus"></span>Einsatz jetzt starten</button>
-      <button class="btn outline" id="btnEinsatzLeer"><span data-icon="plus"></span>Leere Zeile</button>
-    </div>
-    <div id="einsaetze" style="margin-top:8px"></div>
-    <div class="row" style="margin-top:10px"><label>Summe (Std.)</label><input id="summe_inanspruchnahme" readonly></div>
-    <div class="row"><label>Anzahl Einsätze</label><input id="anzahl_einsaetze" readonly></div>
   </div>
 
   <div class="card">
@@ -328,15 +336,39 @@ function icon(name){
 document.querySelectorAll('[data-icon]').forEach(el=>{ el.outerHTML = icon(el.dataset.icon); });
 
 /* ---------- Konstanten ---------- */
+/* Wortlaut identisch zum Desktop-Tool tagesdokumentation_erfassung.html –
+   das ist die fuehrende Fassung, hier nicht abweichen! */
 const DUTY = {
-  amb2:{label:'Regeldienst (Montag)',           start:'07:10', end:'16:05'},
-  amb4:{label:'Regeldienst (Di–Fr)',             start:'07:25', end:'16:05'},
-  ZD1: {label:'Rufdienst (Mo–Do)',              start:'11:00', end:'18:00'},
-  ZD2: {label:'Rufdienst',                      start:'11:00', end:'18:00'},
-  RBD: {label:'Rufdienst (Samstag)',            start:'09:00', end:'10:30'},
-  RBD2:{label:'Rufdienst (Sonntag/Feiertag)',   start:'09:00', end:'10:30'}
+  amb2:{label:'Regeldienst (Montag, AMB2)',            start:'07:10', end:'16:05'},
+  amb4:{label:'Regeldienst (Di–Fr, AMB4)',             start:'07:25', end:'16:05'},
+  ZD1: {label:'Rufdienst (Mo–Do, ZD1)',                start:'11:00', end:'18:00'},
+  ZD2: {label:'Rufdienst (ZD2)',                       start:'11:00', end:'18:00'},
+  RBD: {label:'Rufdienst (Samstag, RBD)',              start:'09:00', end:'10:30'},
+  RBD2:{label:'Rufdienst (Sonntag/Feiertag, RBD2)',    start:'09:00', end:'10:30'},
+  FRN: {label:'FRN (frei nach Dienst)',                start:'07:25', end:'16:05'},
+  BD:  {label:'Bereitschaftsdienst'},
+  SPD: {label:'Spätdienst'},
+  SONST:{label:'Sonstiges'}
 };
-const ART_OPTS = ['','telefonisch','Präsenz im Haus','Operation','Sonstiges'];
+/* Auswahl je Funktion/Position – wie DIENSTART_OPTIONS im Desktop-Tool */
+const DIENSTART_BY_FUNKTION = {
+  'Oberarzt':            ['amb2','amb4','ZD1','ZD2','RBD','RBD2','FRN'],
+  'Assistenzarzt':       ['BD','SPD','SONST'],
+  'Physician Assistant': ['BD','SPD','SONST']
+};
+const ART_OPTS  = ['','telefonisch (RBT)','Präsenz im Haus (RBA)','Operation / Eingriff','Sonstiges'];
+const GRUND_OPTS = ['','Notfall / Notoperation','OP-Verlängerung','Aufnahme / Ambulanz',
+  'Konsil / Anforderung anderer Abteilung','Personalausfall / Unterbesetzung',
+  'Übergabe / Nachbereitung / Dokumentation','Patienten-/Angehörigengespräch',
+  'Angeordnete Zusatzaufgabe','Sonstiges (bitte erläutern)'];
+/* Werte aus aelteren App-Versionen auf den Desktop-Wortlaut heben */
+const ART_LEGACY = {'telefonisch':'telefonisch (RBT)','Präsenz im Haus':'Präsenz im Haus (RBA)','Operation':'Operation / Eingriff'};
+const migrateArt = a => ART_LEGACY[a] || a || '';
+/* Optionsliste inkl. abweichendem Altwert (aus frueheren Versionen/Freitext) */
+function optsWith(list, val){
+  const all = (val && !list.includes(val)) ? list.concat([val]) : list;
+  return all.map(o=>`<option value="${o}"${o===(val||'')?' selected':''}>${o}</option>`).join('');
+}
 const MONTHS = ['januar','februar','märz','april','mai','juni','juli','august','september','oktober','november','dezember'];
 const WDAY = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
 const LS = {cfg:'tagesdoku_cfg', plan:'tagesdoku_plan', days:'tagesdoku_days'};
@@ -432,8 +464,15 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
 });
 
 const sel = $('dienstartSel');
-sel.innerHTML = '<option value="">– keine –</option>' +
-  Object.entries(DUTY).map(([k,v])=>`<option value="${k}">${v.label} (${k})</option>`).join('');
+function renderDienstartOptions(){
+  const codes = DIENSTART_BY_FUNKTION[cfg.funktion] || DIENSTART_BY_FUNKTION['Oberarzt'];
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">– keine –</option>' +
+    codes.map(k=>`<option value="${k}">${DUTY[k].label}</option>`).join('');
+  if(prev && codes.includes(prev)) sel.value = prev;
+}
+renderDienstartOptions();
+$('grund_ueberstunden').innerHTML = optsWith(GRUND_OPTS, '');
 
 function renderDuty(){
   const d = derive(cur);
@@ -449,7 +488,11 @@ function renderDuty(){
 }
 
 function artClass(a){
-  return a==='telefonisch' ? 'tag-blue' : a==='Präsenz im Haus' ? 'tag-amber' : a==='Operation' ? 'tag-red' : a ? 'tag-grey' : '';
+  if(!a) return '';
+  if(a.startsWith('telefonisch'))    return 'tag-blue';
+  if(a.startsWith('Präsenz'))        return 'tag-amber';
+  if(a.startsWith('Operation'))      return 'tag-red';
+  return 'tag-grey';
 }
 function renderEinsaetze(){
   const d = day();
@@ -458,6 +501,7 @@ function renderEinsaetze(){
     const e = d.einsaetze[i];
     if(!expanded.has(i)){
       const range = `${e.beginn||'–'} – ${e.ende||'…'}`;
+      e.art = migrateArt(e.art);
       const sub = [e.art, e.grund_anlass, e.fallnr?('Fall '+e.fallnr):''].filter(Boolean).join(' · ');
       return `<div class="einsatz-row" data-expand="${i}">
         <div>
@@ -475,16 +519,35 @@ function renderEinsaetze(){
       <div class="hd"><b>Einsatz ${i+1}</b>${e.art?`<span class="tag ${artClass(e.art)}">${e.art}</span>`:''}
         <button class="del" data-del="${i}">Löschen</button>
         <button class="linkbtn" data-collapse="${i}">Fertig</button></div>
-      <div class="row"><label>Beginn</label><input type="time" data-e="${i}" data-f="beginn" value="${e.beginn||''}"></div>
-      <div class="row"><label>Ende</label><input type="time" data-e="${i}" data-f="ende" value="${e.ende||''}">
-        ${e.ende?'':`<button class="btn sec" style="width:auto;height:auto;padding:9px 12px;margin:0" data-stop="${i}">jetzt</button>`}</div>
-      <div class="row"><label>Dauer</label><input data-dauer="${i}" value="${e.dauer||''}" readonly></div>
+      <div class="grid3">
+        <div class="field"><label>Beginn</label><input type="time" data-e="${i}" data-f="beginn" value="${e.beginn||''}"></div>
+        <div class="field"><label>Ende</label><input type="time" data-e="${i}" data-f="ende" value="${e.ende||''}"></div>
+        <div class="field"><label>Dauer</label><input data-dauer="${i}" value="${e.dauer||''}" readonly></div>
+      </div>
       <div class="row"><label>Art</label><select data-e="${i}" data-f="art">${
-        ART_OPTS.map(o=>`<option${o===e.art?' selected':''}>${o}</option>`).join('')}</select></div>
-      <div class="row"><label>Grund/Anlass</label><input data-e="${i}" data-f="grund_anlass" value="${e.grund_anlass||''}"></div>
+        optsWith(ART_OPTS, migrateArt(e.art))}</select></div>
+      <div class="row"><label>Grund/Anlass</label><select data-e="${i}" data-f="grund_anlass">${
+        optsWith(GRUND_OPTS, e.grund_anlass)}</select></div>
       <div class="row"><label>Fall-Nr.</label><input data-e="${i}" data-f="fallnr" value="${e.fallnr||''}"></div>
     </div>`;
   }).join('') || '<div class="hint">Noch keine Einsätze erfasst.</div>';
+  renderEinsatzBtn();
+}
+
+/* laufender Einsatz = begonnen, aber noch ohne Ende */
+function offenerEinsatz(){
+  const es = day().einsaetze;
+  for(let i=es.length-1; i>=0; i--) if(es[i].beginn && !es[i].ende) return i;
+  return -1;
+}
+function renderEinsatzBtn(){
+  const i = offenerEinsatz();
+  const btn = $('btnEinsatz');
+  btn.classList.toggle('stop', i>=0);
+  btn.classList.toggle('start', i<0);
+  btn.querySelector('svg').innerHTML = ICONS[i>=0 ? 'square' : 'plus'];
+  $('lblEinsatz').innerHTML = (i>=0 ? 'Einsatz beenden' : 'Einsatz starten') +
+    `<small>${i>=0 ? 'läuft seit '+day().einsaetze[i].beginn+' Uhr' : 'Beginn = aktuelle Uhrzeit'}</small>`;
 }
 
 const FIELDS = ['dienstbeginn','plan_dienstende','tats_dienstende','grund_ueberstunden',
@@ -502,11 +565,26 @@ function renderDay(){
   const d = day();
   $('datum').value = cur;
   if(lastRenderedDay !== cur){ expanded = new Set(); lastRenderedDay = cur; }
-  if(!d.dienstart){
+  if(!d.dienstart && !d.dienstart_manuell){
     const der = derive(cur);
     if(DUTY[der.code]){ d.dienstart = der.code; d.plan_dienstende ||= DUTY[der.code].end; d.dienstbeginn ||= DUTY[der.code].start; }
   }
+  renderDienstartOptions();
   sel.value = d.dienstart || '';
+  if(d.dienstart && sel.value !== d.dienstart){        // Dienstart passt nicht zur Funktion
+    sel.insertAdjacentHTML('beforeend', `<option value="${d.dienstart}">${DUTY[d.dienstart] ? DUTY[d.dienstart].label : d.dienstart}</option>`);
+    sel.value = d.dienstart;
+  }
+  const hint = $('dienstartHint');
+  if(d.dienstart_manuell){
+    const der = derive(cur);
+    const autoLabel = DUTY[der.code] ? DUTY[der.code].label : (der.code==='abwesend' ? 'Abwesend' : der.code==='frei' ? 'Frei' : '–');
+    hint.innerHTML = `Von Hand gesetzt (Dienstplan: ${autoLabel}). <a href="#" id="dienstartReset">Wieder aus Dienstplan übernehmen</a>`;
+    hint.style.display = 'block';
+  }else{
+    hint.style.display = 'none';
+  }
+  $('grund_ueberstunden').innerHTML = optsWith(GRUND_OPTS, d.grund_ueberstunden || '');
   FIELDS.forEach(f => $(f).value = d[f] || '');
   $('frn').checked = !!d.frn;
   $('frnKommentar').value = d.frn_kommentar || '';
@@ -516,7 +594,7 @@ function renderDay(){
 }
 
 /* Feld-Bindings */
-FIELDS.forEach(f => $(f).oninput = e => {
+FIELDS.forEach(f => $(f).oninput = $(f).onchange = e => {
   day()[f] = e.target.value;
   if(f==='tats_dienstende') $('lblGehen').textContent = e.target.value || '–';
   if(f==='ruhezeit_eingehalten') renderRuhezeitStatus();
@@ -542,10 +620,22 @@ $('frnKommentar').oninput = e => {
   syncFrnText(); persist();
 };
 sel.onchange = e => {
-  const d = day(); d.dienstart = e.target.value;
-  if(DUTY[d.dienstart]){ d.dienstbeginn = DUTY[d.dienstart].start; d.plan_dienstende = DUTY[d.dienstart].end; }
+  const d = day();
+  d.dienstart = e.target.value;
+  d.dienstart_manuell = true;                 // schlaegt die Ableitung aus dem Dienstplan
+  if(DUTY[d.dienstart] && DUTY[d.dienstart].start){
+    d.dienstbeginn = DUTY[d.dienstart].start; d.plan_dienstende = DUTY[d.dienstart].end;
+  }
   renderDay();
 };
+$('dienstartHint').addEventListener('click', e=>{
+  if(e.target.id !== 'dienstartReset') return;
+  e.preventDefault();
+  const d = day();
+  delete d.dienstart_manuell; d.dienstart = '';
+  d.dienstbeginn = ''; d.plan_dienstende = '';
+  renderDay();
+});
 $('einsaetze').addEventListener('input', e=>{
   const i = e.target.dataset.e; if(i===undefined) return;
   day().einsaetze[i][e.target.dataset.f] = e.target.value; calc(); persist();
@@ -557,8 +647,6 @@ $('einsaetze').addEventListener('change', e=>{
 $('einsaetze').addEventListener('click', e=>{
   const delBtn = e.target.closest('[data-del]');
   if(delBtn){ day().einsaetze.splice(+delBtn.dataset.del,1); persist(); renderEinsaetze(); calc(); return; }
-  const stopBtn = e.target.closest('[data-stop]');
-  if(stopBtn){ day().einsaetze[+stopBtn.dataset.stop].ende = now(); persist(); renderEinsaetze(); calc(); return; }
   const collapseBtn = e.target.closest('[data-collapse]');
   if(collapseBtn){ expanded.delete(+collapseBtn.dataset.collapse); renderEinsaetze(); return; }
   const row = e.target.closest('[data-expand]');
@@ -567,19 +655,25 @@ $('einsaetze').addEventListener('click', e=>{
 
 const now = () => new Date().toTimeString().slice(0,5);
 $('btnGehen').onclick  = ()=>{ day().tats_dienstende = now(); renderDay(); };
-$('btnEinsatzStart').onclick = ()=>{
+$('btnEinsatz').onclick = ()=>{
   const d = day();
-  if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
-  d.einsaetze.push({beginn:now(),ende:'',art:'',grund_anlass:'',fallnr:''});
-  expanded.add(d.einsaetze.length-1);
-  persist(); renderEinsaetze();
+  const i = offenerEinsatz();
+  if(i>=0){                                   // laufenden Einsatz beenden
+    d.einsaetze[i].ende = now();
+    expanded.add(i);
+  }else{                                      // neuen Einsatz starten
+    if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
+    d.einsaetze.push({beginn:now(),ende:'',art:'',grund_anlass:'',fallnr:''});
+    expanded.add(d.einsaetze.length-1);
+  }
+  calc(); persist(); renderEinsaetze();
 };
 $('btnEinsatzLeer').onclick = ()=>{
   const d = day();
   if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
   d.einsaetze.push({beginn:'',ende:'',art:'',grund_anlass:'',fallnr:''});
   expanded.add(d.einsaetze.length-1);
-  persist(); renderEinsaetze();
+  persist(); renderEinsaetze(); calc();
 };
 $('resetTag').onclick = ()=>{ if(confirm('Alle Eingaben dieses Tages löschen?')){ delete days[cur]; expanded = new Set(); renderDay(); } };
 
@@ -594,7 +688,10 @@ const CFGMAP = {cfg_name:'name', cfg_pnr:'pnr', cfg_funktion:'funktion', cfg_kli
                 cfg_nachname:'nachname', cfg_kuerzel:'kuerzel'};
 Object.entries(CFGMAP).forEach(([id,key])=>{
   $(id).value = cfg[key] || '';
-  $(id).oninput = $(id).onchange = e => { cfg[key] = e.target.value; save(LS.cfg,cfg); renderDuty(); };
+  $(id).oninput = $(id).onchange = e => {
+    cfg[key] = e.target.value; save(LS.cfg,cfg);
+    if(key==='funktion') renderDay(); else renderDuty();
+  };
 });
 $('exportData').onclick = ()=>{
   const blob = new Blob([JSON.stringify({cfg,plan,days},null,2)],{type:'application/json'});
@@ -865,7 +962,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 const APP_BUILD   = '13.09.2026';
 
 function showVersion(){
