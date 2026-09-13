@@ -333,6 +333,18 @@ Nachvollziehbarkeit für künftige Sessions:
   dort nicht `dienstart_manuell` gesetzt ist). `swap` liegt im JSON-Backup und
   wird von „Alle Pläne löschen" mit geleert.
 
+### PWA v1.12.2 – „Diesen Tag zurücksetzen" wirkt jetzt auch im Verlauf
+- Zwei Ursachen: (1) `resetTag` hat nach `delete days[cur]` weder gespeichert
+  noch `renderHistory()` aufgerufen, (2) `renderDay()` legt den Tag sofort neu
+  an und trägt die Soll-Zeiten aus dem Dienstplan ein – der alte Verlaufsfilter
+  (`d.dienstbeginn || …`) hat das als „erfasst" gewertet.
+- **Fix**: neuer Helfer `hasContent(k)` entscheidet, ob ein Tag im Verlauf
+  erscheint: Ist-Dienstende, Einsätze, FRN, `dienstart_manuell`, ausgefüllte
+  Text-/Auswahlfelder ODER Dienstbeginn/Plan-Ende, die von den Soll-Zeiten der
+  abgeleiteten Dienstart abweichen. Bloßes Anschauen eines Tages legt damit
+  keinen Verlaufseintrag mehr an. `resetTag` speichert jetzt und rendert den
+  Verlauf neu.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).

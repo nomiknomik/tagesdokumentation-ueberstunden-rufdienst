@@ -711,7 +711,13 @@ $('btnEinsatzLeer').onclick = ()=>{
   expanded.add(d.einsaetze.length-1);
   persist(); renderEinsaetze(); calc();
 };
-$('resetTag').onclick = ()=>{ if(confirm('Alle Eingaben dieses Tages löschen?')){ delete days[cur]; expanded = new Set(); renderDay(); } };
+$('resetTag').onclick = ()=>{
+  if(!confirm('Alle Eingaben dieses Tages löschen?')) return;
+  delete days[cur];
+  save(LS.days, days);
+  expanded = new Set();
+  renderDay(); renderHistory();
+};
 
 function shift(n){ const d = new Date(cur+'T12:00:00'); d.setDate(d.getDate()+n); cur = iso(d); renderDay(); }
 $('dPrev').onclick = ()=>shift(-1);
@@ -929,11 +935,22 @@ $('teamList').addEventListener('change', e=>{
   const box = e.target.closest('[data-edit]');
   setSwap(box.dataset.edit, e.target.value);
 });
+function hasContent(k){
+  const d = days[k];
+  if(!d) return false;
+  if(d.tats_dienstende) return true;
+  if(d.einsaetze && d.einsaetze.length) return true;
+  if(d.frn || d.dienstart_manuell) return true;
+  if(['erlaeuterung','grund_ueberstunden','angeordnet_durch','ruhezeit_eingehalten',
+      'gewuenschter_ausgleich','geplanter_ausgleichstag'].some(f => (d[f]||'').trim())) return true;
+  // Dienstbeginn/Plan-Ende zaehlen nur, wenn sie von den Soll-Zeiten abweichen
+  const soll = DUTY[derive(k).code];
+  if(d.dienstbeginn    && (!soll || d.dienstbeginn    !== soll.start)) return true;
+  if(d.plan_dienstende && (!soll || d.plan_dienstende !== soll.end))   return true;
+  return false;
+}
 function renderHistory(){
-  const keys = Object.keys(days).filter(k=>{
-    const d = days[k];
-    return d.dienstbeginn || d.tats_dienstende || (d.einsaetze && d.einsaetze.length) || (d.erlaeuterung||'').trim();
-  }).sort();
+  const keys = Object.keys(days).filter(hasContent).sort();
   renderGroupedList('historyList', keys, k=>{
     const d = days[k];
     const p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
@@ -1077,7 +1094,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.12.1';
+const APP_VERSION = '1.12.2';
 const APP_BUILD   = '13.09.2026';
 
 function showVersion(){
