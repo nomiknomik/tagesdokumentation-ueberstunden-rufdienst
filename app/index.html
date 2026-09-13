@@ -140,6 +140,9 @@ select{color-scheme:light}
 .list .li{display:flex;justify-content:space-between;align-items:center;padding:14px 4px;border-bottom:1px solid var(--color-border);gap:8px}
 .list .li:last-child{border-bottom:0}
 .list .li .ic{width:16px;height:16px;color:var(--color-text-muted)}
+.list .li.swapped{background:rgba(180,83,9,.06)}
+.teamedit{padding:10px 4px 14px;border-bottom:1px solid var(--color-border)}
+.teamedit .hd{font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
 
 .monthgroup{border:1px solid var(--color-border);border-radius:var(--radius-input);margin-bottom:8px;overflow:hidden;background:var(--color-input-bg)}
 .monthgroup summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;
@@ -257,19 +260,9 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <button class="btn ghost" id="planClear">Alle Pläne löschen</button>
   </div>
   <div class="card">
-    <h2><span data-icon="refresh"></span>Diensttausch</h2>
-    <div class="hint">Nach dem Excel-Import getauschte Tage hier eintragen – die Angabe schlägt den importierten Plan (Liste „Meine Dienste“, Kalender-Export und die Tagesansicht).</div>
-    <div class="row" style="margin-top:10px"><label>Tag</label><input type="date" id="swapDate"></div>
-    <div class="row"><label>Dienstart</label><select id="swapSel"></select></div>
-    <div class="row2">
-      <button class="btn outline" id="swapSave">Übernehmen</button>
-      <button class="btn ghost" id="swapDel">Eintrag löschen</button>
-    </div>
-    <div class="list" id="swapList" style="margin-top:10px"></div>
-  </div>
-  <div class="card">
     <h2><span data-icon="users"></span>Rufdienst – wer hat wann Dienst</h2>
-    <div class="list" id="teamList"><div class="li">Noch kein Plan importiert.</div></div>
+    <div class="hint">Dienst getauscht? Tag antippen und den Diensthabenden ändern – das schlägt den importierten Plan.</div>
+    <div class="list" id="teamList" style="margin-top:8px"><div class="li">Noch kein Plan importiert.</div></div>
   </div>
   <div class="card">
     <h2><span data-icon="archive"></span>Erfasste Tage</h2>
@@ -394,7 +387,12 @@ const save = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
 let cfg   = load(LS.cfg, {name:'',pnr:'',funktion:'Oberarzt',klinik:'Allgemein-, Viszeral- u. Gefäßchirurgie',nachname:'',kuerzel:''});
 let plan  = load(LS.plan, {});   // "2026-09-07" -> {wd, oa, urlaub}
 let days  = load(LS.days, {});   // "2026-09-07" -> Tagesdaten
-let swap  = load(LS.swap, {});   // "2026-09-07" -> Code (Diensttausch nach dem Excel-Import)
+let swap  = load(LS.swap, {});   // "2026-09-07" -> Name des Diensthabenden (Tausch nach dem Excel-Import)
+/* v1.11.0 hatte hier Dienstart-Codes gespeichert – die sind jetzt bedeutungslos */
+{
+  const alt = Object.keys(swap).filter(k => DUTY[swap[k]] || swap[k]==='frei' || swap[k]==='abwesend');
+  if(alt.length){ alt.forEach(k=>delete swap[k]); save(LS.swap, swap); }
+}
 
 /* ---------- Datum / Feiertage ---------- */
 const pad = n => String(n).padStart(2,'0');
@@ -420,29 +418,28 @@ const isHoliday = isoDate => {
 
 /* ---------- Dienstart aus Plan ableiten ---------- */
 function derive(isoDate){
-  if(swap[isoDate]){
-    const c = swap[isoDate];
-    const label = c==='frei' ? 'Frei' : c==='abwesend' ? 'Abwesend' : (DUTY[c] ? DUTY[c].label : c);
-    return {code:c, info:'Diensttausch – von Hand gesetzt', swapped:true, label};
-  }
-  const p = plan[isoDate];
+  const swapped = swap[isoDate] !== undefined;
+  const p = swapped ? Object.assign({wd:'',oa:'',urlaub:''}, plan[isoDate], {oa: swap[isoDate]}) : plan[isoDate];
   const dow = new Date(isoDate+'T12:00:00').getDay();
   const feiertag = isHoliday(isoDate);
+  const res = r => { if(swapped){ r.swapped = true; r.info += ' · Dienst getauscht'; } return r; };
   if(!p) return {code:null, info:'Kein Plan für diesen Tag'};
   const kz = (cfg.kuerzel||'').toLowerCase().trim();
   const nn = (cfg.nachname||'').toLowerCase().trim();
   if(kz && String(p.urlaub||'').toLowerCase().split(/[,;]/).some(s=>s.trim()===kz))
-    return {code:'abwesend', info:'Abwesend laut Spalte Urlaub'};
+    return res({code:'abwesend', info:'Abwesend laut Spalte Urlaub'});
   const rufdienst = nn && String(p.oa||'').toLowerCase().includes(nn);
   if(rufdienst){
-    if(feiertag || dow===0) return {code:'RBD2', info:'Rufdienst Sonntag/Feiertag'};
-    if(dow===6)             return {code:'RBD',  info:'Rufdienst Samstag'};
-    if(dow===5)             return {code:'ZD2',  info:'Rufdienst Freitag'};
-    return {code:'ZD1', info:'Rufdienst Mo–Do'};
+    if(feiertag || dow===0) return res({code:'RBD2', info:'Rufdienst Sonntag/Feiertag'});
+    if(dow===6)             return res({code:'RBD',  info:'Rufdienst Samstag'});
+    if(dow===5)             return res({code:'ZD2',  info:'Rufdienst Freitag'});
+    return res({code:'ZD1', info:'Rufdienst Mo–Do'});
   }
-  if(feiertag || dow===0 || dow===6) return {code:'frei', info:'Kein Dienst eingetragen'};
-  return dow===1 ? {code:'amb2', info:'Regeldienst Montag'} : {code:'amb4', info:'Regeldienst'};
+  if(feiertag || dow===0 || dow===6) return res({code:'frei', info:'Kein Dienst eingetragen'});
+  return res(dow===1 ? {code:'amb2', info:'Regeldienst Montag'} : {code:'amb4', info:'Regeldienst'});
 }
+/* wer laut Plan bzw. nach einem Tausch Dienst hat */
+const oaOf = k => (swap[k] !== undefined ? swap[k] : (plan[k] ? plan[k].oa : '')) || '';
 
 /* ---------- Tagesdaten ---------- */
 const blank = () => ({dienstart:'', dienstbeginn:'', plan_dienstende:'', tats_dienstende:'',
@@ -481,7 +478,7 @@ const $ = id => document.getElementById(id);
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id===b.dataset.tab));
-  if(b.dataset.tab==='plan'){ renderPlanList(); renderTeamList(); renderHistory(); renderSwapOptions(); renderSwapList(); }
+  if(b.dataset.tab==='plan'){ renderPlanList(); renderTeamList(); renderHistory(); }
 });
 
 const sel = $('dienstartSel');
@@ -722,7 +719,7 @@ Object.entries(CFGMAP).forEach(([id,key])=>{
   $(id).value = cfg[key] || '';
   $(id).oninput = $(id).onchange = e => {
     cfg[key] = e.target.value; save(LS.cfg,cfg);
-    if(key==='funktion'){ renderSwapOptions(); renderDay(); } else renderDuty();
+    if(key==='funktion') renderDay(); else renderDuty();
   };
 });
 $('exportData').onclick = ()=>{
@@ -749,7 +746,7 @@ $('importData').onchange = async e => {
     if(data.swap && typeof data.swap === 'object'){ swap = data.swap;  save(LS.swap, swap); }
     Object.entries(CFGMAP).forEach(([id,key])=> $(id).value = cfg[key] || '');
     expanded = new Set(); lastRenderedDay = null;
-    renderDay(); renderPlanList(); renderTeamList(); renderHistory(); renderSwapList(); updateStorageInfo(); renderDuty();
+    renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDuty();
     msg.innerHTML = `<span class="ok">Backup geladen: ${nPlan} Plantage, ${nDays} erfasste Tage.</span>`;
   }catch(err){
     msg.innerHTML = `<span class="note">Laden fehlgeschlagen: ${err.message}</span>`;
@@ -853,60 +850,78 @@ function renderPlanList(){
   }, 'Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.',
   (mk, ks)=>`<div style="padding:0 14px 12px"><button class="btn outline" style="font-size:14px;min-height:44px" data-ics="${mk}">${icon('calendar')}In den Kalender</button></div>`);
 }
-/* ---------- Diensttausch ---------- */
-function renderSwapOptions(){
-  const codes = DIENSTART_BY_FUNKTION[cfg.funktion] || DIENSTART_BY_FUNKTION['Oberarzt'];
-  $('swapSel').innerHTML =
-    codes.map(k=>`<option value="${k}">${DUTY[k].label}</option>`).join('') +
-    '<option value="abwesend">Abwesend (Urlaub/frei)</option>' +
-    '<option value="frei">Kein Dienst</option>';
+/* ---------- Wer hat wann Dienst (inkl. Diensttausch je Tag) ---------- */
+let teamOpen = null;                       // Datum, dessen Zeile gerade bearbeitet wird
+
+/* alle im Plan vorkommenden Diensthabenden, plus der eigene Nachname */
+function bekannteNamen(){
+  const set = new Set();
+  Object.values(plan).forEach(p=>{ const n=(p.oa||'').trim(); if(n) set.add(n); });
+  Object.values(swap).forEach(n=>{ if((n||'').trim()) set.add(n.trim()); });
+  const own = (cfg.nachname||'').trim();
+  if(own) set.add(own);
+  return [...set].sort((a,b)=>a.localeCompare(b,'de'));
 }
-function renderSwapList(){
-  const keys = Object.keys(swap).sort();
-  $('swapList').innerHTML = keys.length
-    ? keys.map(k=>{
-        const c = swap[k];
-        const label = c==='frei' ? 'Kein Dienst' : c==='abwesend' ? 'Abwesend' : (DUTY[c] ? DUTY[c].label : c);
-        return `<div class="li" data-swap="${k}" style="cursor:pointer"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag tag-amber">${label}</span></div>`;
-      }).join('')
-    : '<div class="li">Keine getauschten Tage.</div>';
-}
-$('swapDate').onchange = ()=>{
-  const k = $('swapDate').value;
-  if(k && swap[k]) $('swapSel').value = swap[k];
-};
-$('swapSave').onclick = ()=>{
-  const k = $('swapDate').value;
-  if(!k){ alert('Bitte zuerst den Tag auswählen.'); return; }
-  swap[k] = $('swapSel').value;
-  save(LS.swap, swap);
-  const d = days[k];                       // Tagesbogen nachziehen, wenn dort nichts von Hand gesetzt ist
-  if(d && !d.dienstart_manuell){
-    const c = swap[k];
-    d.dienstart = DUTY[c] ? c : '';
-    if(DUTY[c] && DUTY[c].start){ d.dienstbeginn = DUTY[c].start; d.plan_dienstende = DUTY[c].end; }
-    persist();
+
+function teamRow(k){
+  const name = oaOf(k);
+  const getauscht = swap[k] !== undefined;
+  if(teamOpen === k){
+    const own = (cfg.nachname||'').trim();
+    const opts = bekannteNamen().map(n=>`<option value="${n}"${n===name?' selected':''}>${n}</option>`).join('');
+    return `<div class="teamedit" data-edit="${k}">
+      <div class="hd"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span>
+        <button class="linkbtn" data-teamclose="1">Fertig</button></div>
+      <div class="row"><label>Diensthabend</label>
+        <select id="teamSel">${opts}<option value=""${name?'':' selected'}>– niemand –</option></select></div>
+      <div class="row2">
+        ${own ? `<button class="btn outline" data-teamme="${k}">Ich übernehme</button>` : ''}
+        ${getauscht ? `<button class="btn ghost" data-teamreset="${k}">Tausch zurücknehmen</button>` : ''}
+      </div>
+      <div class="hint" style="margin-top:6px">${getauscht ? `Laut Excel: ${(plan[k]&&plan[k].oa)||'niemand'}` : 'Auswahl wird sofort übernommen.'}</div>
+    </div>`;
   }
-  renderSwapList(); renderPlanList(); renderDay();
-};
-$('swapDel').onclick = ()=>{
-  const k = $('swapDate').value;
-  if(!k || !swap[k]){ alert('Für diesen Tag ist kein Tausch gespeichert.'); return; }
-  delete swap[k]; save(LS.swap, swap);
-  renderSwapList(); renderPlanList(); renderDay();
-};
-$('swapList').addEventListener('click', e=>{
-  const row = e.target.closest('[data-swap]'); if(!row) return;
-  $('swapDate').value = row.dataset.swap;
-  $('swapSel').value = swap[row.dataset.swap];
-});
+  return `<div class="li${getauscht?' swapped':''}" data-team="${k}" style="cursor:pointer">
+    <span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}${getauscht?' · getauscht':''}</span>
+    <span style="display:flex;align-items:center;gap:8px"><span class="tag${getauscht?' tag-amber':''}">${name||'–'}</span>${icon('chevronRight')}</span></div>`;
+}
 
 function renderTeamList(){
-  const keys = Object.keys(plan).filter(k=>plan[k].oa && plan[k].oa.trim()).sort();
-  renderGroupedList('teamList', keys,
-    k=>`<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${plan[k].oa}</span></div>`,
-    'Keine Rufdienst-Einträge gefunden.');
+  const keys = [...new Set([...Object.keys(plan), ...Object.keys(swap)])]
+    .filter(k => oaOf(k).trim() || swap[k] !== undefined).sort();
+  renderGroupedList('teamList', keys, teamRow, 'Keine Rufdienst-Einträge gefunden.');
 }
+
+function setSwap(k, name){
+  const orig = ((plan[k] && plan[k].oa) || '').trim();
+  if(name.trim() === orig) delete swap[k];   // entspricht wieder dem Excel-Plan
+  else swap[k] = name;
+  save(LS.swap, swap);
+  const d = days[k];                          // Tagesbogen nachziehen, solange dort nichts von Hand gesetzt ist
+  if(d && !d.dienstart_manuell){
+    const c = derive(k).code;
+    if(DUTY[c]){ d.dienstart = c; d.dienstbeginn = DUTY[c].start; d.plan_dienstende = DUTY[c].end; }
+    else { d.dienstart = ''; }
+    persist();
+  }
+  teamOpen = null;                            // Auswahl erledigt – Zeile wieder zuklappen
+  renderTeamList(); renderPlanList(); renderDay();
+}
+
+$('teamList').addEventListener('click', e=>{
+  const me = e.target.closest('[data-teamme]');
+  if(me){ setSwap(me.dataset.teamme, (cfg.nachname||'').trim()); return; }
+  const rs = e.target.closest('[data-teamreset]');
+  if(rs){ delete swap[rs.dataset.teamreset]; save(LS.swap, swap); teamOpen = null; renderTeamList(); renderPlanList(); renderDay(); return; }
+  if(e.target.closest('[data-teamclose]')){ teamOpen = null; renderTeamList(); return; }
+  const row = e.target.closest('[data-team]');
+  if(row){ teamOpen = row.dataset.team; renderTeamList(); }
+});
+$('teamList').addEventListener('change', e=>{
+  if(e.target.id !== 'teamSel') return;
+  const box = e.target.closest('[data-edit]');
+  setSwap(box.dataset.edit, e.target.value);
+});
 function renderHistory(){
   const keys = Object.keys(days).filter(k=>{
     const d = days[k];
@@ -939,7 +954,7 @@ $('planClear').onclick = ()=>{
   if(confirm('Alle importierten Pläne und die eingetragenen Diensttausche löschen?')){
     plan={}; save(LS.plan,plan);
     swap={}; save(LS.swap,swap);
-    renderPlanList(); renderTeamList(); renderSwapList(); renderDay();
+    renderPlanList(); renderTeamList(); renderDay();
   }
 };
 
@@ -1055,7 +1070,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.11.0';
+const APP_VERSION = '1.12.0';
 const APP_BUILD   = '13.09.2026';
 
 function showVersion(){
@@ -1073,8 +1088,7 @@ function syncHeaderPad(){
 window.addEventListener('resize', syncHeaderPad);
 syncHeaderPad();
 showVersion();
-renderSwapOptions();
-renderDay(); renderPlanList(); renderTeamList(); renderHistory(); renderSwapList(); updateStorageInfo();
+renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
 $('checkUpdate').onclick = async ()=>{
   const info = $('updateInfo');
   info.textContent = 'Suche nach Update …';

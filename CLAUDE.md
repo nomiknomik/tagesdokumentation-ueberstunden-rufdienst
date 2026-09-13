@@ -308,22 +308,27 @@ Nachvollziehbarkeit für künftige Sessions:
   laufenden Einsatzes (`expanded.delete(i)`). Aufgeklappt wird nur der
   gerade GESTARTETE Einsatz, damit Fallnummer o.ä. ergänzt werden kann.
 
-### PWA v1.11.0 – Diensttausch nach dem Excel-Import (13.09.2026)
-- Neuer Speicher `swap` (`localStorage: tagesdoku_swap`): `{ "JJJJ-MM-TT": Code }`
-  mit Code aus `DUTY` bzw. `'frei'` / `'abwesend'`.
-- `derive()` prüft `swap` ZUERST und liefert dann `{code, info:'Diensttausch –
-  von Hand gesetzt', swapped:true}`. Damit schlägt ein Tausch den importierten
-  Excel-Plan überall: Karte „Meine Dienste" (mit Markierung „· getauscht"),
-  monatsweiser Kalender-Export, Box „Aktueller Dienst" und die Ableitung der
-  Dienstart im Tagesbogen.
-- `myDutyKeys()` vereinigt jetzt die Keys aus `plan` UND `swap` – so taucht auch
-  ein übernommener Dienst auf, der im Excel gar nicht dem Nutzer zugeordnet war.
-- UI: Karte „Diensttausch" im Dienstplan-Tab (Datum + Dienstart + Übernehmen /
-  Eintrag löschen, darunter die Liste der Abweichungen; Antippen einer Zeile
-  lädt sie zurück ins Formular). `swap` wird im JSON-Backup mitgesichert und
-  von „Alle Pläne löschen" mit geleert.
-- Wird ein Tag getauscht, zieht der zugehörige Tagesbogen nach (Dienstart +
-  Soll-Zeiten), sofern dort nicht bereits `dienstart_manuell` gesetzt ist.
+### PWA v1.12.0 – Diensttausch direkt in „wer hat wann Dienst" (13.09.2026)
+- Speicher `swap` (`localStorage: tagesdoku_swap`) hält jetzt den **Namen des
+  Diensthabenden** je Tag (`{"JJJJ-MM-TT": "Nachname"}`), nicht mehr eine
+  Dienstart (v1.11.0-Altwerte werden beim Laden verworfen). `derive()` legt
+  den Namen über `plan[k].oa` und leitet daraus wie gewohnt ab (Wochentag/
+  Feiertag → ZD1/ZD2/RBD/RBD2), ergänzt um `swapped:true` und den Zusatz
+  „· Dienst getauscht" in `info`. Helfer: `oaOf(k)`.
+- Die separate Karte „Diensttausch" ist wieder entfernt. Stattdessen ist in
+  der Karte „Rufdienst – wer hat wann Dienst" **jede Tageszeile antippbar**
+  (`teamRow()`, `teamOpen`): aufgeklappt erscheinen ein Select mit allen im
+  Plan vorkommenden Namen (`bekannteNamen()`) plus „– niemand –", der Button
+  „Ich übernehme" und – bei bereits getauschten Tagen – „Tausch zurücknehmen"
+  samt Hinweis, wer laut Excel eingetragen war. Auswahl wirkt sofort
+  (`setSwap()`), die Zeile klappt danach zu und ist mit „· getauscht" und
+  farbigem Tag markiert.
+- Entspricht die Auswahl wieder dem Excel-Wert, wird der Tausch automatisch
+  gelöscht statt gespeichert.
+- Wirkung wie zuvor: Karte „Meine Dienste", monatsweiser Kalender-Export,
+  Box „Aktueller Dienst" und die Dienstart-Ableitung im Tagesbogen (nur wenn
+  dort nicht `dienstart_manuell` gesetzt ist). `swap` liegt im JSON-Backup und
+  wird von „Alle Pläne löschen" mit geleert.
 
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
