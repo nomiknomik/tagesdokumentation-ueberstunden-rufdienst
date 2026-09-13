@@ -486,10 +486,17 @@ function renderHistory(){
     const parts = [];
     if(ue) parts.push('Ü '+ue+'h');
     if(d.einsaetze && d.einsaetze.length) parts.push(d.einsaetze.length+' Einsatz');
-    return `<div><span>${k}</span><span class="tag">${parts.join(' · ')||'erfasst'}</span></div>`;
+    return `<div data-goto="${k}" style="cursor:pointer"><span>${k}</span><span class="tag">${parts.join(' · ')||'erfasst'}</span></div>`;
   });
   $('historyList').innerHTML = out.join('') || '<div>Noch keine Tage erfasst.</div>';
 }
+$('historyList').addEventListener('click', e=>{
+  const row = e.target.closest('[data-goto]'); if(!row) return;
+  cur = row.dataset.goto;
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on', x.dataset.tab==='tag'));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id==='tag'));
+  renderDay();
+});
 function updateStorageInfo(){
   let bytes = 0;
   for(const k in localStorage){ if(localStorage.hasOwnProperty(k)) bytes += (localStorage[k].length + k.length); }
