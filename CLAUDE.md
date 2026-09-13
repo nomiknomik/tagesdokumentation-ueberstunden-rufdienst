@@ -301,9 +301,12 @@ Nachvollziehbarkeit für künftige Sessions:
   `grund_anlass:'Notfall / Notoperation'` (beides im Formular änderbar).
   „Nachtragen" bleibt bewusst leer, „Telefonat" setzt RBT.
 - **Telefonat-Button** (`#btnTelefonat`) in der Einsatz-Karte: legt sofort
-  einen fertigen Einsatz an mit `art:'telefonisch (RBT)'`, `ende` = jetzt,
-  `beginn` = jetzt minus 5 Minuten (Dauer 0.08 h), und klappt ihn zum
-  Ergänzen von Grund/Fallnummer auf.
+  einen fertigen Einsatz an mit `art:'telefonisch (RBT)'`,
+  `grund_anlass:'Notfall / Notoperation'`, `ende` = jetzt, `beginn` = jetzt
+  minus 5 Minuten (Dauer 0.08 h). Der Eintrag gilt als abgeschlossen und
+  bleibt zugeklappt (kein `expanded.add`); dasselbe beim Beenden eines
+  laufenden Einsatzes (`expanded.delete(i)`). Aufgeklappt wird nur der
+  gerade GESTARTETE Einsatz, damit Fallnummer o.ä. ergänzt werden kann.
 
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine

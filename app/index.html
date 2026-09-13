@@ -661,9 +661,9 @@ $('btnGehen').onclick  = ()=>{ day().tats_dienstende = now(); renderDay(); };
 $('btnEinsatz').onclick = ()=>{
   const d = day();
   const i = offenerEinsatz();
-  if(i>=0){                                   // laufenden Einsatz beenden
+  if(i>=0){                                   // laufenden Einsatz beenden -> fertig, also zugeklappt
     d.einsaetze[i].ende = now();
-    expanded.add(i);
+    expanded.delete(i);
   }else{                                      // neuen Einsatz starten
     if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
     d.einsaetze.push({beginn:now(), ende:'', art:'Präsenz im Haus (RBA)',
@@ -678,8 +678,8 @@ $('btnTelefonat').onclick = ()=>{
   const ende = new Date();
   const beginn = new Date(ende.getTime() - 5*60000);
   const hhmm = dt => dt.toTimeString().slice(0,5);
-  d.einsaetze.push({beginn:hhmm(beginn), ende:hhmm(ende), art:'telefonisch (RBT)', grund_anlass:'', fallnr:''});
-  expanded.add(d.einsaetze.length-1);
+  d.einsaetze.push({beginn:hhmm(beginn), ende:hhmm(ende), art:'telefonisch (RBT)',
+                    grund_anlass:'Notfall / Notoperation', fallnr:''});
   calc(); persist(); renderEinsaetze();
 };
 $('btnEinsatzLeer').onclick = ()=>{
@@ -982,7 +982,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.10.1';
+const APP_VERSION = '1.10.2';
 const APP_BUILD   = '13.09.2026';
 
 function showVersion(){
