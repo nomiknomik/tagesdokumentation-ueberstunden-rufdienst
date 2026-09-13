@@ -195,7 +195,10 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <span class="ic" data-icon="plus"></span>
       <span class="stxt" id="lblEinsatz">Einsatz starten<small id="subEinsatz">–</small></span>
     </button>
-    <button class="btn ghost" id="btnEinsatzLeer">Einsatz von Hand nachtragen</button>
+    <div class="row2">
+      <button class="btn outline" id="btnTelefonat" title="Telefonat: Ende = jetzt, Beginn = vor 5 Minuten"><span data-icon="phone"></span>Telefonat</button>
+      <button class="btn outline" id="btnEinsatzLeer"><span data-icon="plus"></span>Nachtragen</button>
+    </div>
     <div id="einsaetze" style="margin-top:8px"></div>
     <div class="row" style="margin-top:10px"><label>Summe (Std.)</label><input id="summe_inanspruchnahme" readonly></div>
     <div class="row"><label>Anzahl Einsätze</label><input id="anzahl_einsaetze" readonly></div>
@@ -250,8 +253,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="calendar"></span>Meine Dienste</h2>
     <div class="list" id="planList"><div class="li">Noch kein Plan importiert.</div></div>
-    <button class="btn outline" id="icsBtn"><span data-icon="calendar"></span>Dienste in den Kalender</button>
-    <div class="hint" id="icsInfo">Erzeugt eine Kalender-Datei (.ics) aller oben gelisteten Dienste und Abwesenheiten – auf dem iPhone über „Teilen“ → Kalender hinzufügen.</div>
+    <div class="hint" id="icsInfo">Jeder Monat lässt sich einzeln als Kalender-Datei (.ics) ausgeben – Monat aufklappen und auf „In den Kalender“ tippen. Auf dem iPhone danach „Teilen“ → Kalender hinzufügen.</div>
     <button class="btn ghost" id="planClear">Alle Pläne löschen</button>
   </div>
   <div class="card">
@@ -328,7 +330,8 @@ const ICONS = {
   search:'<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',
   save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>',
   user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
-  info:'<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'
+  info:'<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>',
+  phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path>'
 };
 function icon(name){
   return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
@@ -668,6 +671,16 @@ $('btnEinsatz').onclick = ()=>{
   }
   calc(); persist(); renderEinsaetze();
 };
+$('btnTelefonat').onclick = ()=>{
+  const d = day();
+  if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
+  const ende = new Date();
+  const beginn = new Date(ende.getTime() - 5*60000);
+  const hhmm = dt => dt.toTimeString().slice(0,5);
+  d.einsaetze.push({beginn:hhmm(beginn), ende:hhmm(ende), art:'telefonisch (RBT)', grund_anlass:'', fallnr:''});
+  expanded.add(d.einsaetze.length-1);
+  calc(); persist(); renderEinsaetze();
+};
 $('btnEinsatzLeer').onclick = ()=>{
   const d = day();
   if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
@@ -783,7 +796,7 @@ function monthLabel(mk){
    Zustand ueber Re-Renders und App-Starts hinweg. */
 const OPEN_KEY = 'tagesdoku_open_groups';
 const openGroups = load(OPEN_KEY, {});
-function renderGroupedList(containerId, keys, rowFn, emptyMsg){
+function renderGroupedList(containerId, keys, rowFn, emptyMsg, footerFn){
   const el = $(containerId);
   if(!keys.length){ el.innerHTML = `<div class="li">${emptyMsg}</div>`; return; }
   const groups = {};
@@ -794,6 +807,7 @@ function renderGroupedList(containerId, keys, rowFn, emptyMsg){
     <details class="monthgroup" data-month="${mk}"${openSet.has(mk)?' open':''}>
       <summary><span>${monthLabel(mk)}<span class="cnt">(${groups[mk].length})</span></span>${icon('chevronRight')}</summary>
       <div class="list">${groups[mk].map(rowFn).join('')}</div>
+      ${footerFn ? footerFn(mk, groups[mk]) : ''}
     </details>`).join('');
   el.querySelectorAll('details.monthgroup').forEach(d=>{
     d.addEventListener('toggle', ()=>{
@@ -816,7 +830,8 @@ function renderPlanList(){
     const d = derive(k);
     const label = d.code==='abwesend' ? 'Abwesend' : d.code;
     return `<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span><span class="tag">${label}</span></div>`;
-  }, 'Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.');
+  }, 'Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.',
+  (mk, ks)=>`<div style="padding:0 14px 12px"><button class="btn outline" style="font-size:14px;min-height:44px" data-ics="${mk}">${icon('calendar')}In den Kalender</button></div>`);
 }
 function renderTeamList(){
   const keys = Object.keys(plan).filter(k=>plan[k].oa && plan[k].oa.trim()).sort();
@@ -894,25 +909,29 @@ function buildIcs(keys){
   lines.push('END:VCALENDAR');
   return lines.join('\r\n') + '\r\n';
 }
-$('icsBtn').onclick = async ()=>{
+/* Kalender-Export monatsweise: Button sitzt in der jeweiligen Monatsgruppe */
+$('planList').addEventListener('click', async e=>{
+  const btn = e.target.closest('[data-ics]'); if(!btn) return;
+  e.preventDefault();
+  const mk = btn.dataset.ics;
   const info = $('icsInfo');
-  const keys = myDutyKeys();
-  if(!keys.length){ info.innerHTML = '<span class="note">Keine Dienste vorhanden – erst einen Dienstplan importieren.</span>'; return; }
-  const fname = 'Dienste.ics';
+  const keys = myDutyKeys().filter(k => k.slice(0,7) === mk);
+  if(!keys.length){ info.innerHTML = '<span class="note">Für diesen Monat sind keine Dienste gespeichert.</span>'; return; }
+  const fname = `Dienste_${mk}.ics`;
   const blob = new Blob([buildIcs(keys)], {type:'text/calendar;charset=utf-8'});
   const file = new File([blob], fname, {type:'text/calendar'});
   try{
     if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'Dienste'});
+      await navigator.share({files:[file], title:monthLabel(mk)});
     }else{
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = fname; a.click();
     }
-    info.innerHTML = `<span class="ok">${keys.length} Termine als Ganztages-Einträge erzeugt (Dienstzeit steht in den Notizen).</span>`;
+    info.innerHTML = `<span class="ok">${monthLabel(mk)}: ${keys.length} Termine als Ganztages-Einträge erzeugt (Dienstzeit steht in den Notizen).</span>`;
   }catch(err){
     if(err.name !== 'AbortError') info.innerHTML = `<span class="note">Kalender-Export fehlgeschlagen: ${err.message}</span>`;
   }
-};
+});
 
 /* ---------- PDF ---------- */
 $('pdfBtn').onclick = async ()=>{
@@ -962,7 +981,7 @@ $('pdfBtn').onclick = async ()=>{
 };
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.10.0';
 const APP_BUILD   = '13.09.2026';
 
 function showVersion(){

@@ -290,6 +290,17 @@ Nachvollziehbarkeit für künftige Sessions:
   `renderEinsatzBtn()`). Nachtragen von Hand über den Ghost-Button darunter.
   Beginn/Ende/Dauer eines Einsatzes liegen über `.grid3` in einer Zeile.
 
+### PWA v1.10.0 – Kalender monatsweise + Telefonat-Button (13.09.2026)
+- **Kalender-Export je Monat statt alles auf einmal**: Der globale Button ist
+  weg; `renderGroupedList()` hat jetzt einen optionalen `footerFn`-Parameter,
+  über den `renderPlanList()` in JEDE Monatsgruppe einen Button
+  `data-ics="<YYYY-MM>"` setzt. Ein delegierter Click-Handler auf `#planList`
+  filtert `myDutyKeys()` auf diesen Monat und erzeugt `Dienste_<YYYY-MM>.ics`.
+- **Telefonat-Button** (`#btnTelefonat`) in der Einsatz-Karte: legt sofort
+  einen fertigen Einsatz an mit `art:'telefonisch (RBT)'`, `ende` = jetzt,
+  `beginn` = jetzt minus 5 Minuten (Dauer 0.08 h), und klappt ihn zum
+  Ergänzen von Grund/Fallnummer auf.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).
