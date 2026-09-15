@@ -472,7 +472,11 @@ let cur = iso(new Date());
 let lastRenderedDay = null;
 let expanded = new Set();
 const day = () => (days[cur] ||= blank());
-const persist = () => save(LS.days, days);
+const persist = () => {
+  const out = {};
+  for(const k in days) if(hasContent(k)) out[k] = days[k];
+  save(LS.days, out);
+};
 
 /* ---------- Rechnen (identisch zum Desktop-Tool) ---------- */
 const dec = t => { if(!t) return null; const [h,m]=t.split(':').map(Number); return h+m/60; };
@@ -1263,7 +1267,7 @@ $('historyList').addEventListener('click', async e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.13.1';
+const APP_VERSION = '1.13.2';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){
@@ -1284,10 +1288,10 @@ function syncHeaderPad(){
 window.addEventListener('resize', syncHeaderPad);
 syncHeaderPad();
 showVersion();
-/* Beim Start leere Tagesgeruste aus frueheren Versionen wegraeumen */
+/* Leere Tagesgeruste aus frueheren Versionen einmalig wegraeumen */
 {
-  const leer = Object.keys(days).filter(k => k!==cur && !hasContent(k));
-  if(leer.length){ leer.forEach(k => delete days[k]); save(LS.days, days); }
+  const leer = Object.keys(days).filter(k => !hasContent(k));
+  if(leer.length){ leer.forEach(k => delete days[k]); persist(); }
 }
 renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
 $('checkUpdate').onclick = async ()=>{

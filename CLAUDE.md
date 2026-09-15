@@ -392,6 +392,16 @@ bereits hinterlegt, erfasst wird nur zusätzliche Aktivzeit).
   Start – dadurch verschwinden auch die Altlasten früherer Versionen aus
   `localStorage` (im Test: 16 gespeicherte Tage → 1).
 
+### PWA v1.13.2 – Zurückgesetzter Tag ist wieder ein unberührter Tag
+- `persist()` speichert nur noch Tage mit `hasContent()` (das In-Memory-Objekt
+  `days` bleibt unverändert, gefiltert wird beim Schreiben). Ein per „Diesen Tag
+  zurücksetzen" geleerter Tag hinterlässt damit KEINEN Eintrag mehr im
+  localStorage – er wird danach exakt wie ein nie geöffneter Tag behandelt:
+  Dienstart/Zeiten wieder aus dem Dienstplan abgeleitet, kein
+  `dienstart_manuell`, kein Verlaufseintrag, kein Punkt im Wochenstreifen.
+- Der Diensttausch (`swap`) bleibt davon unberührt – er gehört zum Dienstplan,
+  nicht zu den Eingaben im Tab „Tag".
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).
