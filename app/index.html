@@ -43,6 +43,13 @@ header{background:var(--color-background);color:var(--color-text);
   padding:calc(env(safe-area-inset-top) + 12px) var(--spacing-page) 10px;
   position:fixed;top:0;left:0;right:0;z-index:10;border-bottom:1px solid var(--color-border)}
 h1{margin:0;font-size:20px;line-height:24px;font-weight:700}
+header .hd{display:flex;align-items:flex-start;gap:12px}
+header .hdtxt{flex:1;min-width:0}
+.iconbtn{flex:0 0 auto;width:var(--touch-target);height:var(--touch-target);border:1.5px solid var(--color-border);
+  border-radius:999px;background:var(--color-card);color:var(--color-primary);
+  display:flex;align-items:center;justify-content:center;transition:transform .15s ease}
+.iconbtn .ic{width:20px;height:20px}
+.iconbtn:active{transform:scale(.94)}
 .vchip{display:inline-block;margin-top:4px;font-size:11px;line-height:14px;font-weight:600;letter-spacing:.02em;
   color:var(--color-text-muted);background:var(--color-card);border:1px solid var(--color-border);
   border-radius:999px;padding:2px 8px}
@@ -233,7 +240,12 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 </style>
 </head>
 <body>
-<header><h1>Tagesdokumentation – Überstunden &amp; Rufdienst</h1><span class="vchip" id="appVersion">v–</span></header>
+<header>
+  <div class="hd">
+    <div class="hdtxt"><h1>Tagesdokumentation – Überstunden &amp; Rufdienst</h1><span class="vchip" id="appVersion">v–</span></div>
+    <button class="iconbtn" id="pdfBtn" title="PDF erzeugen" aria-label="PDF erzeugen"><span data-icon="fileText"></span></button>
+  </div>
+</header>
 
 <main>
 <!-- ================= TAG ================= -->
@@ -304,7 +316,6 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="row"><label>Angeordnet durch</label><input id="angeordnet_durch"></div>
   </div>
 
-  <button class="btn" id="pdfBtn"><span data-icon="fileText"></span>PDF erzeugen</button>
   <button class="btn ghost" id="resetTag">Diesen Tag zurücksetzen</button>
 </section>
 
@@ -626,6 +637,7 @@ const $ = id => document.getElementById(id);
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id===b.dataset.tab));
+  zeigePdfKnopf(b.dataset.tab === 'tag');
   $('actionbar').style.display = b.dataset.tab==='tag' ? 'block' : 'none';
   syncHeaderPad();
   if(b.dataset.tab==='plan'){ renderPlanList(); renderTeamList(); renderHistory(); }
@@ -1179,6 +1191,7 @@ $('historyList').addEventListener('click', e=>{
   cur = row.dataset.goto;
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on', x.dataset.tab==='tag'));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id==='tag'));
+  zeigePdfKnopf(true);
   $('actionbar').style.display = 'block';
   renderDay(); syncHeaderPad();
 });
@@ -2089,6 +2102,7 @@ $('gmTage').addEventListener('click', e=>{
   cur = row.dataset.goto;
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on', x.dataset.tab==='tag'));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id==='tag'));
+  zeigePdfKnopf(true);
   $('actionbar').style.display = 'block';
   renderDay(); syncHeaderPad();
 });
@@ -2161,7 +2175,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.16.0';
+const APP_VERSION = '1.16.1';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){
@@ -2169,6 +2183,10 @@ function showVersion(){
   $('verNum').value  = 'v' + APP_VERSION;
   $('verDate').value = APP_BUILD;
 }
+
+/* Der PDF-Knopf im Header gehoert zum Tagesbogen - auf den anderen Tabs
+   gibt es nichts zu drucken. */
+function zeigePdfKnopf(an){ $('pdfBtn').style.display = an ? 'flex' : 'none'; }
 
 function syncHeaderPad(){
   const nav = document.querySelector('nav');

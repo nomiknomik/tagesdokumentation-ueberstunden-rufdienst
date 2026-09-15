@@ -556,6 +556,23 @@ Der Nachtfenster-Wechsel (bis Feb 2026 21–6 Uhr, ab März 20–6) und die beid
 Satz-Stände (Wechsel zum Leistungsmonat Juni 2026) stecken im Modul und
 werden über den Monat automatisch gewählt.
 
+### PWA v1.16.1 – PDF-Knopf in den Header (15.09.2026)
+
+„PDF erzeugen" ist kein Vollbreiten-Knopf mehr, sondern ein rundes Symbol
+rechts oben im Header (44 px, also volles Touch-Ziel). Es gehört zum
+Tagesbogen und wird auf den anderen Tabs ausgeblendet – `zeigePdfKnopf()`,
+aufgerufen an denselben drei Stellen wie die Actionbar. Die ID `pdfBtn`
+bleibt, das Klick-Handling ist unverändert.
+
+**Zum Telefon-Icon**, falls es wieder auffällt: in Versionen vor 1.15.0 stand
+links von „Telefonat" ein kommaähnliches Zeichen. Das war kein Text, sondern
+der SVG-Pfad des `phone`-Icons: `a2 0 0 1` statt `a2 2 0 0 1` ist ein
+ungültiger Arc-Befehl, der Browser bricht den Pfad an dieser Stelle ab und
+zeichnet nur noch das vorangehende `M22 16.92v3` – einen kurzen senkrechten
+Strich, der wie ein Komma aussieht. Seit 1.15.0 korrigiert. Wer so etwas
+prüfen will: `svg.querySelector('path').getBBox()` – ein abgebrochener Pfad
+hat Breite 0.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).
