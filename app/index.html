@@ -219,7 +219,7 @@ select{color-scheme:light}
   text-transform:uppercase;letter-spacing:.4px;padding:0 0 6px}
 .patab th.r,.patab td.r{text-align:right}
 .patab td{padding:6px 0;border-top:1px solid var(--color-border);font-variant-numeric:tabular-nums}
-.patab td.la{color:var(--color-text-muted);font-variant-numeric:normal}
+.patab td.la{color:var(--color-text-muted);font-variant-numeric:normal;white-space:nowrap}
 .patab tr.sum td{border-top:2px solid var(--color-border);font-weight:700;padding-top:9px}
 .patab tr.sub td{color:var(--color-text-secondary)}
 .patab .u{color:var(--color-warning);font-weight:700}
@@ -327,7 +327,11 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="fileText"></span>Aufstellung je Lohnart</h2>
     <div id="gmTabelle"></div>
-    <div class="hint" id="gmWarn"></div>
+    <div class="row" style="margin-top:14px"><label>Einspringtage</label>
+      <input id="gmEinspringen" inputmode="numeric" placeholder="0"></div>
+    <div class="hint">Einspringen hat keine eigene Zeitart und lässt sich nicht aus den erfassten
+      Zeiten ableiten – Tage bitte von Hand eintragen (LA 252, 50 € je Tag).</div>
+    <div class="hint" id="gmWarn" style="margin-top:10px"></div>
     <button class="btn outline" id="gmCopy" style="margin-top:12px">Aufstellung als Text kopieren</button>
     <div class="hint" id="gmCopyMsg"></div>
   </div>
@@ -380,6 +384,17 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="row"><label>Nachname (Spalte OÄ)</label><input id="cfg_nachname"></div>
     <div class="row"><label>Kürzel (Spalte Urlaub)</label><input id="cfg_kuerzel"></div>
     <div class="hint">Steht der Nachname in der Spalte OÄ → Rufdienst. Steht das Kürzel in der Spalte Urlaub → abwesend. Sonst Regeldienst.</div>
+  </div>
+  <div class="card">
+    <h2><span data-icon="clock"></span>Nächtliche Einsätze</h2>
+    <div class="row"><label>Ich trage sie ein am</label>
+      <select id="cfg_nachtbuchung">
+        <option value="kalendertag">Tag, an dem der Anruf kam</option>
+        <option value="dienstbeginn">Tag, an dem der Dienst begann</option>
+      </select></div>
+    <div class="hint">Nur für Einsätze vor 06:00 Uhr relevant. Die Abrechnung rechnet sie dem
+      Kalendertag zu, an dem sie stattfanden – die App muss dafür wissen, unter welchem Datum
+      du sie erfasst. Die Zeitstempel-Knöpfe schreiben immer den Tag des Anrufs.</div>
   </div>
   <div class="card">
     <h2><span data-icon="euro"></span>Netto-Schätzung</h2>
@@ -496,15 +511,18 @@ function optsWith(list, val){
 }
 const MONTHS = ['januar','februar','märz','april','mai','juni','juli','august','september','oktober','november','dezember'];
 const WDAY = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
-const LS = {cfg:'tagesdoku_cfg', plan:'tagesdoku_plan', days:'tagesdoku_days', swap:'tagesdoku_swap'};
+const LS = {cfg:'tagesdoku_cfg', plan:'tagesdoku_plan', days:'tagesdoku_days', swap:'tagesdoku_swap',
+            extra:'tagesdoku_extra'};
 
 /* ---------- Speicher ---------- */
 const load = (k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } };
 const save = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
 let cfg   = load(LS.cfg, {name:'',pnr:'',funktion:'Oberarzt',klinik:'Allgemein-, Viszeral- u. Gefäßchirurgie',nachname:'',kuerzel:''});
+cfg.nachtBuchung ||= 'kalendertag';
 let plan  = load(LS.plan, {});   // "2026-09-07" -> {wd, oa, urlaub}
 let days  = load(LS.days, {});   // "2026-09-07" -> Tagesdaten
 let swap  = load(LS.swap, {});   // "2026-09-07" -> Name des Diensthabenden (Tausch nach dem Excel-Import)
+let extras= load(LS.extra, {}); // "2026-09" -> {252: Einspringtage} - laesst sich nicht aus den Zeiten ableiten
 /* v1.11.0 hatte hier Dienstart-Codes gespeichert – die sind jetzt bedeutungslos */
 {
   const alt = Object.keys(swap).filter(k => DUTY[swap[k]] || swap[k]==='frei' || swap[k]==='abwesend');
@@ -915,16 +933,18 @@ $('datum').onchange = e => { if(e.target.value){ cur = e.target.value; renderDay
 
 /* ---------- Einstellungen ---------- */
 const CFGMAP = {cfg_name:'name', cfg_pnr:'pnr', cfg_funktion:'funktion', cfg_klinik:'klinik',
-                cfg_nachname:'nachname', cfg_kuerzel:'kuerzel'};
+                cfg_nachname:'nachname', cfg_kuerzel:'kuerzel', cfg_nachtbuchung:'nachtBuchung'};
 Object.entries(CFGMAP).forEach(([id,key])=>{
   $(id).value = cfg[key] || '';
   $(id).oninput = $(id).onchange = e => {
     cfg[key] = e.target.value; save(LS.cfg,cfg);
-    if(key==='funktion') renderDay(); else renderDuty();
+    if(key==='funktion') renderDay();
+    else if(key==='nachtBuchung') renderTagGeld();
+    else renderDuty();
   };
 });
 $('exportData').onclick = ()=>{
-  const blob = new Blob([JSON.stringify({cfg,plan,days,swap},null,2)],{type:'application/json'});
+  const blob = new Blob([JSON.stringify({cfg,plan,days,swap,extras},null,2)],{type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'tagesdoku_backup.json'; a.click();
 };
@@ -945,6 +965,7 @@ $('importData').onchange = async e => {
     if(data.plan && typeof data.plan === 'object'){ plan = data.plan;  save(LS.plan, plan); }
     if(data.days && typeof data.days === 'object'){ days = data.days;  save(LS.days, days); }
     if(data.swap && typeof data.swap === 'object'){ swap = data.swap;  save(LS.swap, swap); }
+    if(data.extras && typeof data.extras === 'object'){ extras = data.extras; save(LS.extra, extras); }
     Object.entries(CFGMAP).forEach(([id,key])=> $(id).value = cfg[key] || '');
     fuelleNettoFelder();
     expanded = new Set(); lastRenderedDay = null;
@@ -1364,206 +1385,544 @@ $('historyList').addEventListener('click', async e=>{
 });
 
 /* ================================================================
-   GEHALT – Verdienst je Tag und erwartete Monatsabrechnung
+   GEHALT – Rechenkern + App-Adapter
    ----------------------------------------------------------------
-   Formeln und Belege: Repo tagesdokumentation-gehaltsberechnung,
-   BERECHNUNG.md (Kurzfassung) bzw. FORMELN.md (Herleitung).
-   Stand: 731/737/752 sind noch nicht auf allen Monaten exakt
-   bestaetigt und werden in der Anzeige mit * markiert.
+   Der Rechenkern unten ist das UNVERAENDERTE Modul src/gehalt.js aus
+   dem Analyse-Repo nomiknomik/tagesdokumentation-gehaltsberechnung
+   (gegen die Python-Referenz geprueft: 110/110 Werte ueber 10 Monate).
+
+   Es liegt in einer IIFE, weil es eigene Bezeichner iso() und min()
+   mitbringt, die es in dieser Datei bereits gibt - ohne die Kapselung
+   waere das ein Redeklarations-Fehler und die ganze App stuende still.
+   Nach aussen gibt es nur window.GEHALT frei.
+
+   BEIM AKTUALISIEREN: ausschliesslich den Bereich zwischen den beiden
+   Markern austauschen. Der App-Adapter darunter gehoert uns und muss
+   mitwandern, wenn sich die Schnittstelle des Moduls aendert.
    ================================================================ */
+/* >>>>> gehalt.js BEGINN - unveraendert aus dem Analyse-Repo >>>>> */
+(function(){
+/* ============================================================================
+ * gehalt.js - Gehaltsprognose fuer die Tagesdokumentation (Klinikum Freudenstadt)
+ *
+ * Portierung der in src/analyse.py reverse-engineerten Abrechnungsformeln.
+ * Validiert gegen 10 Monate Zeiterfassung + 8 Verdienstabrechnungen.
+ *
+ * STAND: vorlaeufig. Siehe INTEGRATION.md, Abschnitt "Wie sicher ist was".
+ * Keine Abhaengigkeiten, laeuft im Browser und in Node.
+ * ==========================================================================*/
 
-/* Tarifstufen – gilt ab dem jeweiligen Datum.
-   grund = Grundverguetung/Monat, std = eigener Stundensatz (Stufe 2),
-   ref  = Referenzstundensatz fuer Zeitzuschlaege (Tabellenentgelt Stufe 3). */
-const TARIF = [
-  {ab:'0000-01-01', grund: 9819.15, std:56.46, ref:60.94, refGeschaetzt:false},
-  {ab:'2026-06-01', grund:10015.53, std:57.59, ref:62.16, refGeschaetzt:true}
-];
-const tarifFuer = isoDate => TARIF.filter(t=>t.ab<=isoDate).pop() || TARIF[0];
-
-/* Lohnarten. pct = Prozentsatz, basis = Bezugsgroesse ('ref' oder 'std'),
-   einheit 'h' = je Stunde, 'd' = je Tag. unsicher = Formel noch offen. */
-const LOHNART = {
-  '731':{bez:'Überstundenzuschlag',       kurz:'Überstunden',      pct: 15, basis:'ref', einheit:'h', unsicher:true},
-  '734':{bez:'RBD-Aktivzeit',             kurz:'Rufdienst-Einsätze',pct:100,basis:'std', einheit:'h'},
-  '735':{bez:'Zuschlag RBD-Aktivzeit',    kurz:'Zuschlag Einsätze', pct: 15, basis:'ref', einheit:'h'},
-  '737':{bez:'RBD-Aktivzeit 0–6 Uhr',     kurz:'Einsatz 0–6 Uhr',   pct: 50, basis:'ref', einheit:'h', unsicher:true},
-  '752':{bez:'Sonntagsarbeit',            kurz:'Sonntag',           pct: 25, basis:'ref', einheit:'h', unsicher:true},
-  '790':{bez:'Nachtarbeit 21–6 Uhr',      kurz:'Nacht',             pct: 20, basis:'ref', einheit:'h'},
-  '791':{bez:'Samstagsarbeit 13–21 Uhr',  kurz:'Samstag',           pct: 20, basis:'ref', einheit:'h'},
-  '796':{bez:'RB-Pauschale Werktag',      kurz:'Rufdienst Werktag', pct:200, basis:'std', einheit:'d'},
-  '797':{bez:'RB-Pauschale Sa/So/Feiertag',kurz:'Rufdienst Wo-Ende',pct:400, basis:'std', einheit:'d'}
-};
-const LA_REIHE = ['796','797','734','735','737','790','791','752','731'];
-function satzFuer(la, isoDate){
-  const L = LOHNART[la], t = tarifFuer(isoDate);
-  return (L.basis==='ref' ? t.ref : t.std) * L.pct / 100;
+/* --- Feiertage Baden-Wuerttemberg ---------------------------------------- */
+function ostersonntag(jahr) {
+  const a = jahr % 19, b = Math.floor(jahr / 100), c = jahr % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monat = Math.floor((h + l - 7 * m + 114) / 31);
+  const tag = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(jahr, monat - 1, tag));
 }
 
-/* Dienstarten, fuer die eine Rufbereitschafts-Tagespauschale anfaellt */
-const RUFDIENST_CODES = ['ZD1','ZD2','RBD','RBD2'];
+function iso(d) { return d.toISOString().slice(0, 10); }
+function plusTage(d, n) { const x = new Date(d.getTime()); x.setUTCDate(x.getUTCDate() + n); return x; }
 
-/* ---- Datums-/Zeitrechnung in UTC-Tagesnummern (DST-fest) ---- */
-const tagNr  = s => { const [y,m,d]=s.split('-').map(Number); return Date.UTC(y,m-1,d)/86400000; };
-const nrIso  = n => { const d=new Date(n*86400000);
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; };
-const minVon = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
-const ceilStd = h => h>1e-9 ? Math.ceil(h-1e-9) : 0;
+/** Menge der Feiertage in BW als Set von 'YYYY-MM-DD'. */
+function feiertageBW(jahr) {
+  const o = ostersonntag(jahr);
+  const s = new Set([
+    `${jahr}-01-01`, `${jahr}-01-06`, `${jahr}-05-01`,
+    `${jahr}-10-03`, `${jahr}-11-01`, `${jahr}-12-25`, `${jahr}-12-26`,
+  ]);
+  // bewegliche Feiertage relativ zu Ostern
+  [-2, 1, 39, 50, 60].forEach((n) => s.add(iso(plusTage(o, n)))); // Karfreitag,
+  // Ostermontag, Christi Himmelfahrt, Pfingstmontag, Fronleichnam
+  return s;
+}
 
-/* Ein Intervall an den Kalendertag-Grenzen aufteilen.
-   Das ist der Kern des ganzen Modells: ein Einsatz 18:00–02:52 ist
-   6,0 h am Starttag und 2,87 h am Folgetag – nicht 8,87 h am Starttag. */
-function teileAnMitternacht(tag0, vonMin, bisMin){
-  const out = []; let t = tag0, a = vonMin, b = bisMin;
-  while(a < b){
-    const cut = Math.min(b, 1440);
-    out.push({tag:t, von:a, bis:cut});
-    b -= 1440; a = 0; t += 1;
+/* --- Zeitarten ------------------------------------------------------------ */
+const ZEITART_DIENST = '1';
+const ZEITART_RB_AKTIV = new Set(['111', '113']); // Praesenz (RBA) + Telefonat (RBT)
+
+/* --- Tarifparameter ------------------------------------------------------- */
+/** Euro-Saetze je Einheit. Der Wechsel liegt beim Leistungsmonat Juni 2026
+ *  (Tariferhoehung, Stundensatz 56,46 -> 57,59 EUR). */
+const SAETZE_BIS_MAI_2026 = {
+  731: 9.14, 734: 56.46, 735: 9.14, 737: 30.47, 752: 15.24,
+  753: 60.94, 754: 21.33, 790: 12.19, 791: 12.19,
+  796: 112.92, 797: 225.84, 252: 50.00,
+};
+const SAETZE_AB_JUNI_2026 = {
+  731: 9.32, 734: 57.59, 735: 9.32, 737: 31.08, 752: 15.54,
+  753: 60.94, 754: 21.33, 790: 12.43, 791: 12.43,
+  796: 115.18, 797: 230.36, 252: 50.00,
+};
+/** Vor Maerz 2026 hiessen Nacht/Samstag 750/751 und hatten andere Saetze.
+ *  Nur fuer Rueckrechnungen alter Monate relevant. */
+const SAETZE_VOR_MAERZ_2026 = { 750: 9.14, 751: 0.64 };
+
+function saetzeFuer(monat) {
+  return monat < '2026-06' ? SAETZE_BIS_MAI_2026 : SAETZE_AB_JUNI_2026;
+}
+
+/** Beginn der Nachtzeit. ACHTUNG: wechselt zum 01.03.2026 von 21 auf 20 Uhr. */
+function nachtBeginnStunde(monat) { return monat < '2026-03' ? 21 : 20; }
+
+/* --- Zeitrechnung --------------------------------------------------------- */
+/** 'HH:MM' -> Minuten seit Mitternacht. */
+function min(hhmm) {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
+/**
+ * Naechtliche Rufdienst-Einsaetze werden auf den Tag gebucht, an dem der
+ * Rufdienst BEGANN - abgerechnet werden sie aber auf dem Kalendertag, an dem
+ * sie stattfanden. Verifiziert an 39 tagesgenauen Zielwerten (39/39).
+ */
+function nachtVerschiebung(e) {
+  return ZEITART_RB_AKTIV.has(e.zeitart) && min(e.von) < 6 * 60;
+}
+
+/**
+ * Zerlegt einen Eintrag in echte Kalendertag-Abschnitte (Mitternachtsgrenze).
+ * @returns Array von {tag:'YYYY-MM-DD', von:Minuten, bis:Minuten} - bis kann
+ *          bis 1440 gehen; ein ueber Mitternacht laufender Eintrag ergibt zwei.
+ */
+function tagesabschnitte(e) {
+  if (!e.von || !e.bis || e.von === e.bis) return []; // 0-Dauer-Platzhalter
+  const basis = nachtVerschiebung(e)
+    ? iso(plusTage(new Date(`${e.datum}T00:00:00Z`), 1))
+    : e.datum;
+  let von = min(e.von);
+  let bis = min(e.bis);
+  if (bis <= von) bis += 24 * 60; // laeuft ueber Mitternacht
+  const out = [];
+  let cur = von;
+  let tag = basis;
+  while (cur < bis) {
+    const tagesende = Math.floor(cur / 1440) * 1440 + 1440;
+    const ende = Math.min(bis, tagesende);
+    const offset = Math.floor(cur / 1440);
+    out.push({
+      tag: offset === 0 ? tag : iso(plusTage(new Date(`${tag}T00:00:00Z`), offset)),
+      von: cur - offset * 1440,
+      bis: ende - offset * 1440,
+    });
+    cur = ende;
   }
   return out;
 }
-/* Ueberlappung eines Tagesabschnitts mit einem Zeitfenster (Minuten).
-   Das Fenster darf ueber Mitternacht gehen (fa > fb, z.B. 21–6 Uhr). */
-function fensterMin(von, bis, fa, fb){
-  if(fb > fa) return Math.max(0, Math.min(bis,fb) - Math.max(von,fa));
-  return Math.max(0, Math.min(bis,1440) - Math.max(von,fa))
-       + Math.max(0, Math.min(bis,fb)   - von);
+
+/** Ueberlappung [von,bis) mit einem taeglichen Fenster in Stunden.
+ *  Das Fenster darf ueber Mitternacht laufen (z.B. 20-6). */
+function ueberlappStunden(von, bis, fensterStart, fensterEnde) {
+  const fs = fensterStart * 60;
+  const fe = fensterEnde * 60;
+  let total = 0;
+  // Fenster auch am Vor- und Folgetag pruefen, damit 20-6 beide Haelften trifft
+  for (const off of [-1440, 0, 1440]) {
+    let a = fs + off;
+    let b = fe + off;
+    if (b <= a) b += 1440; // ueber Mitternacht
+    total += Math.max(0, Math.min(bis, b) - Math.max(von, a));
+  }
+  return total / 60;
 }
 
-/* Effektive Dauer der Einsaetze eines Tages nach TVöD §8 Abs. 3 Satz 4/5:
-   - Praesenz (Zeitart 111): JEDE Inanspruchnahme einzeln auf volle Std. auf
-   - Telefonisch (113): SUMME des Tages einmal auf volle Std. auf; die
-     Aufstockung faellt beim ersten Anruf an (so steht es auch in den
-     Rohdaten der Zeiterfassung: erster Anruf per KorrStd aufgestockt,
-     weitere Anrufe mit ihrer echten Dauer).
-   Liefert je Einsatz {startTag, startMin, rohStd, effStd, telefon}. */
+function monatVon(tag) { return tag.slice(0, 7); }
+function wochentag(tag) { return new Date(`${tag}T00:00:00Z`).getUTCDay(); } // 0=So
+
+/* --- 731 Ueberstundenzuschlag (wochenbasiert) ----------------------------- */
+/** Saldo Ist-Soll einer Mo-So-Woche, nur Dienst-Zeilen (Zeitart 1). */
+function wochensaldo(eintraege, montag) {
+  const tage = new Set();
+  for (let i = 0; i < 7; i++) tage.add(iso(plusTage(new Date(`${montag}T00:00:00Z`), i)));
+  let ist = 0, soll = 0;
+  for (const e of eintraege) {
+    if (e.zeitart === ZEITART_DIENST && tage.has(e.datum)) {
+      ist += e.istStd || 0;
+      soll += e.sollStd || 0;
+    }
+  }
+  return ist - soll;
+}
+
+/**
+ * Ueberstunden einer Woche nach Paragraph 7 Abs. 7 TVoeD: was nicht bis zum
+ * Ende der FOLGENDEN Kalenderwoche ausgeglichen wird.
+ */
+function ueberstundenWoche(eintraege, montag) {
+  const saldo = wochensaldo(eintraege, montag);
+  const folge = wochensaldo(eintraege, iso(plusTage(new Date(`${montag}T00:00:00Z`), 7)));
+  return Math.max(0, saldo + Math.min(0, folge));
+}
+
+/** Alle Montage, deren Sonntag in diesem Monat liegt (so ordnet die
+ *  Abrechnung eine Woche einem Monat zu). */
+function wochenstartsFuerMonat(monat) {
+  const [j, m] = monat.split('-').map(Number);
+  const out = [];
+  let d = new Date(Date.UTC(j, m - 1, 1));
+  // zurueck bis zum Montag der Woche, die den 1. enthaelt
+  while (d.getUTCDay() !== 1) d = plusTage(d, -1);
+  for (let i = 0; i < 6; i++) {
+    const so = plusTage(d, 6);
+    if (monatVon(iso(so)) === monat) out.push(iso(d));
+    d = plusTage(d, 7);
+  }
+  return out;
+}
+
+/* --- Hauptberechnung ------------------------------------------------------ */
+/**
+ * Berechnet alle Lohnart-Mengen eines Leistungsmonats.
+ *
+ * @param {Array} eintraege - ALLE Eintraege (auch Nachbarmonate! Monats- und
+ *        Mitternachtsgrenzen werden intern korrekt behandelt), je Eintrag:
+ *        { datum:'YYYY-MM-DD', von:'HH:MM', bis:'HH:MM',
+ *          istStd:Number, sollStd:Number, zeitart:'1'|'111'|'113'|...,
+ *          rbdTag:Boolean }   // rbdTag = an diesem Tag beginnt ein Rufdienst
+ * @param {String} monat - 'YYYY-MM'
+ * @returns {Object} Mengen je Lohnart (Stunden bzw. Tage)
+ */
+function berechneMengen(eintraege, monat) {
+  const jahr = Number(monat.slice(0, 4));
+  const feiertage = new Set([...feiertageBW(jahr), ...feiertageBW(jahr - 1), ...feiertageBW(jahr + 1)]);
+  const nachtStart = nachtBeginnStunde(monat);
+
+  // Alle Abschnitte dieses Monats einsammeln
+  const abschnitte = [];
+  for (const e of eintraege) {
+    for (const a of tagesabschnitte(e)) {
+      if (monatVon(a.tag) === monat) abschnitte.push({ e, ...a });
+    }
+  }
+  const typ = (tag) => {
+    if (feiertage.has(tag)) return 'feiertag';
+    const w = wochentag(tag);
+    return w === 6 ? 'samstag' : w === 0 ? 'sonntag' : 'werktag';
+  };
+
+  // 734/735: Summe Ist_Std der RB-Aktivzeiten (nach Kalendermonat des Eintrags)
+  let la734 = 0;
+  for (const e of eintraege) {
+    if (ZEITART_RB_AKTIV.has(e.zeitart) && monatVon(e.datum) === monat) la734 += e.istStd || 0;
+  }
+
+  // 796/797: Rufdienst-Pauschale je Tag, an dem der Rufdienst BEGINNT
+  const rbdTage = new Set();
+  for (const e of eintraege) {
+    if (e.rbdTag && monatVon(e.datum) === monat) rbdTage.add(e.datum);
+  }
+  let la796 = 0, la797 = 0;
+  for (const t of rbdTage) (typ(t) === 'werktag' ? la796++ : la797++);
+
+  // 752 Sonntag / 753+754 Feiertag: rohe Dauer, ALLE Zeitarten
+  let la752 = 0, la753 = 0;
+  // 791 Samstag: nur 13-21 Uhr. 790 Nacht: Fenster je nach Monat.
+  let la791 = 0, la790 = 0;
+  // 737: RB-aktiv im Fenster 0-6, je Nacht mindestens 1,00 Std
+  const la737JeTag = {};
+
+  for (const a of abschnitte) {
+    const dauer = (a.bis - a.von) / 60;
+    const t = typ(a.tag);
+    if (t === 'sonntag') la752 += dauer;
+    if (t === 'feiertag') la753 += dauer;
+    if (t === 'samstag') la791 += ueberlappStunden(a.von, a.bis, 13, 21);
+    la790 += ueberlappStunden(a.von, a.bis, nachtStart, 6);
+    if (ZEITART_RB_AKTIV.has(a.e.zeitart)) {
+      const h = ueberlappStunden(a.von, a.bis, 0, 6);
+      if (h > 0) la737JeTag[a.tag] = (la737JeTag[a.tag] || 0) + h;
+    }
+  }
+  const la737 = Object.values(la737JeTag).reduce((s, h) => s + Math.max(1.0, h), 0);
+
+  // 731: wochenbasiert, Woche zaehlt zum Monat ihres Sonntags
+  const la731 = wochenstartsFuerMonat(monat)
+    .reduce((s, mo) => s + ueberstundenWoche(eintraege, mo), 0);
+
+  const r = (x) => Math.round(x * 100) / 100;
+  return {
+    731: r(la731), 734: r(la734), 735: r(la734), 737: r(la737),
+    752: r(la752), 753: r(la753), 754: r(la753),
+    790: r(la790), 791: r(la791),
+    796: la796, 797: la797,
+  };
+}
+
+/**
+ * Rechnet die Mengen in Euro um.
+ * @param {Object} mengen - Ergebnis von berechneMengen()
+ * @param {String} monat - 'YYYY-MM'
+ * @param {Object} [extra] - manuell zu erfassende Posten,
+ *        z.B. { 252: 2 }  // 2 Tage Einspringpauschale a 50 EUR
+ * @returns {Object} { posten: [{la, bezeichnung, menge, satz, betrag}], summe }
+ */
+function berechneEuro(mengen, monat, extra) {
+  const s = saetzeFuer(monat);
+  const alt = monat < '2026-03';
+  const bez = {
+    731: 'Überstundenzuschlag 15%', 734: 'RBD Aktivzeiten', 735: 'RBD Aktivstunden-Zuschlag',
+    737: 'RB Aktiv 0–6 Uhr 50%', 752: 'Sonntagszuschlag 25%',
+    753: 'Feiertagsarbeit 100%', 754: 'Feiertagszuschlag 35%',
+    790: alt ? 'Nachtarbeit 15% (LA 750)' : 'Nachtarbeit 20%',
+    791: alt ? 'Samstagsarbeit (LA 751)' : 'Samstagsarbeit 20%',
+    796: 'RB-Pauschale 200% (Werktag)', 797: 'RB-Pauschale 400% (Sa/So/Feiertag)',
+    252: 'Einspringpauschale',
+  };
+  const posten = [];
+  let summe = 0;
+  for (const la of [731, 734, 735, 737, 752, 753, 754, 790, 791, 796, 797]) {
+    const menge = mengen[la] || 0;
+    if (!menge) continue;
+    let satz = s[la];
+    if (alt && la === 790) satz = SAETZE_VOR_MAERZ_2026[750];
+    if (alt && la === 791) satz = SAETZE_VOR_MAERZ_2026[751];
+    const betrag = Math.round(menge * satz * 100) / 100;
+    posten.push({ la, bezeichnung: bez[la], menge, satz, betrag,
+                  einheit: (la === 796 || la === 797) ? 'Tage' : 'Std.' });
+    summe += betrag;
+  }
+  for (const la of Object.keys(extra || {})) {
+    const menge = extra[la];
+    if (!menge) continue;
+    const satz = s[la];
+    const betrag = Math.round(menge * satz * 100) / 100;
+    posten.push({ la: Number(la), bezeichnung: bez[la] || `LA ${la}`, menge, satz, betrag, einheit: 'Tage' });
+    summe += betrag;
+  }
+  return { posten, summe: Math.round(summe * 100) / 100 };
+}
+
+/* --- Adapter: App-Tagesdaten -> Eintraege --------------------------------- */
+/**
+ * Baut aus den Tagesdaten der App die Eintragsliste fuer berechneMengen().
+ *
+ * @param {Object} days - { 'YYYY-MM-DD': tagesobjekt }, wie in der PWA
+ * @param {Function} sollFuer - (tagesobjekt, datum) => Soll-Stunden des Tages
+ * @param {Function} istRbdTag - (tagesobjekt, datum) => true, wenn an diesem
+ *        Tag ein Rufdienst BEGINNT (fuer die Pauschalen 796/797)
+ */
+function eintraegeAusTagen(days, sollFuer, istRbdTag) {
+  const out = [];
+  for (const datum of Object.keys(days)) {
+    const d = days[datum] || {};
+    // Dienst-Zeile
+    const beginn = d.dienstbeginn;
+    const ende = d.dienstende_ist || d.dienstende_plan;
+    if (beginn && ende) {
+      let ist = (min(ende) - min(beginn)) / 60;
+      if (ist < 0) ist += 24;
+      out.push({ datum, von: beginn, bis: ende, istStd: Math.round(ist * 100) / 100,
+                 sollStd: sollFuer(d, datum) || 0, zeitart: ZEITART_DIENST,
+                 rbdTag: !!istRbdTag(d, datum) });
+    } else if (istRbdTag(d, datum)) {
+      out.push({ datum, von: null, bis: null, istStd: 0, sollStd: 0,
+                 zeitart: ZEITART_DIENST, rbdTag: true });
+    }
+    // Rufdienst-Einsaetze
+    for (const ein of (d.einsaetze || [])) {
+      if (!ein.beginn || !ein.ende) continue;
+      const telefonisch = /telefon|RBT/i.test(ein.art || '');
+      let dauer = (min(ein.ende) - min(ein.beginn)) / 60;
+      if (dauer < 0) dauer += 24;
+      out.push({
+        datum, von: ein.beginn, bis: ein.ende,
+        // WICHTIG: die Abrechnung rundet die Aktivzeit auf; siehe INTEGRATION.md
+        istStd: Math.round(dauer * 100) / 100,
+        sollStd: 0, zeitart: telefonisch ? '113' : '111', rbdTag: false,
+      });
+    }
+  }
+  return out;
+}
+
+const GEHALT = {
+  feiertageBW, tagesabschnitte, ueberlappStunden, wochensaldo, ueberstundenWoche,
+  wochenstartsFuerMonat, berechneMengen, berechneEuro, eintraegeAusTagen,
+  SAETZE_BIS_MAI_2026, SAETZE_AB_JUNI_2026, SAETZE_VOR_MAERZ_2026,
+};
+if (typeof module !== 'undefined' && module.exports) module.exports = GEHALT;
+if (typeof window !== 'undefined') window.GEHALT = GEHALT;
+})();
+/* <<<<< gehalt.js ENDE <<<<< */
+
+/* ---------------- App-Adapter ----------------
+   Das Modul bringt zwar eintraegeAusTagen() mit, setzt darin aber auf die
+   Feldnamen dienstende_ist/dienstende_plan - diese PWA speichert
+   tats_dienstende/plan_dienstende. Ausserdem erwartet der Rechenkern in
+   istStd die bereits tariflich AUFGERUNDETE Aktivzeit (in der Quell-CSV
+   steckt die Rundung schon drin, in unseren Tagesdaten nicht). Deshalb
+   bauen wir die Eintragsliste hier selbst. */
+
+const RUFDIENST_CODES = ['ZD1','ZD2','RBD','RBD2'];
+
+/* Grundverguetung (LA 050) - nicht Teil des Rechenkerns, weil sie nicht aus
+   den Zeiten folgt. Der Wechsel liegt beim Leistungsmonat Juni 2026. */
+const GRUNDVERGUETUNG = [{ab:'0000-01', betrag:9819.15}, {ab:'2026-06', betrag:10015.53}];
+const grundFuer = ym => GRUNDVERGUETUNG.filter(g => g.ab <= ym).pop().betrag;
+
+/* Anzeigenamen fuer die Kompaktleiste + Verlaesslichkeit je Lohnart
+   (Einstufung aus INTEGRATION.md, Abschnitt "Wie sicher ist was"). */
+const LA_INFO = {
+  731:{kurz:'Überstunden', unsicher:'731 Überstunden: geschätzt – die Formel trifft die erfassten Stunden, ausgezahlt wird durch Freizeitausgleich teils weniger.'},
+  734:{kurz:'Rufdienst-Einsätze'}, 735:{kurz:'Zuschlag Einsätze'},
+  737:{kurz:'Einsatz 0–6 Uhr'},    752:{kurz:'Sonntag'},
+  753:{kurz:'Feiertag', unsicher:'753/754 Feiertag: bisher nur an einem Monat belegt.'},
+  754:{kurz:'Feiertagszuschlag', unsicher:'753/754 Feiertag: bisher nur an einem Monat belegt.'},
+  790:{kurz:'Nacht'},  791:{kurz:'Samstag'},
+  796:{kurz:'Rufdienst Werktag'},  797:{kurz:'Rufdienst Wo-Ende'},
+  252:{kurz:'Einspringen'}
+};
+/* Anzeigereihenfolge: die dicken Posten zuerst */
+const LA_REIHE = [796,797,734,735,737,790,791,752,753,754,252,731];
+
+/* ---- kleine Datums-/Zeithelfer (UTC-Tagesnummern, damit die
+        Zeitumstellungstage nicht 23 bzw. 25 Stunden haben) ---- */
+const tagNr = s => { const [y,m,d] = s.split('-').map(Number); return Date.UTC(y,m-1,d)/86400000; };
+const nrIso = n => { const d = new Date(n*86400000);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; };
+const minVon = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+const dauerStd = (von, bis) => { const d = (minVon(bis) - minVon(von))/60; return d < 0 ? d+24 : d; };
+const round2 = x => Math.round(x*100)/100;
+const ceilStd = h => h > 1e-9 ? Math.ceil(h - 1e-9) : 0;
+
+/* Aufrundung der Aktivzeit nach Paragraph 8 Abs. 3 Satz 4/5 TVoeD:
+   Praesenz-Einsaetze (111) werden JEDER EINZELN auf die volle Stunde
+   aufgerundet, Telefonate (113) als TAGESSUMME einmal - die Aufstockung
+   faellt beim ersten Anruf an, genau so steht es auch in den Rohdaten der
+   Zeiterfassung. Diese Rundung zaehlt nur fuers Entgelt (734/735), nicht
+   fuer die Zeitfenster - deshalb bleiben von/bis unangetastet. */
 function einsatzDauern(k){
   const d = days[k] || {};
-  const t0 = tagNr(k);
-  const roh = (d.einsaetze||[]).filter(e=>e.beginn && e.ende).map(e=>{
-    const a = minVon(e.beginn); let b = minVon(e.ende);
-    if(b <= a) b += 1440;
-    return {startTag:t0, startMin:a, rohStd:(b-a)/60,
-            telefon:String(e.art||'').startsWith('telefonisch')};
-  });
-  roh.filter(e=>!e.telefon).forEach(e=> e.effStd = ceilStd(e.rohStd));
-  const tel = roh.filter(e=>e.telefon).sort((x,y)=>x.startMin-y.startMin);
+  const roh = (d.einsaetze||[]).filter(e => e.beginn && e.ende).map(e => ({
+    von: e.beginn, bis: e.ende, rohStd: dauerStd(e.beginn, e.ende),
+    telefon: /telefon|RBT/i.test(e.art || '')
+  }));
+  roh.filter(e => !e.telefon).forEach(e => e.effStd = ceilStd(e.rohStd));
+  const tel = roh.filter(e => e.telefon).sort((a,b) => minVon(a.von) - minVon(b.von));
   if(tel.length){
-    const summe = tel.reduce((s,e)=>s+e.rohStd, 0);
-    const zuschlag = ceilStd(summe) - summe;
-    tel.forEach((e,i)=> e.effStd = e.rohStd + (i===0 ? zuschlag : 0));
+    const summe = tel.reduce((s,e) => s + e.rohStd, 0);
+    const auf = ceilStd(summe) - summe;
+    tel.forEach((e,i) => e.effStd = e.rohStd + (i === 0 ? auf : 0));
   }
   return roh;
 }
 
-/* Dienst-/Rufbereitschaftszeile eines Tages als Intervall.
-   Faellt auf einen erfassten Tag zurueck, sonst auf die Plan-Sollzeiten –
-   damit die Monatsvorschau auch Tage abdeckt, an denen noch nichts
-   eingetragen wurde (die Tagespauschale faellt trotzdem an). */
-function dienstIntervall(k){
-  const d = days[k];
-  const code = (d && d.dienstart) || derive(k).code;
-  if(!DUTY[code] || code==='FRN') return null;
-  const von = (d && d.dienstbeginn)    || DUTY[code].start;
-  const bis = (d && (d.tats_dienstende || d.plan_dienstende)) || DUTY[code].end;
-  if(!von || !bis) return null;
-  const a = minVon(von); let b = minVon(bis);
-  if(b <= a) b += 1440;
-  return {tag:tagNr(k), von:a, bis:b};
-}
-const rufdienstAn = k => {
-  const d = days[k];
-  return RUFDIENST_CODES.includes((d && d.dienstart) || derive(k).code);
-};
+const rufdienstCode = k => (days[k] && days[k].dienstart) || derive(k).code;
+const istUrlaubstag = k => derive(k).code === 'abwesend';
 
-/* Kern: Mengen je Lohnart und Kalendertag fuer eine Liste von Quelltagen.
-   Ergebnis: {isoTag: {731:.., 734:.., ...}} – Stunden bzw. Tage. */
-function gehaltMengen(quellTage){
-  const M = {};
-  const add = (tagN, la, menge) => {
-    if(menge <= 1e-9) return;
-    const k = nrIso(tagN);
-    (M[k] ||= {})[la] = (M[k][la] || 0) + menge;
-  };
-
-  quellTage.forEach(k=>{
-    /* --- alle Zeitintervalle des Tages, roh --- */
-    const roh = [];
-    const di = dienstIntervall(k);
-    if(di) roh.push(di);
-    const eins = einsatzDauern(k);
-    eins.forEach(e=> roh.push({tag:e.startTag, von:e.startMin, bis:e.startMin + e.rohStd*60}));
-
-    /* --- 790/791/752: rohe Uhrzeit, ALLE Zeitarten, nach Mitternacht geteilt
-           (§8 Abs. 1 – dieselbe Familie, die 790/791 exakt trifft) --- */
-    roh.forEach(iv=>{
-      teileAnMitternacht(iv.tag, iv.von, iv.bis).forEach(s=>{
-        const isoT = nrIso(s.tag);
-        const dow  = new Date(s.tag*86400000).getUTCDay();
-        const feiertag = isHoliday(isoT);
-        add(s.tag, '790', fensterMin(s.von, s.bis, 21*60, 6*60) / 60);
-        if(dow===6 && !feiertag) add(s.tag, '791', fensterMin(s.von, s.bis, 13*60, 21*60) / 60);
-        if(dow===0 && !feiertag) add(s.tag, '752', (s.bis - s.von) / 60);
-      });
-    });
-
-    /* --- 734/735: aufgerundete Aktivstunden, dem Starttag zugeordnet
-           737: derselbe aufgerundete Einsatz, aber ab Einsatzbeginn real
-           weiterlaufend, geschnitten mit dem Fenster 0–6 Uhr --- */
-    eins.forEach(e=>{
-      add(e.startTag, '734', e.effStd);
-      add(e.startTag, '735', e.effStd);
-      teileAnMitternacht(e.startTag, e.startMin, e.startMin + e.effStd*60).forEach(s=>{
-        add(s.tag, '737', fensterMin(s.von, s.bis, 0, 6*60) / 60);
-      });
-    });
-
-    /* --- 796/797: Tagespauschale, maßgebend ist der Tag, an dem die
-           Rufbereitschaft beginnt (§8 Abs. 3 Satz 3) --- */
-    if(rufdienstAn(k)){
-      const dow = new Date(tagNr(k)*86400000).getUTCDay();
-      add(tagNr(k), (dow===0 || dow===6 || isHoliday(k)) ? '797' : '796', 1);
-    }
-
-    /* --- 731: Überstunden = Ist-Ende minus Plan-Ende, nur positiv --- */
-    const ue = calcFor(k).ue;
-    if(ue !== null && ue > 0) add(tagNr(k), '731', ue);
-  });
-  return M;
-}
-
-/* Mengen -> Betraege. Der Satz richtet sich nach dem Tarifstand des Tages. */
-function gehaltTag(isoT, mengen){
-  const zeilen = [];
-  let brutto = 0;
-  LA_REIHE.forEach(la=>{
-    const menge = (mengen && mengen[la]) || 0;
-    if(menge <= 1e-9) return;
-    const satz = satzFuer(la, isoT);
-    const betrag = menge * satz;
-    brutto += betrag;
-    zeilen.push({la, menge, satz, betrag, ...LOHNART[la]});
-  });
-  return {zeilen, brutto};
-}
-
-/* Alle Tage, die fuer einen Zeitraum Quelle sein koennen: die erfassten
-   Tage plus alle Tage des Zielmonats (fuer Pauschalen aus dem Dienstplan)
-   plus der jeweilige Vortag (Einsatz ueber Mitternacht). */
-function quellTageFuer(ym){
+/* Baut die Eintragsliste fuer den Rechenkern.
+   Deckt bewusst mehr als den Zielmonat ab: der Ueberstundenzuschlag rechnet
+   wochenweise und schaut dabei in die FOLGENDE Woche, und ein Einsatz kann
+   ueber die Monatsgrenze laufen. */
+function gehaltEintraege(ym){
   const [y,m] = ym.split('-').map(Number);
   const letzter = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const start = tagNr(`${ym}-01`) - 1;          // Vortag: Einsatz ueber Mitternacht
+  const von = tagNr(`${ym}-01`) - 10, bis = tagNr(`${ym}-01`) + letzter + 13;
   const out = [];
-  for(let i=0;i<=letzter;i++) out.push(nrIso(start + i));
+  for(let n = von; n <= bis; n++){
+    const k = nrIso(n);
+    const d = days[k];
+    const code = rufdienstCode(k);
+    const rbd = RUFDIENST_CODES.includes(code);
+    const dienst = DUTY[code] && DUTY[code].start && code !== 'FRN' ? DUTY[code] : null;
+
+    /* Dienstzeile: Ist aus den erfassten Zeiten, Soll aus dem Dienstplan.
+       Die Pause kuerzt beide Seiten gleich und faellt in der Differenz
+       heraus - 731 ist die einzige Lohnart, die istStd/sollStd hier nutzt. */
+    const vonZ = (d && d.dienstbeginn) || (dienst && dienst.start);
+    const bisZ = (d && (d.tats_dienstende || d.plan_dienstende)) || (dienst && dienst.end);
+    if(vonZ && bisZ){
+      out.push({_appTag:k, datum:k, von:vonZ, bis:bisZ,
+                istStd: round2(dauerStd(vonZ, bisZ)),
+                sollStd: dienst ? round2(dauerStd(dienst.start, dienst.end)) : 0,
+                zeitart:'1', rbdTag: rbd});
+    } else if(rbd){
+      /* Rufdienst ohne erfasste Zeiten: die Tagespauschale faellt trotzdem an */
+      out.push({_appTag:k, datum:k, von:null, bis:null, istStd:0, sollStd:0,
+                zeitart:'1', rbdTag:true});
+    }
+
+    einsatzDauern(k).forEach(e => {
+      /* Der Rechenkern bucht naechtliche Einsaetze (Beginn vor 06:00) einen
+         Tag WEITER, weil das Quellsystem sie auf den Rufdienst-Beginntag
+         schreibt und erst die Abrechnung sie auf den echten Kalendertag
+         zieht. Diese App speichert sie - wenn per Zeitstempel erfasst -
+         bereits auf dem echten Kalendertag. Wir datieren sie deshalb einen
+         Tag zurueck, damit die Verschiebung des Moduls sie wieder genau
+         dorthin bringt. Das stellt nebenbei auch die Monatszuordnung von
+         734/735 richtig, die am unverschobenen Datum haengt. */
+      const nachts = minVon(e.von) < 6*60;
+      const datum = (nachts && cfg.nachtBuchung !== 'dienstbeginn') ? nrIso(n-1) : k;
+      out.push({_appTag:k, datum, von:e.von, bis:e.bis, istStd: e.effStd, sollStd:0,
+                zeitart: e.telefon ? '113' : '111', rbdTag:false});
+    });
+  }
   return out;
+}
+
+/* Manuelle Posten je Monat (derzeit nur LA 252 Einspringpauschale) */
+const extraFuer = ym => ({252: (extras[ym] && extras[ym][252]) || 0});
+
+function postenSortiert(posten){
+  return posten.slice().sort((a,b) => LA_REIHE.indexOf(a.la) - LA_REIHE.indexOf(b.la))
+    .map(p => ({...p, ...(LA_INFO[p.la] || {})}));
+}
+
+/* Alle Zahlen eines Leistungsmonats, inklusive Tagesliste. */
+/* Alle Zahlen eines Leistungsmonats, inklusive Tagesliste. */
+function monatsDaten(ym){
+  const alle = gehaltEintraege(ym);
+  const mengen = GEHALT.berechneMengen(alle, ym);
+  const {posten, summe} = GEHALT.berechneEuro(mengen, ym, extraFuer(ym));
+  const tage = [];
+  const kandidaten = [...new Set(alle.map(e => e._appTag))].filter(k => k.startsWith(ym)).sort();
+  kandidaten.forEach(k => {
+    const r = tagesAnteil(alle, mengen, ym, k);
+    if(r.posten.length) tage.push({tag:k, ...r});
+  });
+  /* Urlaubstage ueber ALLE Kalendertage suchen, nicht nur ueber die mit
+     Eintraegen: ein Urlaubstag erzeugt gerade keinen Eintrag. */
+  const [uy, um] = ym.split('-').map(Number);
+  const urlaub = [];
+  for(let n = 0; n < new Date(Date.UTC(uy, um, 0)).getUTCDate(); n++){
+    const k = nrIso(tagNr(`${ym}-01`) + n);
+    if(istUrlaubstag(k)) urlaub.push(k);
+  }
+  return {mengen, posten: postenSortiert(posten), summe, grund: grundFuer(ym), tage, urlaub};
+}
+
+/* Was traegt EIN Tag zum Monat bei? Als Differenz "Monat mit" minus
+   "Monat ohne diesen Tag" - der einzige ehrliche Weg, denn der
+   Ueberstundenzuschlag ist wochenweise definiert und laesst sich gar nicht
+   tageweise ausrechnen. */
+function tagesAnteil(alle, mengenMit, ym, k){
+  const ohne = GEHALT.berechneMengen(alle.filter(e => e._appTag !== k), ym);
+  const diff = {};
+  Object.keys(mengenMit).forEach(la => {
+    const v = round2(mengenMit[la] - ohne[la]);
+    if(Math.abs(v) > 0.004) diff[la] = v;
+  });
+  const r = GEHALT.berechneEuro(diff, ym, {});
+  return {posten: postenSortiert(r.posten), summe: r.summe};
+}
+
+function gehaltTag(k){
+  const ym = k.slice(0,7);
+  const alle = gehaltEintraege(ym);
+  return tagesAnteil(alle, GEHALT.berechneMengen(alle, ym), ym, k);
 }
 
 const eur = x => x.toLocaleString('de-DE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
 const eur0 = x => Math.round(x).toLocaleString('de-DE') + ' €';
-const menge2 = (x, einheit) => einheit==='d'
-  ? x.toLocaleString('de-DE') + (x===1 ? ' Tag' : ' Tage')
+const menge2 = (x, einheit) => einheit === 'Tage'
+  ? x.toLocaleString('de-DE') + (Math.abs(x) === 1 ? ' Tag' : ' Tage')
   : x.toLocaleString('de-DE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' h';
+
 
 /* ---------- Netto-Schaetzung ---------- */
 const parseNum = v => { const x = parseFloat(String(v??'').replace(/\./g,'').replace(',','.')); return isFinite(x) ? x : 0; };
@@ -1601,34 +1960,33 @@ function nettoFaktoren(){
 
 /* ---------- Anzeige: Verdienstleiste unten am Tag-Tab ---------- */
 function renderTagGeld(){
-  const mengen = gehaltMengen([nrIso(tagNr(cur) - 1), cur])[cur];
-  const {zeilen, brutto} = gehaltTag(cur, mengen);
+  const {posten, summe} = gehaltTag(cur);
   const nf = nettoFaktoren();
-  const t = tarifFuer(cur);
   const [y,m] = cur.split('-').map(Number);
-  const tageImMonat = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const grundAnteil = t.grund / tageImMonat;
+  const grundAnteil = grundFuer(cur.slice(0,7)) / new Date(Date.UTC(y, m, 0)).getUTCDate();
   const dt = new Date(tagNr(cur)*86400000);
 
   $('gbLabel').innerHTML = `Verdienst <span style="opacity:.72">`
     + `${WDAY[dt.getUTCDay()].slice(0,2)} ${pad(dt.getUTCDate())}.${pad(dt.getUTCMonth()+1)}.</span>`;
-  $('gbBrutto').textContent = eur(brutto);
-  $('gbNetto').textContent  = brutto > 0 ? `≈ ${eur0(brutto * nf.grenz/100)} netto` : '';
+  $('gbBrutto').textContent = eur(summe);
+  $('gbNetto').textContent  = summe > 0 ? `≈ ${eur0(summe * nf.grenz/100)} netto` : '';
 
   const ln = (txt, amt, cls='') => `<div class="ln ${cls}"><span>${txt}</span><span class="amt">${amt}</span></div>`;
-  let html = zeilen.map(z=> ln(
-      `${z.kurz}${z.unsicher ? '<span class="warn"> *</span>' : ''} `
-      + `<span style="opacity:.6">${menge2(round2(z.menge), z.einheit)}</span>`,
-      eur(z.betrag))).join('');
-  if(!zeilen.length)
+  let html = posten.map(pz => ln(
+      `${pz.kurz}${pz.unsicher ? '<span class="warn"> *</span>' : ''} `
+      + `<span style="opacity:.6">${menge2(pz.menge, pz.einheit)}</span>`,
+      eur(pz.betrag))).join('');
+  if(!posten.length)
     html += `<div class="ln"><span>Noch nichts eingetragen, was zusätzlich vergütet wird.</span></div>`;
   html += ln('Grundvergütung (Tagesanteil)', eur(grundAnteil), 'base');
-  html += ln('Tagessumme brutto', eur(brutto + grundAnteil), 'tot');
+  html += ln('Tagessumme brutto', eur(summe + grundAnteil), 'tot');
+
   const noten = [];
-  if(brutto > 0) noten.push(`Zuschläge und Rufdienste werden zwei Monate später abgerechnet `
+  if(summe > 0) noten.push(`Zuschläge und Rufdienste werden zwei Monate später abgerechnet `
     + `(Netto mit ${Math.round(nf.grenz)} % Grenzfaktor geschätzt).`);
-  if(zeilen.some(z=>z.unsicher))
-    noten.push('<span class="warn">*</span> Formel noch nicht auf allen Monaten bestätigt – Wert kann abweichen.');
+  if(istUrlaubstag(cur)) noten.push('Urlaubstag: der Urlaubsaufschlag (LA 031) ist noch nicht entschlüsselt und fehlt hier.');
+  [...new Set(posten.map(pz => pz.unsicher).filter(Boolean))]
+    .forEach(t => noten.push(`<span class="warn">*</span> ${t}`));
   if(noten.length) html += `<div class="hint">${noten.join('<br>')}</div>`;
   $('gbLines').innerHTML = html;
   syncHeaderPadSoon();
@@ -1648,7 +2006,6 @@ $('gbHead').onclick = ()=>{
   const offen = $('geldBar').classList.contains('open');
   window.scrollTo({top: offen ? 0 : document.documentElement.scrollHeight, behavior:'smooth'});
 };
-const round2 = x => Math.round(x*100)/100;
 
 /* ---------- Anzeige: Monatsvorschau ---------- */
 let geldMonat = iso(new Date()).slice(0,7);
@@ -1662,29 +2019,11 @@ const plusMonate = (ym, n) => {
   return `${Math.floor(t/12)}-${pad(t%12 + 1)}`;
 };
 
-function monatsDaten(ym){
-  const alle = gehaltMengen(quellTageFuer(ym));
-  const tage = Object.keys(alle).filter(k=>k.startsWith(ym)).sort();
-  const summe = {}, proTag = {};
-  let brutto = 0;
-  tage.forEach(k=>{
-    const r = gehaltTag(k, alle[k]);
-    proTag[k] = r;
-    brutto += r.brutto;
-    r.zeilen.forEach(z=>{
-      const s = (summe[z.la] ||= {menge:0, betrag:0, ...LOHNART[z.la]});
-      s.menge += z.menge; s.betrag += z.betrag;
-    });
-  });
-  return {summe, proTag, tage, brutto, grund: tarifFuer(ym+'-15').grund};
-}
-
 function renderGeldMonat(){
   $('geldMonat').value = geldMonat;
-  const {summe, proTag, tage, brutto, grund} = monatsDaten(geldMonat);
+  const {posten, summe, grund, tage, urlaub} = monatsDaten(geldMonat);
   const nf = nettoFaktoren();
-  const t = tarifFuer(geldMonat+'-15');
-  const gesamt = brutto + grund;
+  const gesamt = summe + grund;
 
   $('geldMeta').innerHTML = `Leistungsmonat <b>${monatName(geldMonat)}</b> · `
     + `${tage.length} ${tage.length===1?'Tag':'Tage'} mit Vergütung`;
@@ -1693,17 +2032,15 @@ function renderGeldMonat(){
     + `(${Math.round(nf.schnitt)} % – ${nf.quelle})`;
   $('gmAbrechnung').innerHTML =
     `Grundvergütung ${eur(grund)} kommt mit der Abrechnung ${monatName(geldMonat)}.<br>`
-    + `Die variablen ${eur(brutto)} erscheinen als Rückrechnung erst in der `
+    + `Die variablen ${eur(summe)} erscheinen als Rückrechnung erst in der `
     + `Abrechnung <b>${monatName(plusMonate(geldMonat, 2))}</b>.`;
 
-  const zeilen = LA_REIHE.filter(la=>summe[la]).map(la=>{
-    const z = summe[la];
-    return `<tr${z.unsicher?' class="sub"':''}>`
-      + `<td class="la">${la}${z.unsicher?'<span class="u"> *</span>':''}</td>`
-      + `<td>${z.bez}</td>`
-      + `<td class="r">${menge2(round2(z.menge), z.einheit)}</td>`
-      + `<td class="r">${eur(z.betrag)}</td></tr>`;
-  }).join('');
+  const zeilen = posten.map(pz =>
+    `<tr${pz.unsicher?' class="sub"':''}>`
+      + `<td class="la">${pz.la}${pz.unsicher?'<span class="u"> *</span>':''}</td>`
+      + `<td>${pz.bezeichnung}</td>`
+      + `<td class="r">${menge2(pz.menge, pz.einheit)}</td>`
+      + `<td class="r">${eur(pz.betrag)}</td></tr>`).join('');
   $('gmTabelle').innerHTML = `<table class="patab">
     <tr><th>LA</th><th>Lohnart</th><th class="r">Menge</th><th class="r">Betrag</th></tr>
     ${zeilen || '<tr><td colspan="4" style="color:var(--color-text-muted);padding:10px 0">Für diesen Monat ist nichts erfasst.</td></tr>'}
@@ -1711,39 +2048,37 @@ function renderGeldMonat(){
     <tr class="sum"><td></td><td>Brutto gesamt</td><td></td><td class="r">${eur(gesamt)}</td></tr>
     </table>`;
 
-  const warn = [];
-  if(LA_REIHE.some(la=>summe[la] && summe[la].unsicher))
-    warn.push('* Für 731, 737 und 752 ist die genaue Zählweise noch nicht auf allen Vergleichsmonaten bestätigt – diese Zeilen sind Näherungen.');
-  if(t.refGeschaetzt)
-    warn.push(`Der Referenzstundensatz für Zuschläge (${t.ref.toLocaleString('de-DE',{minimumFractionDigits:2})} €) ist für diesen Zeitraum aus der Tarifsteigerung hochgerechnet, nicht aus einer Abrechnung belegt.`);
+  $('gmEinspringen').value = extras[geldMonat] && extras[geldMonat][252] || '';
+
+  const warn = [...new Set(posten.map(pz => pz.unsicher).filter(Boolean))].map(t => '* ' + t);
+  if(urlaub.length) warn.push(`In diesem Monat ${urlaub.length===1?'liegt 1 Urlaubstag':'liegen '+urlaub.length+' Urlaubstage'}. `
+    + `Der Urlaubsaufschlag (LA 031) ist noch nicht entschlüsselt und fehlt in dieser Prognose – `
+    + `auf der echten Abrechnung kommt dafür noch ein Betrag dazu.`);
   $('gmWarn').innerHTML = warn.join('<br>');
 
-  $('gmTage').innerHTML = tage.length ? tage.map(k=>{
-    const r = proTag[k];
-    const d = new Date(tagNr(k)*86400000);
+  $('gmTage').innerHTML = tage.length ? tage.map(t => {
+    const d = new Date(tagNr(t.tag)*86400000);
     const lbl = `${WDAY[d.getUTCDay()].slice(0,2)} ${pad(d.getUTCDate())}.${pad(d.getUTCMonth()+1)}.`;
-    const teile = r.zeilen.map(z=>z.kurz).join(' · ');
-    return `<div class="li" data-goto="${k}" style="cursor:pointer">
-      <span><b>${lbl}</b><div class="er-sub">${teile}</div></span>
-      <span style="display:flex;align-items:center;gap:8px"><span class="tag tag-eur">${eur0(r.brutto)}</span>${icon('chevronRight')}</span></div>`;
+    return `<div class="li" data-goto="${t.tag}" style="cursor:pointer">
+      <span><b>${lbl}</b><div class="er-sub">${t.posten.map(pz=>pz.kurz).join(' · ')}</div></span>
+      <span style="display:flex;align-items:center;gap:8px"><span class="tag tag-eur">${eur0(t.summe)}</span>${icon('chevronRight')}</span></div>`;
   }).join('') : '<div class="li">Keine erfassten Tage.</div>';
 }
 
 function monatsText(ym){
-  const {summe, brutto, grund} = monatsDaten(ym);
+  const {posten, summe, grund} = monatsDaten(ym);
   const nf = nettoFaktoren();
   const z = [`Erwartete Abrechnung – Leistungsmonat ${monatName(ym)}`,
              `(variable Teile erscheinen in der Abrechnung ${monatName(plusMonate(ym,2))})`, ''];
-  LA_REIHE.filter(la=>summe[la]).forEach(la=>{
-    const s = summe[la];
-    z.push(`${la}  ${s.bez.padEnd(30)} ${menge2(round2(s.menge), s.einheit).padStart(12)}  ${eur(s.betrag).padStart(12)}`);
-  });
-  z.push(`050  ${'Grundvergütung'.padEnd(30)} ${'1 Monat'.padStart(12)}  ${eur(grund).padStart(12)}`);
+  posten.forEach(pz =>
+    z.push(`${pz.la}  ${pz.bezeichnung.padEnd(32)} ${menge2(pz.menge, pz.einheit).padStart(12)}  ${eur(pz.betrag).padStart(12)}`));
+  z.push(`050  ${'Grundvergütung'.padEnd(32)} ${'1 Monat'.padStart(12)}  ${eur(grund).padStart(12)}`);
   z.push('');
-  z.push(`Brutto gesamt: ${eur(brutto + grund)}`);
-  z.push(`Netto geschätzt: ca. ${eur0((brutto + grund) * nf.schnitt/100)} (${Math.round(nf.schnitt)} %, ${nf.quelle})`);
+  z.push(`Brutto gesamt: ${eur(summe + grund)}`);
+  z.push(`Netto geschätzt: ca. ${eur0((summe + grund) * nf.schnitt/100)} (${Math.round(nf.schnitt)} %, ${nf.quelle})`);
   return z.join('\n');
 }
+
 
 /* ---------- Bedienung ---------- */
 $('mPrev').onclick = ()=>{ geldMonat = plusMonate(geldMonat, -1); renderGeldMonat(); };
@@ -1756,6 +2091,14 @@ $('gmTage').addEventListener('click', e=>{
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id==='tag'));
   $('actionbar').style.display = 'block';
   renderDay(); syncHeaderPad();
+});
+$('gmEinspringen').addEventListener('change', e=>{
+  const n = Math.max(0, Math.round(parseNum(e.target.value)));
+  if(n) (extras[geldMonat] ||= {})[252] = n;
+  else if(extras[geldMonat]) delete extras[geldMonat][252];
+  if(extras[geldMonat] && !Object.keys(extras[geldMonat]).length) delete extras[geldMonat];
+  save(LS.extra, extras);
+  renderGeldMonat();
 });
 $('gmCopy').onclick = async ()=>{
   const txt = monatsText(geldMonat);
@@ -1818,7 +2161,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.15.0';
+const APP_VERSION = '1.16.0';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){

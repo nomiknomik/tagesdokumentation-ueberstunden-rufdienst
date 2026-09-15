@@ -498,6 +498,64 @@ Beim Messen im Test beachten: Smooth-Scroll und die `max-height`-Transition
 laufen nacheinander, zusammen gut 750 ms. Wer früher misst, bekommt eine zu
 kleine Leistenhöhe – das ist kein Bug.
 
+### PWA v1.16.0 – gehalt.js als Rechenkern (15.09.2026)
+
+Die selbstgebauten Formeln der v1.14.0 sind **komplett ersetzt** durch
+`src/gehalt.js` aus dem Analyse-Repo (gegen die Python-Referenz geprüft:
+110/110 Werte über 10 Monate). Das Modul steht **unverändert** zwischen den
+Markern `>>>>> gehalt.js BEGINN` und `<<<<< gehalt.js ENDE` – beim
+Aktualisieren nur diesen Bereich austauschen.
+
+**Es liegt in einer IIFE.** Das Modul bringt eigene Bezeichner `iso()` und
+`min()` mit, die es in `app/index.html` schon gibt; ohne Kapselung wäre das
+ein Redeklarations-Fehler und die App stünde komplett still.
+
+**Der App-Adapter darunter gehört uns** und ist nötig, weil das mitgelieferte
+`eintraegeAusTagen()` nicht zu dieser PWA passt:
+
+- Es liest `dienstende_ist` / `dienstende_plan`, die PWA speichert
+  `tats_dienstende` / `plan_dienstende`. Ungeprüft übernommen entstünde
+  **keine einzige Dienst-Zeile** – 731 wäre immer 0 und den Zuschlägen
+  fehlte die Dienstzeit.
+- `istStd` muss die **tariflich aufgerundete** Aktivzeit sein (Präsenz je
+  Einsatz, Telefonate als Tagessumme). In der Quell-CSV steckt die Rundung
+  schon drin, in unseren Tagesdaten nicht – `einsatzDauern()` macht das.
+
+**Nachtverschiebung – die subtilste Stelle.** Der Rechenkern bucht
+RB-Einsätze mit Beginn vor 06:00 einen Tag **weiter**, weil das Quellsystem
+sie auf den Rufdienst-Beginntag schreibt und erst die Abrechnung sie auf den
+echten Kalendertag zieht. Diese App speichert sie (per Zeitstempel) schon auf
+dem echten Tag. Der Adapter datiert sie deshalb einen Tag **zurück**, damit
+die Verschiebung des Moduls sie wieder genau dorthin bringt. Das stellt
+nebenbei die Monatszuordnung von 734/735 richtig, die am unverschobenen
+Datum hängt. Wer Nachteinsätze am Dienstbeginn-Tag erfasst, stellt das in den
+Einstellungen um (`cfg.nachtBuchung`).
+
+**Tageswerte sind Marginalbeiträge.** Der Überstundenzuschlag ist wochenweise
+definiert (mit Blick in die Folgewoche) und lässt sich gar nicht tageweise
+ausrechnen. `tagesAnteil()` bildet deshalb „Monat mit dem Tag" minus „Monat
+ohne den Tag". Deshalb deckt `gehaltEintraege()` auch 10 Tage vor und 13 Tage
+nach dem Monat ab – sonst fehlt der Wochenlogik ihr Kontext. Kosten: rund
+1 ms je Neuberechnung der Leiste, 4 ms für die Monatsansicht.
+
+**Was die App zusätzlich zum Modul leistet:** Grundvergütung (LA 050, folgt
+nicht aus den Zeiten), die Einspringpauschale (LA 252, 50 €/Tag, manuelles
+Feld je Monat in `extras` / `tagesdoku_extra`, wandert auch ins Backup), und
+die Kennzeichnung unsicherer Posten:
+
+- **731** ist als *geschätzt* markiert – die Formel trifft die **erfassten**
+  Überstunden exakt, ausgezahlt wird durch Freizeitausgleich teils weniger.
+- **753/754** sind als *bisher nur an einem Monat belegt* markiert.
+- **031 Urlaubsaufschlag ist bewusst nicht drin.** Bei Urlaubstagen zeigt die
+  App einen Hinweis statt einer Schätzung – im Tag-Tab und in der
+  Monatsansicht. Achtung beim Ändern: Urlaubstage erzeugen **keine**
+  Einträge, die Erkennung muss also über alle Kalendertage laufen, nicht nur
+  über die mit Einträgen (genau dieser Fehler war schon einmal drin).
+
+Der Nachtfenster-Wechsel (bis Feb 2026 21–6 Uhr, ab März 20–6) und die beiden
+Satz-Stände (Wechsel zum Leistungsmonat Juni 2026) stecken im Modul und
+werden über den Monat automatisch gewählt.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).
