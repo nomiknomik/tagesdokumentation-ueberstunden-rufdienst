@@ -421,8 +421,18 @@ Fachlogik-Anteil, siehe „Zwei parallele Dateien"):
   liefert nur den Durchschnittsfaktor. Beides von Hand überschreibbar.
 
 Die Formeln stammen aus dem Analyse-Repo
-`nomiknomik/tagesdokumentation-gehaltsberechnung` (`BERECHNUNG.md` kurz,
-`FORMELN.md` ausführlich). Kernpunkte für die Wartung:
+`nomiknomik/tagesdokumentation-gehaltsberechnung` – dort zuerst `STAND.md`
+lesen (Übergabestand und offene Punkte), dann `BERECHNUNG.md` (kurz) bzw.
+`FORMELN.md` (ausführlich).
+
+**Arbeitsteilung:** Die Herleitung der noch offenen Formeln läuft im Raw-Chat
+weiter, weil die Rohdaten (`data/raw/`) per `.gitignore` außerhalb von Git
+liegen und in einer Web-Session gar nicht vorhanden sind. Hier wird an der
+App weitergearbeitet. Kommt aus der Formelsuche ein Ergebnis, ist hier nur
+`gehaltMengen()` anzupassen und das `unsicher:true`-Flag der betroffenen
+Lohnart zu entfernen.
+
+Kernpunkte für die Wartung:
 
 - **Zwei Stundensätze**: der eigene (56,46 € / ab 06/2026 57,59 €) gilt nur
   für LA 734 und die Pauschalen 796/797; alle Zeit**zuschläge** (731, 735,
