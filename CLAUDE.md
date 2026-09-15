@@ -1,5 +1,27 @@
 # Projekt: Tagesdokumentation Überstunden & Rufdienst (Klinikum Freudenstadt)
 
+## Arbeitsweise: direkt auf main
+
+**Nutzer-Vorgabe (15.09.2026): Änderungen gehen direkt auf `main`, kein
+Feature-Branch, kein PR.** Grund: GitHub Pages liefert aus `main` aus, und
+nur so ist der Stand sofort auf dem Telefon sichtbar.
+
+Daraus folgt: `main` ist immer live. Vor jedem Push die App tatsächlich
+rendern und prüfen (Playwright gegen `app/index.html` genügt, siehe die
+Testläufe in der Versionshistorie unten) – ein kaputter Push ist hier kein
+roter CI-Lauf, sondern eine kaputte App in der Hand.
+
+Nach dem Push braucht Pages rund 30–60 Sekunden. Danach verifizieren, dass
+die neue Versionsnummer wirklich ausgeliefert wird:
+
+```
+curl -s https://nomiknomik.github.io/tagesdokumentation-ueberstunden-rufdienst/app/index.html | grep APP_VERSION
+```
+
+**Service-Worker-Cache nicht vergessen:** bei jeder Änderung an `app/`
+zusätzlich `CACHE` in `app/sw.js` hochzählen (`tagesdoku-vN`), sonst bekommen
+installierte PWAs den alten Stand aus dem Cache serviert.
+
 ## Versionsnummer im Footer
 `tagesdokumentation_erfassung.html` hat im Footer eine Versionsnummer
 („vX.Y · Alexander Zabelyshenskiy"), identisch in `build_html.py` gepflegt.
