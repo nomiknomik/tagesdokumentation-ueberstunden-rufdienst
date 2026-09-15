@@ -381,6 +381,17 @@ bereits hinterlegt, erfasst wird nur zusätzliche Aktivzeit).
   Bottom-Nav (nur im Tag-Tab sichtbar). `syncHeaderPad()` rechnet die Höhe der
   Leiste ins `main`-Padding ein; `bar.style.bottom` = Nav-Höhe.
 
+### PWA v1.13.1 – Ruhezeit-Vorbelegung zählte als Eingabe (15.09.2026)
+- Bug aus v1.13.0: `blank()` setzt `ruhezeit_eingehalten:'ja'`, und `hasContent()`
+  wertete jedes ausgefüllte Feld dieser Liste als Eingabe → jeder Tag, den man
+  seit v1.13.0 nur angetippt hatte, stand unter „Erfasste Tage" (im Backup des
+  Nutzers genau 14.09. und 15.09.).
+- **Fix**: `ruhezeit_eingehalten` zählt nur noch, wenn der Wert vom Default `'ja'`
+  abweicht. Zusätzlich räumt die App leere Tagesgerüste aktiv weg: beim
+  Tageswechsel (`renderDay()`, alter Tag ohne `hasContent`) und einmalig beim
+  Start – dadurch verschwinden auch die Altlasten früherer Versionen aus
+  `localStorage` (im Test: 16 gespeicherte Tage → 1).
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).

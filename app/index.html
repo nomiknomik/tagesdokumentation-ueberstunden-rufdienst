@@ -671,7 +671,13 @@ function renderRuhezeitStatus(){
 function renderDay(){
   const d = day();
   $('datum').value = cur;
-  if(lastRenderedDay !== cur){ expanded = new Set(); lastRenderedDay = cur; }
+  if(lastRenderedDay !== cur){
+    if(lastRenderedDay && days[lastRenderedDay] && !hasContent(lastRenderedDay)){
+      delete days[lastRenderedDay];        // nur angeschaut, nichts eingetragen
+      save(LS.days, days);
+    }
+    expanded = new Set(); lastRenderedDay = cur;
+  }
   if(!d.dienstart && !d.dienstart_manuell){
     const der = derive(cur);
     if(DUTY[der.code]){ d.dienstart = der.code; d.plan_dienstende ||= DUTY[der.code].end; d.dienstbeginn ||= DUTY[der.code].start; }
@@ -1023,8 +1029,10 @@ function hasContent(k){
   if(d.tats_dienstende) return true;
   if(d.einsaetze && d.einsaetze.length) return true;
   if(d.frn || d.dienstart_manuell) return true;
-  if(['erlaeuterung','grund_ueberstunden','angeordnet_durch','ruhezeit_eingehalten',
+  if(['erlaeuterung','grund_ueberstunden','angeordnet_durch',
       'gewuenschter_ausgleich','geplanter_ausgleichstag'].some(f => (d[f]||'').trim())) return true;
+  // 'ja' ist die Vorbelegung und damit keine Eingabe – nur ein Abweichen zaehlt
+  if(d.ruhezeit_eingehalten && d.ruhezeit_eingehalten !== 'ja') return true;
   // Dienstbeginn/Plan-Ende zaehlen nur, wenn sie von den Soll-Zeiten abweichen
   const soll = DUTY[derive(k).code];
   if(d.dienstbeginn    && (!soll || d.dienstbeginn    !== soll.start)) return true;
@@ -1255,7 +1263,7 @@ $('historyList').addEventListener('click', async e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.13.1';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){
@@ -1276,6 +1284,11 @@ function syncHeaderPad(){
 window.addEventListener('resize', syncHeaderPad);
 syncHeaderPad();
 showVersion();
+/* Beim Start leere Tagesgeruste aus frueheren Versionen wegraeumen */
+{
+  const leer = Object.keys(days).filter(k => k!==cur && !hasContent(k));
+  if(leer.length){ leer.forEach(k => delete days[k]); save(LS.days, days); }
+}
 renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
 $('checkUpdate').onclick = async ()=>{
   const info = $('updateInfo');
