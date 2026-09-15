@@ -83,6 +83,23 @@ section{display:none} section.on{display:block}
 .stamp.start{background:linear-gradient(135deg,#1a9a52,var(--color-success));box-shadow:0 10px 24px rgba(21,143,71,.26)}
 .stamp.stop{background:linear-gradient(135deg,#DD6A4E,var(--color-danger));box-shadow:0 10px 24px rgba(194,73,46,.28)}
 
+.daymeta{text-align:center;font-size:13px;line-height:18px;color:var(--color-text-secondary);margin:-4px 0 10px}
+.daymeta b{color:var(--color-text);font-weight:600}
+.weekstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--spacing-section)}
+.weekstrip button{border:1px solid transparent;background:var(--color-card);border-radius:12px;padding:6px 0 5px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--color-text-secondary);font-size:11px;line-height:14px}
+.weekstrip .num{font-size:15px;line-height:18px;font-weight:600;color:var(--color-text)}
+.weekstrip button.duty{border-color:var(--color-primary-light)}
+.weekstrip button.on{background:var(--color-primary);border-color:var(--color-primary)}
+.weekstrip button.on .num,.weekstrip button.on{color:#fff}
+.weekstrip .mark{width:5px;height:5px;border-radius:50%;background:transparent}
+.weekstrip button.done .mark{background:var(--color-success)}
+.weekstrip button.on.done .mark{background:#fff}
+
+.actionbar{position:fixed;left:0;right:0;z-index:15;padding:16px var(--spacing-page) 10px;
+  background:linear-gradient(180deg,rgba(250,245,236,0),var(--color-background) 60%)}
+.actionbar .btn{max-width:480px;margin:0 auto}
+
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
 .grid3 .field label{margin-bottom:4px;font-size:12px}
 .grid3 input{padding-left:6px;padding-right:6px;text-align:center}
@@ -182,6 +199,8 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <input type="date" id="datum">
     <button id="dNext"><span data-icon="chevronRight"></span></button>
   </div>
+  <div class="daymeta" id="dayMeta"></div>
+  <div class="weekstrip" id="weekStrip"></div>
   <button class="btn ghost" id="heuteBtn">Heute</button>
 
   <div class="duty" id="dutyBox">
@@ -241,7 +260,6 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="row"><label>Angeordnet durch</label><input id="angeordnet_durch"></div>
   </div>
 
-  <button class="btn" id="pdfBtn"><span data-icon="fileText"></span>PDF erzeugen</button>
   <button class="btn ghost" id="resetTag">Diesen Tag zurücksetzen</button>
 </section>
 
@@ -267,6 +285,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="archive"></span>Erfasste Tage</h2>
     <div class="list" id="historyList"><div class="li">Noch keine Tage erfasst.</div></div>
+    <div class="hint" id="historyInfo">Der Sammel-Druck fasst alle erfassten Tage eines Monats zu einer PDF zusammen – ein Blatt je Tag, Felder festgeschrieben.</div>
   </div>
 </section>
 
@@ -305,6 +324,10 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   </div>
 </section>
 </main>
+
+<div class="actionbar" id="actionbar">
+  <button class="btn" id="pdfBtn"><span data-icon="fileText"></span>PDF erzeugen</button>
+</div>
 
 <nav>
   <button data-tab="tag" class="on"><span data-icon="clock"></span>Tag</button>
@@ -444,7 +467,7 @@ const oaOf = k => (swap[k] !== undefined ? swap[k] : (plan[k] ? plan[k].oa : '')
 /* ---------- Tagesdaten ---------- */
 const blank = () => ({dienstart:'', dienstbeginn:'', plan_dienstende:'', tats_dienstende:'',
   grund_ueberstunden:'', frn:false, frn_kommentar:'', erlaeuterung:'', angeordnet_durch:'', einsaetze:[],
-  ruhezeit_eingehalten:'', gewuenschter_ausgleich:'', geplanter_ausgleichstag:''});
+  ruhezeit_eingehalten:'ja', gewuenschter_ausgleich:'', geplanter_ausgleichstag:''});
 let cur = iso(new Date());
 let lastRenderedDay = null;
 let expanded = new Set();
@@ -455,22 +478,30 @@ const persist = () => save(LS.days, days);
 const dec = t => { if(!t) return null; const [h,m]=t.split(':').map(Number); return h+m/60; };
 const fmt = v => (v===null||isNaN(v)) ? '' : v.toFixed(2);
 function calc(){
-  const d = day();
+  day();
+  const r = calcFor(cur);
+  r.dauern.forEach((v,i)=>{
+    const el = document.querySelector(`[data-dauer="${i}"]`);
+    if(el) el.value = v;
+  });
+  $('ueberstunden_std').value      = fmt(r.ue);
+  $('summe_inanspruchnahme').value = r.anzahl ? fmt(r.summe) : '';
+  $('anzahl_einsaetze').value      = r.anzahl || '';
+  $('ueberstunden_gesamt').value   = r.ue ? fmt(r.ue) : '';
+}
+/* Werte eines beliebigen Tages – ohne DOM, damit auch der Monats-Export rechnen kann */
+function calcFor(k){
+  const d = days[k] || blank();
   const p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
-  let ue = null;
-  if(p!==null && t!==null){ ue = t-p; }
+  const ue = (p!==null && t!==null) ? t-p : null;
   let summe=0, anzahl=0;
-  d.einsaetze.forEach((e,i)=>{
+  const dauern = (d.einsaetze||[]).map(e=>{
     const b=dec(e.beginn), en=dec(e.ende);
     if(b!==null && en!==null){ let x=en-b; if(x<0)x+=24; e.dauer=fmt(x); summe+=x; anzahl++; }
     else e.dauer='';
-    const el = document.querySelector(`[data-dauer="${i}"]`);
-    if(el) el.value = e.dauer;
+    return e.dauer;
   });
-  $('ueberstunden_std').value    = fmt(ue);
-  $('summe_inanspruchnahme').value = anzahl ? fmt(summe) : '';
-  $('anzahl_einsaetze').value      = anzahl || '';
-  $('ueberstunden_gesamt').value   = ue ? fmt(ue) : '';
+  return {ue, summe, anzahl, dauern};
 }
 
 /* ---------- UI ---------- */
@@ -478,6 +509,8 @@ const $ = id => document.getElementById(id);
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id===b.dataset.tab));
+  $('actionbar').style.display = b.dataset.tab==='tag' ? 'block' : 'none';
+  syncHeaderPad();
   if(b.dataset.tab==='plan'){ renderPlanList(); renderTeamList(); renderHistory(); }
 });
 
@@ -491,6 +524,35 @@ function renderDienstartOptions(){
 }
 renderDienstartOptions();
 $('grund_ueberstunden').innerHTML = optsWith(GRUND_OPTS, '');
+
+/* Wochentag + Heute/Gestern und der Wochenstreifen unter der Datumsleiste */
+function renderDayContext(){
+  const heute = iso(new Date());
+  const gestern = (()=>{ const d=new Date(); d.setDate(d.getDate()-1); return iso(d); })();
+  const [y,m,dd] = cur.split('-');
+  const rel = cur===heute ? 'Heute' : cur===gestern ? 'Gestern' : '';
+  $('dayMeta').innerHTML = `<b>${WDAY[new Date(cur+'T12:00:00').getDay()]}</b>, ${dd}.${m}.${y}` +
+    (rel ? ` · ${rel}` : '') + (isHoliday(cur) ? ' · Feiertag' : '');
+
+  const d0 = new Date(cur+'T12:00:00');
+  const mo = new Date(d0); mo.setDate(d0.getDate() - ((d0.getDay()+6)%7));   // Montag der Woche
+  const kurz = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+  let html = '';
+  for(let i=0;i<7;i++){
+    const t = new Date(mo); t.setDate(mo.getDate()+i);
+    const k = iso(t);
+    const code = derive(k).code;
+    const dienst = code && code!=='frei' && code!=='amb2' && code!=='amb4' && code!=='abwesend';
+    const cls = [k===cur?'on':'', hasContent(k)?'done':'', dienst?'duty':''].filter(Boolean).join(' ');
+    html += `<button class="${cls}" data-day="${k}"><span>${kurz[i]}</span><span class="num">${k.slice(8)}</span><span class="mark"></span></button>`;
+  }
+  $('weekStrip').innerHTML = html;
+  $('heuteBtn').style.display = cur===heute ? 'none' : 'block';   // nur noetig, wenn man woanders steht
+}
+$('weekStrip').addEventListener('click', e=>{
+  const b = e.target.closest('[data-day]'); if(!b) return;
+  cur = b.dataset.day; renderDay();
+});
 
 function renderDuty(){
   const d = derive(cur);
@@ -565,14 +627,34 @@ function offenerEinsatz(){
   for(let i=es.length-1; i>=0; i--) if(es[i].beginn && !es[i].ende) return i;
   return -1;
 }
+let timerId = null;
+function laufzeitText(beginn){
+  const [h,m] = beginn.split(':').map(Number);
+  const start = new Date(); start.setHours(h, m, 0, 0);
+  let sek = Math.floor((Date.now() - start) / 1000);
+  if(sek < 0) sek += 24*3600;                       // Einsatz über Mitternacht
+  const p2 = n => String(n).padStart(2,'0');
+  return `${p2(Math.floor(sek/3600))}:${p2(Math.floor(sek/60)%60)}:${p2(sek%60)}`;
+}
 function renderEinsatzBtn(){
   const i = offenerEinsatz();
   const btn = $('btnEinsatz');
   btn.classList.toggle('stop', i>=0);
   btn.classList.toggle('start', i<0);
   btn.querySelector('svg').innerHTML = ICONS[i>=0 ? 'square' : 'plus'];
-  $('lblEinsatz').innerHTML = (i>=0 ? 'Einsatz beenden' : 'Einsatz starten') +
-    `<small>${i>=0 ? 'läuft seit '+day().einsaetze[i].beginn+' Uhr' : 'Beginn = aktuelle Uhrzeit'}</small>`;
+  if(timerId){ clearInterval(timerId); timerId = null; }
+  if(i<0){
+    $('lblEinsatz').innerHTML = 'Einsatz starten<small>Beginn = aktuelle Uhrzeit</small>';
+    return;
+  }
+  const beginn = day().einsaetze[i].beginn;
+  const heute = cur === iso(new Date());
+  const tick = ()=>{
+    const sub = heute ? `läuft seit ${beginn} Uhr · ${laufzeitText(beginn)}` : `offen seit ${beginn} Uhr`;
+    $('lblEinsatz').innerHTML = `Einsatz beenden<small>${sub}</small>`;
+  };
+  tick();
+  if(heute) timerId = setInterval(tick, 1000);
 }
 
 const FIELDS = ['dienstbeginn','plan_dienstende','tats_dienstende','grund_ueberstunden',
@@ -615,7 +697,7 @@ function renderDay(){
   $('frnKommentar').value = d.frn_kommentar || '';
   $('frnKommentarRow').style.display = d.frn ? 'block' : 'none';
   $('lblGehen').textContent  = d.tats_dienstende || '–';
-  renderDuty(); renderEinsaetze(); renderRuhezeitStatus(); calc(); persist();
+  renderDayContext(); renderDuty(); renderEinsaetze(); renderRuhezeitStatus(); calc(); persist();
 }
 
 /* Feld-Bindings */
@@ -959,14 +1041,16 @@ function renderHistory(){
     if(ue) parts.push('Ü '+ue+'h');
     if(d.einsaetze && d.einsaetze.length) parts.push(d.einsaetze.length+' Einsatz');
     return `<div class="li" data-goto="${k}" style="cursor:pointer"><span>${k}</span><span style="display:flex;align-items:center;gap:8px"><span class="tag">${parts.join(' · ')||'erfasst'}</span>${icon('chevronRight')}</span></div>`;
-  }, 'Noch keine Tage erfasst.');
+  }, 'Noch keine Tage erfasst.',
+  (mk, ks)=>`<div style="padding:0 14px 12px"><button class="btn outline" style="font-size:14px;min-height:44px" data-monthpdf="${mk}">${icon('fileText')}Monat als Sammel-PDF</button></div>`);
 }
 $('historyList').addEventListener('click', e=>{
   const row = e.target.closest('[data-goto]'); if(!row) return;
   cur = row.dataset.goto;
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on', x.dataset.tab==='tag'));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id==='tag'));
-  renderDay();
+  $('actionbar').style.display = 'block';
+  renderDay(); syncHeaderPad();
 });
 function updateStorageInfo(){
   let bytes = 0;
@@ -1047,55 +1131,132 @@ $('planList').addEventListener('click', async e=>{
 });
 
 /* ---------- PDF ---------- */
+/* Vorlage nur einmal laden und danach aus dem Speicher befuellen */
+let pdfTemplate = null;
+async function loadTemplate(){
+  if(!pdfTemplate){
+    const res = await fetch('Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf');
+    pdfTemplate = await res.arrayBuffer();
+  }
+  return pdfTemplate.slice(0);
+}
+
+/* Plausibilitaetspruefung – gibt Hinweistexte zurueck, blockiert nichts */
+function pruefeTag(k){
+  const d = days[k]; if(!d) return [];
+  const w = [];
+  if(d.frn && !(d.frn_kommentar||'').trim()) w.push('FRN ist angehakt, aber ohne Kommentar.');
+  const es = d.einsaetze || [];
+  es.forEach((e,i)=>{
+    const n = i+1;
+    if(e.beginn && !e.ende) w.push(`Einsatz ${n}: kein Ende eingetragen.`);
+    if(!e.beginn && e.ende) w.push(`Einsatz ${n}: kein Beginn eingetragen.`);
+    if(e.beginn && e.ende){
+      const b=dec(e.beginn), en=dec(e.ende);
+      let x = en-b; if(x<0) x+=24;
+      if(x > 12) w.push(`Einsatz ${n}: ${fmt(x)} h – bitte Zeiten prüfen.`);
+    }
+    if((e.art||'').startsWith('Operation') && !(e.fallnr||'').trim())
+      w.push(`Einsatz ${n} (Operation): Fallnummer fehlt.`);
+    if(!e.art) w.push(`Einsatz ${n}: keine Art der Inanspruchnahme gewählt.`);
+  });
+  for(let i=0;i<es.length;i++){
+    for(let j=i+1;j<es.length;j++){
+      const a=es[i], b=es[j];
+      if(a.beginn&&a.ende&&b.beginn&&b.ende){
+        const a1=dec(a.beginn),a2=dec(a.ende),b1=dec(b.beginn),b2=dec(b.ende);
+        if(a2>a1 && b2>b1 && a1 < b2 && b1 < a2) w.push(`Einsätze ${i+1} und ${j+1} überschneiden sich.`);
+      }
+    }
+  }
+  if(es.length > 8) w.push(`${es.length} Einsätze erfasst – das Formular hat nur 8 Zeilen, die übrigen fehlen im PDF.`);
+  return w;
+}
+
+/* Ein Tagesblatt erzeugen; flatten = Felder festschreiben (fuer den Monats-Sammeldruck) */
+async function buildTagesPdf(k, flatten){
+  const d = days[k] || blank();
+  const r = calcFor(k);
+  const pdfDoc = await PDFLib.PDFDocument.load(await loadTemplate());
+  const form = pdfDoc.getForm();
+  const [y,m,dd] = k.split('-');
+  const vals = {
+    name_vorname: cfg.name, personalnummer: cfg.pnr, funktion: cfg.funktion,
+    klinik_abteilung: cfg.klinik, datum: `${dd}.${m}.${y}`,
+    dienstart: DUTY[d.dienstart] ? DUTY[d.dienstart].label : '',
+    dienstbeginn: d.dienstbeginn, plan_dienstende: d.plan_dienstende,
+    tats_dienstende: d.tats_dienstende, ueberstunden_std: fmt(r.ue),
+    grund_ueberstunden: d.grund_ueberstunden, erlaeuterung: d.erlaeuterung,
+    angeordnet_durch: d.angeordnet_durch,
+    summe_inanspruchnahme: r.anzahl ? fmt(r.summe) : '',
+    anzahl_einsaetze: String(r.anzahl || ''),
+    ueberstunden_gesamt: r.ue ? fmt(r.ue) : '',
+    ruhezeit_eingehalten: d.ruhezeit_eingehalten,
+    gewuenschter_ausgleich: d.gewuenschter_ausgleich,
+    geplanter_ausgleichstag: d.geplanter_ausgleichstag
+  };
+  (d.einsaetze||[]).slice(0,8).forEach((e,i)=>{
+    const n = i+1;
+    vals[`rufdienst_${n}_beginn`]=e.beginn||''; vals[`rufdienst_${n}_ende`]=e.ende||'';
+    vals[`rufdienst_${n}_dauer`]=e.dauer||'';   vals[`rufdienst_${n}_art`]=e.art||'';
+    vals[`rufdienst_${n}_grund_anlass`]=e.grund_anlass||''; vals[`rufdienst_${n}_fallnr`]=e.fallnr||'';
+  });
+  Object.entries(vals).forEach(([id,v])=>{
+    try{ const f = form.getTextField(id); f.setFontSize(id==='klinik_abteilung'?6.5:8); f.setText(v||''); }catch(e){}
+  });
+  form.updateFieldAppearances();
+  if(flatten) form.flatten();
+  return pdfDoc;
+}
+
+async function teilePdf(bytes, fname, titel){
+  const blob = new Blob([bytes],{type:'application/pdf'});
+  const file = new File([blob], fname, {type:'application/pdf'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    await navigator.share({files:[file], title: titel || fname});
+  }else{
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = fname; a.click();
+  }
+}
+
 $('pdfBtn').onclick = async ()=>{
   try{
-    const d = day();
-    if(d.frn && !(d.frn_kommentar||'').trim()){ alert('Bitte bei FRN einen Kommentar eintragen.'); return; }
-    const res = await fetch('Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf');
-    const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
-    const form = pdfDoc.getForm();
-    const [y,m,dd] = cur.split('-');
-    const vals = {
-      name_vorname: cfg.name, personalnummer: cfg.pnr, funktion: cfg.funktion,
-      klinik_abteilung: cfg.klinik, datum: `${dd}.${m}.${y}`,
-      dienstart: DUTY[d.dienstart] ? DUTY[d.dienstart].label : '',
-      dienstbeginn: d.dienstbeginn, plan_dienstende: d.plan_dienstende,
-      tats_dienstende: d.tats_dienstende, ueberstunden_std: $('ueberstunden_std').value,
-      grund_ueberstunden: d.grund_ueberstunden, erlaeuterung: d.erlaeuterung,
-      angeordnet_durch: d.angeordnet_durch,
-      summe_inanspruchnahme: $('summe_inanspruchnahme').value,
-      anzahl_einsaetze: String($('anzahl_einsaetze').value||''),
-      ueberstunden_gesamt: $('ueberstunden_gesamt').value,
-      ruhezeit_eingehalten: d.ruhezeit_eingehalten,
-      gewuenschter_ausgleich: d.gewuenschter_ausgleich,
-      geplanter_ausgleichstag: d.geplanter_ausgleichstag
-    };
-    d.einsaetze.slice(0,8).forEach((e,i)=>{
-      const n = i+1;
-      vals[`rufdienst_${n}_beginn`]=e.beginn||''; vals[`rufdienst_${n}_ende`]=e.ende||'';
-      vals[`rufdienst_${n}_dauer`]=e.dauer||'';   vals[`rufdienst_${n}_art`]=e.art||'';
-      vals[`rufdienst_${n}_grund_anlass`]=e.grund_anlass||''; vals[`rufdienst_${n}_fallnr`]=e.fallnr||'';
-    });
-    Object.entries(vals).forEach(([id,v])=>{
-      try{ const f = form.getTextField(id); f.setFontSize(id==='klinik_abteilung'?6.5:8); f.setText(v||''); }catch(e){}
-    });
-    form.updateFieldAppearances();
-    const bytes = await pdfDoc.save();
-    const blob = new Blob([bytes],{type:'application/pdf'});
-    const fname = `Tagesdokumentation_${cur}.pdf`;
-    const file = new File([blob], fname, {type:'application/pdf'});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:fname});
-    }else{
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = fname; a.click();
-    }
-  }catch(err){ alert('Fehler beim Erzeugen der PDF: ' + err.message); }
+    const w = pruefeTag(cur);
+    if(w.length && !confirm('Bitte prüfen:\n\n• ' + w.join('\n• ') + '\n\nPDF trotzdem erzeugen?')) return;
+    const pdfDoc = await buildTagesPdf(cur, false);
+    await teilePdf(await pdfDoc.save(), `Tagesdokumentation_${cur}.pdf`);
+  }catch(err){ if(err.name!=='AbortError') alert('Fehler beim Erzeugen der PDF: ' + err.message); }
 };
 
+/* Sammel-PDF: alle erfassten Tage eines Monats, ein Blatt je Tag */
+async function monatsPdf(mk, info){
+  const keys = Object.keys(days).filter(k => k.slice(0,7)===mk && hasContent(k)).sort();
+  if(!keys.length){ if(info) info.innerHTML = '<span class="note">Für diesen Monat ist nichts erfasst.</span>'; return; }
+  const alleWarnungen = keys.flatMap(k => pruefeTag(k).map(t => `${k}: ${t}`));
+  if(alleWarnungen.length && !confirm('Bitte prüfen:\n\n• ' + alleWarnungen.slice(0,12).join('\n• ') +
+      (alleWarnungen.length>12 ? `\n• … und ${alleWarnungen.length-12} weitere` : '') +
+      '\n\nSammel-PDF trotzdem erzeugen?')) return;
+  if(info) info.innerHTML = `<span class="ok">Erzeuge ${keys.length} Blätter …</span>`;
+  const out = await PDFLib.PDFDocument.create();
+  for(const k of keys){
+    const doc = await buildTagesPdf(k, true);
+    const pages = await out.copyPages(doc, doc.getPageIndices());
+    pages.forEach(pg => out.addPage(pg));
+  }
+  await teilePdf(await out.save(), `Tagesdokumentation_${mk}.pdf`, monthLabel(mk));
+  if(info) info.innerHTML = `<span class="ok">${monthLabel(mk)}: ${keys.length} Tage als Sammel-PDF erzeugt.</span>`;
+}
+$('historyList').addEventListener('click', async e=>{
+  const btn = e.target.closest('[data-monthpdf]'); if(!btn) return;
+  e.preventDefault();
+  try{ await monatsPdf(btn.dataset.monthpdf, $('historyInfo')); }
+  catch(err){ if(err.name!=='AbortError') $('historyInfo').innerHTML = `<span class="note">Fehler: ${err.message}</span>`; }
+});
+
 /* ---------- Start ---------- */
-const APP_VERSION = '1.12.2';
-const APP_BUILD   = '13.09.2026';
+const APP_VERSION = '1.13.0';
+const APP_BUILD   = '15.09.2026';
 
 function showVersion(){
   $('appVersion').textContent = 'v' + APP_VERSION;
@@ -1106,8 +1267,11 @@ function showVersion(){
 function syncHeaderPad(){
   const nav = document.querySelector('nav');
   const main = document.querySelector('main');
+  const bar = $('actionbar');
+  bar.style.bottom = nav.offsetHeight + 'px';
+  const barH = bar.style.display === 'none' ? 0 : bar.offsetHeight;
   main.style.paddingTop = (document.querySelector('header').offsetHeight + 16) + 'px';
-  main.style.paddingBottom = (nav.offsetHeight + 24) + 'px';
+  main.style.paddingBottom = (nav.offsetHeight + barH + 24) + 'px';
 }
 window.addEventListener('resize', syncHeaderPad);
 syncHeaderPad();

@@ -345,6 +345,42 @@ Nachvollziehbarkeit für künftige Sessions:
   keinen Verlaufseintrag mehr an. `resetTag` speichert jetzt und rendert den
   Verlauf neu.
 
+### PWA v1.13.0 – Monats-Sammel-PDF, Prüfhinweise, Tages-Kontext (15.09.2026)
+Nach einer Verbesserungsrunde mit dem Nutzer umgesetzt (bewusst NICHT umgesetzt:
+Kommen-Stempel, Verrechnung Rufdienst in „Überstunden gesamt", Liste offener
+Tage, Dark Mode, Kennzahl-Kacheln, Default-Datum „gestern" – jeweils vom
+Nutzer abgelehnt; die Überstunden sind im Klinik-System über die Dienstart
+bereits hinterlegt, erfasst wird nur zusätzliche Aktivzeit).
+- **Ruhezeit**: `blank()` setzt `ruhezeit_eingehalten:'ja'` – im Haus immer
+  eingehalten, Dropdown bleibt änderbar.
+- **Rechnen ohne DOM**: neue Funktion `calcFor(k)` liefert `{ue, summe, anzahl,
+  dauern}` für einen beliebigen Tag; `calc()` schreibt davon nur noch in die
+  Felder. Voraussetzung für den Monats-Export.
+- **PDF-Erzeugung refaktoriert**: `loadTemplate()` (Vorlage einmal laden),
+  `buildTagesPdf(k, flatten)` (ein Blatt für einen beliebigen Tag),
+  `teilePdf(bytes, name)` (Share bzw. Download).
+- **Monats-Sammel-PDF**: Button „Monat als Sammel-PDF" in jeder Monatsgruppe
+  von „Erfasste Tage" (`data-monthpdf`, `monatsPdf()`): alle Tage mit
+  `hasContent()` werden **geflattet** (`form.flatten()`) und per `copyPages()`
+  zu EINER Datei `Tagesdokumentation_<JJJJ-MM>.pdf` zusammengefügt – ein Blatt
+  je Tag. Flatten ist nötig, weil sonst 67 gleichnamige Formularfelder je Seite
+  kollidieren. Das Einzel-PDF bleibt unverändert ausfüllbar.
+- **Plausibilitätsprüfung** `pruefeTag(k)`: Einsatz ohne Ende/Beginn, Dauer
+  > 12 h, Operation ohne Fallnummer, fehlende Art, Überschneidungen, > 8
+  Einsätze, FRN ohne Kommentar. Wird vor Einzel- UND Sammel-PDF als
+  `confirm()` gezeigt und blockiert nichts.
+- **Live-Timer**: `renderEinsatzBtn()` startet bei laufendem Einsatz ein
+  `setInterval` (`timerId`, `laufzeitText()`) und zeigt „läuft seit hh:mm ·
+  00:12:45"; an anderen Tagen nur „offen seit hh:mm" (kein Timer).
+- **Tages-Kontext** `renderDayContext()`: Zeile „Dienstag, 15.09.2026 · Heute"
+  (auch „Gestern"/„Feiertag") plus **Wochenstreifen** Mo–So (`#weekStrip`):
+  aktiver Tag gefüllt, grüner Punkt = erfasst (`hasContent`), Rahmen = eigener
+  Dienst; Antippen wechselt den Tag. Der „Heute"-Button wird nur noch
+  eingeblendet, wenn man nicht auf heute steht.
+- **Aktionsleiste** `#actionbar`: „PDF erzeugen" sitzt jetzt fest über der
+  Bottom-Nav (nur im Tag-Tab sichtbar). `syncHeaderPad()` rechnet die Höhe der
+  Leiste ins `main`-Padding ein; `bar.style.bottom` = Nav-Höhe.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).
