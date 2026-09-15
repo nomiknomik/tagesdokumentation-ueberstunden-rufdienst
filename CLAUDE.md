@@ -466,6 +466,38 @@ Kernpunkte für die Wartung:
 Nebenbei repariert: das `phone`-Icon hatte einen ungültigen SVG-Pfad
 (`a2 0 0 1` statt `a2 2 0 0 1`) und wurde vom Browser verworfen.
 
+### PWA v1.15.0 – Verdienst als klebende Leiste unten (15.09.2026)
+
+Die Verdienstanzeige ist von einer Karte am Ende des Tag-Tabs zu einer
+**klebenden Leiste** geworden, die dort sitzt, wo vorher „PDF erzeugen" war.
+Der PDF-Button ist dafür in den normalen Seitenfluss gewandert (hinter die
+Zusammenfassung, vor „Diesen Tag zurücksetzen") und behält seine ID, das
+Klick-Handling bleibt unverändert.
+
+Verhalten: kompakt ein Einzeiler (Label · Betrag · Netto · Chevron, Höhe wie
+vorher der Button). Steht die Seite ganz unten, klappt die Leiste automatisch
+komplett auf und zeigt die Aufschlüsselung. Tippen auf den Kopf scrollt ans
+Seitenende bzw. wieder nach oben.
+
+Drei Dinge, die beim Nachbauen leicht schiefgehen:
+
+- **Kein eigener Auf/Zu-Zustand.** Das Aufklappen hängt allein am Scrollstand
+  (`geldBarPruefen()`: `scrollHeight - scrollY - innerHeight <= 8`). Ein
+  zusätzlicher Toggle-Zustand würde sich mit dem Scrollen beißen – deshalb
+  scrollt der Tap auf den Kopf nur, statt selbst zu schalten.
+- **`syncHeaderPad()` reserviert die AUFGEKLAPPTE Höhe**, nicht die aktuelle
+  (`gbHead.offsetHeight + gbBody.scrollHeight`, gedeckelt auf 60 vh wie die
+  CSS-`max-height`). Sonst verdeckt die Leiste genau dann Inhalt, wenn sie
+  unten aufklappt. `gbBody.scrollHeight` liefert die Inhaltshöhe auch bei
+  `max-height:0`.
+- **`renderTagGeld()` läuft bei jedem Tastendruck** (via `calc()`) und ändert
+  die Zeilenzahl, also auch die Leistenhöhe. Deshalb `syncHeaderPadSoon()`
+  statt `syncHeaderPad()` – das bündelt die Layout-Messungen auf einen Frame.
+
+Beim Messen im Test beachten: Smooth-Scroll und die `max-height`-Transition
+laufen nacheinander, zusammen gut 750 ms. Wer früher misst, bekommt eine zu
+kleine Leistenhöhe – das ist kein Bug.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).

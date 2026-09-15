@@ -188,13 +188,31 @@ select{color-scheme:light}
 .money .big{font-size:32px;line-height:38px;font-weight:700;letter-spacing:-.5px}
 .money .net{font-size:15px;line-height:20px;color:rgba(255,255,255,.82);margin-top:2px}
 .money .sub{font-size:12px;line-height:16px;color:rgba(255,255,255,.65);margin-top:6px}
-.money .brk{margin-top:14px;border-top:1px solid rgba(255,255,255,.22);padding-top:10px}
-.money .brk .ln{display:flex;justify-content:space-between;gap:10px;font-size:13px;line-height:18px;
-  padding:3px 0;color:rgba(255,255,255,.9)}
-.money .brk .ln .amt{font-variant-numeric:tabular-nums;font-weight:600;flex:0 0 auto}
-.money .brk .ln.tot{border-top:1px solid rgba(255,255,255,.22);margin-top:6px;padding-top:8px;font-weight:700;color:#fff}
-.money .brk .ln.base{color:rgba(255,255,255,.7)}
 .money .warn{color:#FFD9A8}
+
+/* Verdienstleiste: klebt unten, wo vorher der PDF-Button war. Kompakt als
+   Einzeiler, klappt beim Scrollen ans Seitenende automatisch komplett auf. */
+.geldbar{max-width:480px;margin:0 auto;border-radius:var(--radius-card);color:#fff;
+  background:linear-gradient(135deg,#00636E,#0A7480);box-shadow:0 10px 28px rgba(0,99,110,.32)}
+.gbhead{width:100%;border:0;background:transparent;color:inherit;display:flex;align-items:center;
+  gap:12px;padding:9px 16px;min-height:var(--button-height);text-align:left;border-radius:var(--radius-card)}
+.gbhead .lbl{flex:1;min-width:0;font-size:13px;line-height:17px;font-weight:600;color:rgba(255,255,255,.78)}
+.gbhead .vals{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 auto}
+.gbhead .amt{font-size:20px;line-height:24px;font-weight:700;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.gbhead .net{font-size:12px;line-height:16px;color:rgba(255,255,255,.72);font-variant-numeric:tabular-nums}
+.gbhead .ic{width:16px;height:16px;flex:0 0 auto;color:rgba(255,255,255,.6);transition:transform .2s ease}
+.geldbar.open .gbhead .ic{transform:rotate(180deg)}
+.gbbody{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.geldbar.open .gbbody{max-height:60vh;overflow-y:auto}
+.gbinner{padding:10px 16px 14px;border-top:1px solid rgba(255,255,255,.22);margin:0 16px 0;
+  padding-left:0;padding-right:0}
+.gbinner .ln{display:flex;justify-content:space-between;gap:10px;font-size:13px;line-height:18px;
+  padding:3px 0;color:rgba(255,255,255,.9)}
+.gbinner .ln .amt{font-variant-numeric:tabular-nums;font-weight:600;flex:0 0 auto}
+.gbinner .ln.tot{border-top:1px solid rgba(255,255,255,.22);margin-top:6px;padding-top:8px;font-weight:700;color:#fff}
+.gbinner .ln.base{color:rgba(255,255,255,.7)}
+.gbinner .hint{color:rgba(255,255,255,.62)}
+.gbinner .warn{color:#FFD9A8}
 
 .patab{width:100%;border-collapse:collapse;font-size:13px;line-height:18px}
 .patab th{text-align:left;font-weight:600;color:var(--color-text-muted);font-size:11px;
@@ -286,14 +304,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="row"><label>Angeordnet durch</label><input id="angeordnet_durch"></div>
   </div>
 
-  <div class="card money" id="tagGeldCard">
-    <h2><span data-icon="euro"></span>Verdienst an diesem Tag</h2>
-    <div class="big" id="tgBrutto">–</div>
-    <div class="net" id="tgNetto"></div>
-    <div class="sub" id="tgHinweis"></div>
-    <div class="brk" id="tgAufschluesselung"></div>
-  </div>
-
+  <button class="btn" id="pdfBtn"><span data-icon="fileText"></span>PDF erzeugen</button>
   <button class="btn ghost" id="resetTag">Diesen Tag zurücksetzen</button>
 </section>
 
@@ -399,7 +410,14 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 </main>
 
 <div class="actionbar" id="actionbar">
-  <button class="btn" id="pdfBtn"><span data-icon="fileText"></span>PDF erzeugen</button>
+  <div class="geldbar" id="geldBar">
+    <button class="gbhead" id="gbHead">
+      <span class="lbl" id="gbLabel">Verdienst</span>
+      <span class="vals"><span class="amt" id="gbBrutto">–</span><span class="net" id="gbNetto"></span></span>
+      <span data-icon="chevronUp"></span>
+    </button>
+    <div class="gbbody" id="gbBody"><div class="gbinner" id="gbLines"></div></div>
+  </div>
 </div>
 
 <nav>
@@ -417,6 +435,7 @@ const ICONS = {
   calendar:'<rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>',
   chevronLeft:'<polyline points="15 18 9 12 15 6"></polyline>',
   chevronRight:'<polyline points="9 18 15 12 9 6"></polyline>',
+  chevronUp:'<polyline points="18 15 12 9 6 15"></polyline>',
   clock:'<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',
   square:'<rect x="3" y="3" width="18" height="18" rx="2"></rect>',
   star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
@@ -1580,7 +1599,7 @@ function nettoFaktoren(){
           quelle: quelle.length ? quelle.join(', ') : 'Standardannahme'};
 }
 
-/* ---------- Anzeige: Verdienst an einem Tag ---------- */
+/* ---------- Anzeige: Verdienstleiste unten am Tag-Tab ---------- */
 function renderTagGeld(){
   const mengen = gehaltMengen([nrIso(tagNr(cur) - 1), cur])[cur];
   const {zeilen, brutto} = gehaltTag(cur, mengen);
@@ -1589,25 +1608,46 @@ function renderTagGeld(){
   const [y,m] = cur.split('-').map(Number);
   const tageImMonat = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const grundAnteil = t.grund / tageImMonat;
+  const dt = new Date(tagNr(cur)*86400000);
 
-  $('tgBrutto').textContent = eur(brutto);
-  $('tgNetto').textContent  = brutto > 0
-    ? `≈ ${eur0(brutto * nf.grenz/100)} netto (${Math.round(nf.grenz)} % Grenzfaktor)` : '';
-  $('tgHinweis').textContent = brutto > 0
-    ? 'Zusätzlich zur Grundvergütung – wird zwei Monate später abgerechnet.'
-    : 'Noch nichts eingetragen, was zusätzlich vergütet wird.';
+  $('gbLabel').innerHTML = `Verdienst <span style="opacity:.72">`
+    + `${WDAY[dt.getUTCDay()].slice(0,2)} ${pad(dt.getUTCDate())}.${pad(dt.getUTCMonth()+1)}.</span>`;
+  $('gbBrutto').textContent = eur(brutto);
+  $('gbNetto').textContent  = brutto > 0 ? `≈ ${eur0(brutto * nf.grenz/100)} netto` : '';
 
   const ln = (txt, amt, cls='') => `<div class="ln ${cls}"><span>${txt}</span><span class="amt">${amt}</span></div>`;
   let html = zeilen.map(z=> ln(
       `${z.kurz}${z.unsicher ? '<span class="warn"> *</span>' : ''} `
       + `<span style="opacity:.6">${menge2(round2(z.menge), z.einheit)}</span>`,
       eur(z.betrag))).join('');
+  if(!zeilen.length)
+    html += `<div class="ln"><span>Noch nichts eingetragen, was zusätzlich vergütet wird.</span></div>`;
   html += ln('Grundvergütung (Tagesanteil)', eur(grundAnteil), 'base');
   html += ln('Tagessumme brutto', eur(brutto + grundAnteil), 'tot');
+  const noten = [];
+  if(brutto > 0) noten.push(`Zuschläge und Rufdienste werden zwei Monate später abgerechnet `
+    + `(Netto mit ${Math.round(nf.grenz)} % Grenzfaktor geschätzt).`);
   if(zeilen.some(z=>z.unsicher))
-    html += `<div class="sub warn">* Formel noch nicht auf allen Monaten bestätigt – Wert kann abweichen.</div>`;
-  $('tgAufschluesselung').innerHTML = html;
+    noten.push('<span class="warn">*</span> Formel noch nicht auf allen Monaten bestätigt – Wert kann abweichen.');
+  if(noten.length) html += `<div class="hint">${noten.join('<br>')}</div>`;
+  $('gbLines').innerHTML = html;
+  syncHeaderPadSoon();
 }
+
+/* Die Leiste klappt auf, sobald die Seite ganz unten steht - und nur dann.
+   Tippen auf den Kopf scrollt ans Ende (bzw. wieder nach oben), statt einen
+   eigenen Auf-/Zu-Zustand zu fuehren, der sich mit dem Scrollen beissen wuerde. */
+function geldBarPruefen(){
+  const bar = $('geldBar');
+  if(!bar || $('actionbar').style.display === 'none') return;
+  const rest = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+  bar.classList.toggle('open', rest <= 8);
+}
+window.addEventListener('scroll', geldBarPruefen, {passive:true});
+$('gbHead').onclick = ()=>{
+  const offen = $('geldBar').classList.contains('open');
+  window.scrollTo({top: offen ? 0 : document.documentElement.scrollHeight, behavior:'smooth'});
+};
 const round2 = x => Math.round(x*100)/100;
 
 /* ---------- Anzeige: Monatsvorschau ---------- */
@@ -1778,7 +1818,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.14.0';
+const APP_VERSION = '1.15.0';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){
@@ -1792,9 +1832,25 @@ function syncHeaderPad(){
   const main = document.querySelector('main');
   const bar = $('actionbar');
   bar.style.bottom = nav.offsetHeight + 'px';
-  const barH = bar.style.display === 'none' ? 0 : bar.offsetHeight;
+  /* Reserviert wird immer die AUFGEKLAPPTE Hoehe, nicht die aktuelle: sonst
+     verdeckt die Leiste genau dann Inhalt, wenn sie unten aufklappt. */
+  let barH = 0;
+  if(bar.style.display !== 'none'){
+    const cs = getComputedStyle(bar);
+    const koerper = $('gbBody');
+    barH = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + $('gbHead').offsetHeight
+         + (koerper ? Math.min(koerper.scrollHeight, window.innerHeight * 0.6) : 0);
+  }
   main.style.paddingTop = (document.querySelector('header').offsetHeight + 16) + 'px';
   main.style.paddingBottom = (nav.offsetHeight + barH + 24) + 'px';
+  geldBarPruefen();
+}
+/* Buendelt mehrere Aufrufe pro Frame - calc() laeuft bei jedem Tastendruck */
+let padAngefordert = false;
+function syncHeaderPadSoon(){
+  if(padAngefordert) return;
+  padAngefordert = true;
+  requestAnimationFrame(()=>{ padAngefordert = false; syncHeaderPad(); });
 }
 window.addEventListener('resize', syncHeaderPad);
 syncHeaderPad();
