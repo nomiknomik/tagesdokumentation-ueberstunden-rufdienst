@@ -647,3 +647,20 @@ hat Breite 0.
    "Regeldienst (Di–Fr, AMB4)" (Desktop-Tool) bzw. "Regeldienst (Di–Fr)"
    (PWA) – bereits erledigt und gepusht (Desktop-Commit `5af1987b`,
    PWA-Commit `03d5d531`).
+
+### PWA v1.16.2 – neues App-Icon (15.09.2026)
+Das alte Icon war eine flache Teal-Kachel mit weissem Uhr-Umriss. Neu:
+heller Creme-Hintergrund (wie `--color-background`), darum ein **24-Stunden-Ring**,
+dessen Segmente die Dienstlage einfaerben (Bereitschaft blass-petrol,
+Regeldienst petrol, Aktivzeit gruen), in der Mitte ein weisses Zifferblatt mit
+Ziffern 12/3/6/9 und Zeigern auf 16:05 (planmaessiges Dienstende).
+- Erzeugt von `make_icons.py` (Pillow, 4x Supersampling – PIL zeichnet ohne
+  Antialiasing). Aendern heisst: Skript anpassen, `python3 make_icons.py`,
+  nicht die PNGs von Hand bearbeiten.
+- Farben/Zeigerstand stehen als Konstanten oben im Skript; die Segmentliste
+  `SEGMENTS` hat genau 24 Eintraege (Index = Stunde, 0 Uhr oben).
+- Ring-Aussendurchmesser bleibt bei 0,80 der Kantenlaenge, damit das Motiv in
+  der maskable-Safe-Zone liegt (Android beschneidet auf einen Kreis).
+- Icons stehen in der SHELL-Liste von `app/sw.js` und werden cache-first
+  ausgeliefert: bei jedem Icon-Wechsel `CACHE` hochzaehlen (hier v11 → v12),
+  sonst behalten installierte PWAs das alte Bild.
