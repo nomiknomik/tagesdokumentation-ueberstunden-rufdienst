@@ -170,7 +170,8 @@ select{color-scheme:light}
 .monthgroup[open] summary .ic{transform:rotate(90deg)}
 .monthgroup .list{padding:0 14px}
 
-.tag{font-size:12px;font-weight:600;padding:4px 8px;border-radius:999px;background:rgba(43,36,32,.06);color:var(--color-text-secondary)}
+.tag{font-size:12px;font-weight:600;padding:4px 8px;border-radius:999px;background:rgba(43,36,32,.06);color:var(--color-text-secondary);white-space:nowrap}
+.tag-eur{font-variant-numeric:tabular-nums;color:var(--color-primary);background:rgba(0,99,110,.09)}
 .tag-blue{background:rgba(37,99,235,.12);color:#1D4ED8}
 .tag-amber{background:rgba(180,83,9,.12);color:#92400E}
 .tag-red{background:rgba(194,73,46,.12);color:#9A3412}
@@ -179,6 +180,31 @@ select{color-scheme:light}
 .chk{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
 .chk input{width:22px;height:22px;accent-color:var(--color-primary)}
 .hint{font-size:12px;line-height:16px;color:var(--color-text-muted);margin-top:6px}
+
+.money{background:linear-gradient(135deg,#00636E,#0A7480);border:0;color:#fff;
+  box-shadow:0 10px 24px rgba(0,99,110,.26)}
+.money h2{color:#fff}
+.money h2 .ic{color:rgba(255,255,255,.8)}
+.money .big{font-size:32px;line-height:38px;font-weight:700;letter-spacing:-.5px}
+.money .net{font-size:15px;line-height:20px;color:rgba(255,255,255,.82);margin-top:2px}
+.money .sub{font-size:12px;line-height:16px;color:rgba(255,255,255,.65);margin-top:6px}
+.money .brk{margin-top:14px;border-top:1px solid rgba(255,255,255,.22);padding-top:10px}
+.money .brk .ln{display:flex;justify-content:space-between;gap:10px;font-size:13px;line-height:18px;
+  padding:3px 0;color:rgba(255,255,255,.9)}
+.money .brk .ln .amt{font-variant-numeric:tabular-nums;font-weight:600;flex:0 0 auto}
+.money .brk .ln.tot{border-top:1px solid rgba(255,255,255,.22);margin-top:6px;padding-top:8px;font-weight:700;color:#fff}
+.money .brk .ln.base{color:rgba(255,255,255,.7)}
+.money .warn{color:#FFD9A8}
+
+.patab{width:100%;border-collapse:collapse;font-size:13px;line-height:18px}
+.patab th{text-align:left;font-weight:600;color:var(--color-text-muted);font-size:11px;
+  text-transform:uppercase;letter-spacing:.4px;padding:0 0 6px}
+.patab th.r,.patab td.r{text-align:right}
+.patab td{padding:6px 0;border-top:1px solid var(--color-border);font-variant-numeric:tabular-nums}
+.patab td.la{color:var(--color-text-muted);font-variant-numeric:normal}
+.patab tr.sum td{border-top:2px solid var(--color-border);font-weight:700;padding-top:9px}
+.patab tr.sub td{color:var(--color-text-secondary)}
+.patab .u{color:var(--color-warning);font-weight:700}
 
 nav{display:flex;background:var(--color-card);border-top:1px solid var(--color-border);
   padding:8px 6px calc(8px + env(safe-area-inset-bottom));position:fixed;left:0;right:0;bottom:0;z-index:20;gap:4px}
@@ -260,7 +286,45 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="row"><label>Angeordnet durch</label><input id="angeordnet_durch"></div>
   </div>
 
+  <div class="card money" id="tagGeldCard">
+    <h2><span data-icon="euro"></span>Verdienst an diesem Tag</h2>
+    <div class="big" id="tgBrutto">–</div>
+    <div class="net" id="tgNetto"></div>
+    <div class="sub" id="tgHinweis"></div>
+    <div class="brk" id="tgAufschluesselung"></div>
+  </div>
+
   <button class="btn ghost" id="resetTag">Diesen Tag zurücksetzen</button>
+</section>
+
+<!-- ================= GEHALT ================= -->
+<section id="geld">
+  <div class="datebar">
+    <button id="mPrev"><span data-icon="chevronLeft"></span></button>
+    <input type="month" id="geldMonat">
+    <button id="mNext"><span data-icon="chevronRight"></span></button>
+  </div>
+  <div class="daymeta" id="geldMeta"></div>
+
+  <div class="card money">
+    <h2><span data-icon="euro"></span>Erwartete Abrechnung</h2>
+    <div class="big" id="gmBrutto">–</div>
+    <div class="net" id="gmNetto"></div>
+    <div class="sub" id="gmAbrechnung"></div>
+  </div>
+
+  <div class="card">
+    <h2><span data-icon="fileText"></span>Aufstellung je Lohnart</h2>
+    <div id="gmTabelle"></div>
+    <div class="hint" id="gmWarn"></div>
+    <button class="btn outline" id="gmCopy" style="margin-top:12px">Aufstellung als Text kopieren</button>
+    <div class="hint" id="gmCopyMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2><span data-icon="archive"></span>Tage in diesem Monat</h2>
+    <div class="list" id="gmTage"><div class="li">Keine erfassten Tage.</div></div>
+  </div>
 </section>
 
 <!-- ================= PLAN ================= -->
@@ -307,6 +371,15 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="hint">Steht der Nachname in der Spalte OÄ → Rufdienst. Steht das Kürzel in der Spalte Urlaub → abwesend. Sonst Regeldienst.</div>
   </div>
   <div class="card">
+    <h2><span data-icon="euro"></span>Netto-Schätzung</h2>
+    <div class="hint" style="margin-top:0">Trage aus alten Gehaltsabrechnungen Brutto und Netto ein – die App leitet daraus die Netto-Faktoren ab. Ab zwei Monaten wird zusätzlich der <b>Grenzfaktor</b> berechnet (was von einem zusätzlich verdienten Euro übrig bleibt); das ist der Wert, der für Zuschläge und Rufdienste zählt.</div>
+    <div id="nettoRefs" style="margin-top:10px"></div>
+    <button class="btn outline" id="nettoAdd" style="font-size:14px;min-height:44px">Monat hinzufügen</button>
+    <div class="row" style="margin-top:14px"><label>Grenzfaktor</label><input id="cfg_netto_grenz" inputmode="decimal" placeholder="55"></div>
+    <div class="row"><label>Schnitt gesamt</label><input id="cfg_netto_schnitt" inputmode="decimal" placeholder="52"></div>
+    <div class="hint" id="nettoInfo"></div>
+  </div>
+  <div class="card">
     <h2><span data-icon="save"></span>Daten</h2>
     <button class="btn outline" id="exportData">Alle Daten als JSON sichern</button>
     <button class="btn outline" id="importDataBtn" style="margin-top:8px">Backup aus JSON laden</button>
@@ -331,6 +404,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 
 <nav>
   <button data-tab="tag" class="on"><span data-icon="clock"></span>Tag</button>
+  <button data-tab="geld"><span data-icon="euro"></span>Gehalt</button>
   <button data-tab="plan"><span data-icon="calendar"></span>Dienstplan</button>
   <button data-tab="cfg"><span data-icon="settings"></span>Einstellungen</button>
 </nav>
@@ -359,7 +433,8 @@ const ICONS = {
   user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
   info:'<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>',
   refresh:'<polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>',
-  phone:'<path d="M22 16.92v3a2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path>'
+  euro:'<path d="M14.5 4.5a7 7 0 1 0 0 15"></path><line x1="3" y1="10" x2="12" y2="10"></line><line x1="3" y1="14" x2="12" y2="14"></line>',
+  phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path>'
 };
 function icon(name){
   return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
@@ -492,6 +567,7 @@ function calc(){
   $('summe_inanspruchnahme').value = r.anzahl ? fmt(r.summe) : '';
   $('anzahl_einsaetze').value      = r.anzahl || '';
   $('ueberstunden_gesamt').value   = r.ue ? fmt(r.ue) : '';
+  renderTagGeld();
 }
 /* Werte eines beliebigen Tages – ohne DOM, damit auch der Monats-Export rechnen kann */
 function calcFor(k){
@@ -516,6 +592,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   $('actionbar').style.display = b.dataset.tab==='tag' ? 'block' : 'none';
   syncHeaderPad();
   if(b.dataset.tab==='plan'){ renderPlanList(); renderTeamList(); renderHistory(); }
+  if(b.dataset.tab==='geld'){ geldMonat = cur.slice(0,7); renderGeldMonat(); }
 });
 
 const sel = $('dienstartSel');
@@ -850,6 +927,7 @@ $('importData').onchange = async e => {
     if(data.days && typeof data.days === 'object'){ days = data.days;  save(LS.days, days); }
     if(data.swap && typeof data.swap === 'object'){ swap = data.swap;  save(LS.swap, swap); }
     Object.entries(CFGMAP).forEach(([id,key])=> $(id).value = cfg[key] || '');
+    fuelleNettoFelder();
     expanded = new Set(); lastRenderedDay = null;
     renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDuty();
     msg.innerHTML = `<span class="ok">Backup geladen: ${nPlan} Plantage, ${nDays} erfasste Tage.</span>`;
@@ -1266,8 +1344,441 @@ $('historyList').addEventListener('click', async e=>{
   catch(err){ if(err.name!=='AbortError') $('historyInfo').innerHTML = `<span class="note">Fehler: ${err.message}</span>`; }
 });
 
+/* ================================================================
+   GEHALT – Verdienst je Tag und erwartete Monatsabrechnung
+   ----------------------------------------------------------------
+   Formeln und Belege: Repo tagesdokumentation-gehaltsberechnung,
+   BERECHNUNG.md (Kurzfassung) bzw. FORMELN.md (Herleitung).
+   Stand: 731/737/752 sind noch nicht auf allen Monaten exakt
+   bestaetigt und werden in der Anzeige mit * markiert.
+   ================================================================ */
+
+/* Tarifstufen – gilt ab dem jeweiligen Datum.
+   grund = Grundverguetung/Monat, std = eigener Stundensatz (Stufe 2),
+   ref  = Referenzstundensatz fuer Zeitzuschlaege (Tabellenentgelt Stufe 3). */
+const TARIF = [
+  {ab:'0000-01-01', grund: 9819.15, std:56.46, ref:60.94, refGeschaetzt:false},
+  {ab:'2026-06-01', grund:10015.53, std:57.59, ref:62.16, refGeschaetzt:true}
+];
+const tarifFuer = isoDate => TARIF.filter(t=>t.ab<=isoDate).pop() || TARIF[0];
+
+/* Lohnarten. pct = Prozentsatz, basis = Bezugsgroesse ('ref' oder 'std'),
+   einheit 'h' = je Stunde, 'd' = je Tag. unsicher = Formel noch offen. */
+const LOHNART = {
+  '731':{bez:'Überstundenzuschlag',       kurz:'Überstunden',      pct: 15, basis:'ref', einheit:'h', unsicher:true},
+  '734':{bez:'RBD-Aktivzeit',             kurz:'Rufdienst-Einsätze',pct:100,basis:'std', einheit:'h'},
+  '735':{bez:'Zuschlag RBD-Aktivzeit',    kurz:'Zuschlag Einsätze', pct: 15, basis:'ref', einheit:'h'},
+  '737':{bez:'RBD-Aktivzeit 0–6 Uhr',     kurz:'Einsatz 0–6 Uhr',   pct: 50, basis:'ref', einheit:'h', unsicher:true},
+  '752':{bez:'Sonntagsarbeit',            kurz:'Sonntag',           pct: 25, basis:'ref', einheit:'h', unsicher:true},
+  '790':{bez:'Nachtarbeit 21–6 Uhr',      kurz:'Nacht',             pct: 20, basis:'ref', einheit:'h'},
+  '791':{bez:'Samstagsarbeit 13–21 Uhr',  kurz:'Samstag',           pct: 20, basis:'ref', einheit:'h'},
+  '796':{bez:'RB-Pauschale Werktag',      kurz:'Rufdienst Werktag', pct:200, basis:'std', einheit:'d'},
+  '797':{bez:'RB-Pauschale Sa/So/Feiertag',kurz:'Rufdienst Wo-Ende',pct:400, basis:'std', einheit:'d'}
+};
+const LA_REIHE = ['796','797','734','735','737','790','791','752','731'];
+function satzFuer(la, isoDate){
+  const L = LOHNART[la], t = tarifFuer(isoDate);
+  return (L.basis==='ref' ? t.ref : t.std) * L.pct / 100;
+}
+
+/* Dienstarten, fuer die eine Rufbereitschafts-Tagespauschale anfaellt */
+const RUFDIENST_CODES = ['ZD1','ZD2','RBD','RBD2'];
+
+/* ---- Datums-/Zeitrechnung in UTC-Tagesnummern (DST-fest) ---- */
+const tagNr  = s => { const [y,m,d]=s.split('-').map(Number); return Date.UTC(y,m-1,d)/86400000; };
+const nrIso  = n => { const d=new Date(n*86400000);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; };
+const minVon = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+const ceilStd = h => h>1e-9 ? Math.ceil(h-1e-9) : 0;
+
+/* Ein Intervall an den Kalendertag-Grenzen aufteilen.
+   Das ist der Kern des ganzen Modells: ein Einsatz 18:00–02:52 ist
+   6,0 h am Starttag und 2,87 h am Folgetag – nicht 8,87 h am Starttag. */
+function teileAnMitternacht(tag0, vonMin, bisMin){
+  const out = []; let t = tag0, a = vonMin, b = bisMin;
+  while(a < b){
+    const cut = Math.min(b, 1440);
+    out.push({tag:t, von:a, bis:cut});
+    b -= 1440; a = 0; t += 1;
+  }
+  return out;
+}
+/* Ueberlappung eines Tagesabschnitts mit einem Zeitfenster (Minuten).
+   Das Fenster darf ueber Mitternacht gehen (fa > fb, z.B. 21–6 Uhr). */
+function fensterMin(von, bis, fa, fb){
+  if(fb > fa) return Math.max(0, Math.min(bis,fb) - Math.max(von,fa));
+  return Math.max(0, Math.min(bis,1440) - Math.max(von,fa))
+       + Math.max(0, Math.min(bis,fb)   - von);
+}
+
+/* Effektive Dauer der Einsaetze eines Tages nach TVöD §8 Abs. 3 Satz 4/5:
+   - Praesenz (Zeitart 111): JEDE Inanspruchnahme einzeln auf volle Std. auf
+   - Telefonisch (113): SUMME des Tages einmal auf volle Std. auf; die
+     Aufstockung faellt beim ersten Anruf an (so steht es auch in den
+     Rohdaten der Zeiterfassung: erster Anruf per KorrStd aufgestockt,
+     weitere Anrufe mit ihrer echten Dauer).
+   Liefert je Einsatz {startTag, startMin, rohStd, effStd, telefon}. */
+function einsatzDauern(k){
+  const d = days[k] || {};
+  const t0 = tagNr(k);
+  const roh = (d.einsaetze||[]).filter(e=>e.beginn && e.ende).map(e=>{
+    const a = minVon(e.beginn); let b = minVon(e.ende);
+    if(b <= a) b += 1440;
+    return {startTag:t0, startMin:a, rohStd:(b-a)/60,
+            telefon:String(e.art||'').startsWith('telefonisch')};
+  });
+  roh.filter(e=>!e.telefon).forEach(e=> e.effStd = ceilStd(e.rohStd));
+  const tel = roh.filter(e=>e.telefon).sort((x,y)=>x.startMin-y.startMin);
+  if(tel.length){
+    const summe = tel.reduce((s,e)=>s+e.rohStd, 0);
+    const zuschlag = ceilStd(summe) - summe;
+    tel.forEach((e,i)=> e.effStd = e.rohStd + (i===0 ? zuschlag : 0));
+  }
+  return roh;
+}
+
+/* Dienst-/Rufbereitschaftszeile eines Tages als Intervall.
+   Faellt auf einen erfassten Tag zurueck, sonst auf die Plan-Sollzeiten –
+   damit die Monatsvorschau auch Tage abdeckt, an denen noch nichts
+   eingetragen wurde (die Tagespauschale faellt trotzdem an). */
+function dienstIntervall(k){
+  const d = days[k];
+  const code = (d && d.dienstart) || derive(k).code;
+  if(!DUTY[code] || code==='FRN') return null;
+  const von = (d && d.dienstbeginn)    || DUTY[code].start;
+  const bis = (d && (d.tats_dienstende || d.plan_dienstende)) || DUTY[code].end;
+  if(!von || !bis) return null;
+  const a = minVon(von); let b = minVon(bis);
+  if(b <= a) b += 1440;
+  return {tag:tagNr(k), von:a, bis:b};
+}
+const rufdienstAn = k => {
+  const d = days[k];
+  return RUFDIENST_CODES.includes((d && d.dienstart) || derive(k).code);
+};
+
+/* Kern: Mengen je Lohnart und Kalendertag fuer eine Liste von Quelltagen.
+   Ergebnis: {isoTag: {731:.., 734:.., ...}} – Stunden bzw. Tage. */
+function gehaltMengen(quellTage){
+  const M = {};
+  const add = (tagN, la, menge) => {
+    if(menge <= 1e-9) return;
+    const k = nrIso(tagN);
+    (M[k] ||= {})[la] = (M[k][la] || 0) + menge;
+  };
+
+  quellTage.forEach(k=>{
+    /* --- alle Zeitintervalle des Tages, roh --- */
+    const roh = [];
+    const di = dienstIntervall(k);
+    if(di) roh.push(di);
+    const eins = einsatzDauern(k);
+    eins.forEach(e=> roh.push({tag:e.startTag, von:e.startMin, bis:e.startMin + e.rohStd*60}));
+
+    /* --- 790/791/752: rohe Uhrzeit, ALLE Zeitarten, nach Mitternacht geteilt
+           (§8 Abs. 1 – dieselbe Familie, die 790/791 exakt trifft) --- */
+    roh.forEach(iv=>{
+      teileAnMitternacht(iv.tag, iv.von, iv.bis).forEach(s=>{
+        const isoT = nrIso(s.tag);
+        const dow  = new Date(s.tag*86400000).getUTCDay();
+        const feiertag = isHoliday(isoT);
+        add(s.tag, '790', fensterMin(s.von, s.bis, 21*60, 6*60) / 60);
+        if(dow===6 && !feiertag) add(s.tag, '791', fensterMin(s.von, s.bis, 13*60, 21*60) / 60);
+        if(dow===0 && !feiertag) add(s.tag, '752', (s.bis - s.von) / 60);
+      });
+    });
+
+    /* --- 734/735: aufgerundete Aktivstunden, dem Starttag zugeordnet
+           737: derselbe aufgerundete Einsatz, aber ab Einsatzbeginn real
+           weiterlaufend, geschnitten mit dem Fenster 0–6 Uhr --- */
+    eins.forEach(e=>{
+      add(e.startTag, '734', e.effStd);
+      add(e.startTag, '735', e.effStd);
+      teileAnMitternacht(e.startTag, e.startMin, e.startMin + e.effStd*60).forEach(s=>{
+        add(s.tag, '737', fensterMin(s.von, s.bis, 0, 6*60) / 60);
+      });
+    });
+
+    /* --- 796/797: Tagespauschale, maßgebend ist der Tag, an dem die
+           Rufbereitschaft beginnt (§8 Abs. 3 Satz 3) --- */
+    if(rufdienstAn(k)){
+      const dow = new Date(tagNr(k)*86400000).getUTCDay();
+      add(tagNr(k), (dow===0 || dow===6 || isHoliday(k)) ? '797' : '796', 1);
+    }
+
+    /* --- 731: Überstunden = Ist-Ende minus Plan-Ende, nur positiv --- */
+    const ue = calcFor(k).ue;
+    if(ue !== null && ue > 0) add(tagNr(k), '731', ue);
+  });
+  return M;
+}
+
+/* Mengen -> Betraege. Der Satz richtet sich nach dem Tarifstand des Tages. */
+function gehaltTag(isoT, mengen){
+  const zeilen = [];
+  let brutto = 0;
+  LA_REIHE.forEach(la=>{
+    const menge = (mengen && mengen[la]) || 0;
+    if(menge <= 1e-9) return;
+    const satz = satzFuer(la, isoT);
+    const betrag = menge * satz;
+    brutto += betrag;
+    zeilen.push({la, menge, satz, betrag, ...LOHNART[la]});
+  });
+  return {zeilen, brutto};
+}
+
+/* Alle Tage, die fuer einen Zeitraum Quelle sein koennen: die erfassten
+   Tage plus alle Tage des Zielmonats (fuer Pauschalen aus dem Dienstplan)
+   plus der jeweilige Vortag (Einsatz ueber Mitternacht). */
+function quellTageFuer(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const letzter = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const start = tagNr(`${ym}-01`) - 1;          // Vortag: Einsatz ueber Mitternacht
+  const out = [];
+  for(let i=0;i<=letzter;i++) out.push(nrIso(start + i));
+  return out;
+}
+
+const eur = x => x.toLocaleString('de-DE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+const eur0 = x => Math.round(x).toLocaleString('de-DE') + ' €';
+const menge2 = (x, einheit) => einheit==='d'
+  ? x.toLocaleString('de-DE') + (x===1 ? ' Tag' : ' Tage')
+  : x.toLocaleString('de-DE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' h';
+
+/* ---------- Netto-Schaetzung ---------- */
+const parseNum = v => { const x = parseFloat(String(v??'').replace(/\./g,'').replace(',','.')); return isFinite(x) ? x : 0; };
+/* grenz   = was von einem zusaetzlich verdienten Euro netto bleibt
+             (relevant fuer Zuschlaege und Rufdienste)
+   schnitt = Netto-Anteil am gesamten Brutto inkl. Grundverguetung */
+function nettoFaktoren(){
+  const n = cfg.netto || {};
+  const refs = (n.refs||[]).filter(r=> parseNum(r.brutto)>0 && parseNum(r.netto)>0);
+  const manG = parseNum(n.grenz), manS = parseNum(n.schnitt);
+  let grenz = null, schnitt = null, quelle = [];
+
+  if(refs.length){
+    const sb = refs.reduce((a,r)=>a+parseNum(r.brutto),0);
+    const sn = refs.reduce((a,r)=>a+parseNum(r.netto),0);
+    schnitt = sn/sb*100;
+    quelle.push(refs.length + (refs.length===1 ? ' Referenzmonat' : ' Referenzmonate'));
+  }
+  if(refs.length>=2){
+    const xs = refs.map(r=>parseNum(r.brutto)), ys = refs.map(r=>parseNum(r.netto));
+    const mx = xs.reduce((a,b)=>a+b,0)/xs.length, my = ys.reduce((a,b)=>a+b,0)/ys.length;
+    let num=0, den=0;
+    xs.forEach((x,i)=>{ num += (x-mx)*(ys[i]-my); den += (x-mx)*(x-mx); });
+    if(den > 1){
+      const b = num/den*100;
+      if(b > 20 && b < 95) grenz = b;   // unplausible Steigungen verwerfen
+    }
+  }
+  if(manG > 0) { grenz = manG;   quelle.push('Grenzfaktor von Hand'); }
+  if(manS > 0) { schnitt = manS; quelle.push('Schnitt von Hand'); }
+  const geschaetzt = grenz===null || schnitt===null;
+  return {grenz: grenz ?? 55, schnitt: schnitt ?? 52, geschaetzt,
+          quelle: quelle.length ? quelle.join(', ') : 'Standardannahme'};
+}
+
+/* ---------- Anzeige: Verdienst an einem Tag ---------- */
+function renderTagGeld(){
+  const mengen = gehaltMengen([nrIso(tagNr(cur) - 1), cur])[cur];
+  const {zeilen, brutto} = gehaltTag(cur, mengen);
+  const nf = nettoFaktoren();
+  const t = tarifFuer(cur);
+  const [y,m] = cur.split('-').map(Number);
+  const tageImMonat = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const grundAnteil = t.grund / tageImMonat;
+
+  $('tgBrutto').textContent = eur(brutto);
+  $('tgNetto').textContent  = brutto > 0
+    ? `≈ ${eur0(brutto * nf.grenz/100)} netto (${Math.round(nf.grenz)} % Grenzfaktor)` : '';
+  $('tgHinweis').textContent = brutto > 0
+    ? 'Zusätzlich zur Grundvergütung – wird zwei Monate später abgerechnet.'
+    : 'Noch nichts eingetragen, was zusätzlich vergütet wird.';
+
+  const ln = (txt, amt, cls='') => `<div class="ln ${cls}"><span>${txt}</span><span class="amt">${amt}</span></div>`;
+  let html = zeilen.map(z=> ln(
+      `${z.kurz}${z.unsicher ? '<span class="warn"> *</span>' : ''} `
+      + `<span style="opacity:.6">${menge2(round2(z.menge), z.einheit)}</span>`,
+      eur(z.betrag))).join('');
+  html += ln('Grundvergütung (Tagesanteil)', eur(grundAnteil), 'base');
+  html += ln('Tagessumme brutto', eur(brutto + grundAnteil), 'tot');
+  if(zeilen.some(z=>z.unsicher))
+    html += `<div class="sub warn">* Formel noch nicht auf allen Monaten bestätigt – Wert kann abweichen.</div>`;
+  $('tgAufschluesselung').innerHTML = html;
+}
+const round2 = x => Math.round(x*100)/100;
+
+/* ---------- Anzeige: Monatsvorschau ---------- */
+let geldMonat = iso(new Date()).slice(0,7);
+const monatName = ym => {
+  const [y,m] = ym.split('-').map(Number);
+  return MONTHS[m-1].charAt(0).toUpperCase() + MONTHS[m-1].slice(1) + ' ' + y;
+};
+const plusMonate = (ym, n) => {
+  let [y,m] = ym.split('-').map(Number);
+  const t = (y*12 + m-1) + n;
+  return `${Math.floor(t/12)}-${pad(t%12 + 1)}`;
+};
+
+function monatsDaten(ym){
+  const alle = gehaltMengen(quellTageFuer(ym));
+  const tage = Object.keys(alle).filter(k=>k.startsWith(ym)).sort();
+  const summe = {}, proTag = {};
+  let brutto = 0;
+  tage.forEach(k=>{
+    const r = gehaltTag(k, alle[k]);
+    proTag[k] = r;
+    brutto += r.brutto;
+    r.zeilen.forEach(z=>{
+      const s = (summe[z.la] ||= {menge:0, betrag:0, ...LOHNART[z.la]});
+      s.menge += z.menge; s.betrag += z.betrag;
+    });
+  });
+  return {summe, proTag, tage, brutto, grund: tarifFuer(ym+'-15').grund};
+}
+
+function renderGeldMonat(){
+  $('geldMonat').value = geldMonat;
+  const {summe, proTag, tage, brutto, grund} = monatsDaten(geldMonat);
+  const nf = nettoFaktoren();
+  const t = tarifFuer(geldMonat+'-15');
+  const gesamt = brutto + grund;
+
+  $('geldMeta').innerHTML = `Leistungsmonat <b>${monatName(geldMonat)}</b> · `
+    + `${tage.length} ${tage.length===1?'Tag':'Tage'} mit Vergütung`;
+  $('gmBrutto').textContent = eur(gesamt);
+  $('gmNetto').textContent  = `≈ ${eur0(gesamt * nf.schnitt/100)} netto `
+    + `(${Math.round(nf.schnitt)} % – ${nf.quelle})`;
+  $('gmAbrechnung').innerHTML =
+    `Grundvergütung ${eur(grund)} kommt mit der Abrechnung ${monatName(geldMonat)}.<br>`
+    + `Die variablen ${eur(brutto)} erscheinen als Rückrechnung erst in der `
+    + `Abrechnung <b>${monatName(plusMonate(geldMonat, 2))}</b>.`;
+
+  const zeilen = LA_REIHE.filter(la=>summe[la]).map(la=>{
+    const z = summe[la];
+    return `<tr${z.unsicher?' class="sub"':''}>`
+      + `<td class="la">${la}${z.unsicher?'<span class="u"> *</span>':''}</td>`
+      + `<td>${z.bez}</td>`
+      + `<td class="r">${menge2(round2(z.menge), z.einheit)}</td>`
+      + `<td class="r">${eur(z.betrag)}</td></tr>`;
+  }).join('');
+  $('gmTabelle').innerHTML = `<table class="patab">
+    <tr><th>LA</th><th>Lohnart</th><th class="r">Menge</th><th class="r">Betrag</th></tr>
+    ${zeilen || '<tr><td colspan="4" style="color:var(--color-text-muted);padding:10px 0">Für diesen Monat ist nichts erfasst.</td></tr>'}
+    <tr class="sub"><td class="la">050</td><td>Grundvergütung</td><td class="r">1 Monat</td><td class="r">${eur(grund)}</td></tr>
+    <tr class="sum"><td></td><td>Brutto gesamt</td><td></td><td class="r">${eur(gesamt)}</td></tr>
+    </table>`;
+
+  const warn = [];
+  if(LA_REIHE.some(la=>summe[la] && summe[la].unsicher))
+    warn.push('* Für 731, 737 und 752 ist die genaue Zählweise noch nicht auf allen Vergleichsmonaten bestätigt – diese Zeilen sind Näherungen.');
+  if(t.refGeschaetzt)
+    warn.push(`Der Referenzstundensatz für Zuschläge (${t.ref.toLocaleString('de-DE',{minimumFractionDigits:2})} €) ist für diesen Zeitraum aus der Tarifsteigerung hochgerechnet, nicht aus einer Abrechnung belegt.`);
+  $('gmWarn').innerHTML = warn.join('<br>');
+
+  $('gmTage').innerHTML = tage.length ? tage.map(k=>{
+    const r = proTag[k];
+    const d = new Date(tagNr(k)*86400000);
+    const lbl = `${WDAY[d.getUTCDay()].slice(0,2)} ${pad(d.getUTCDate())}.${pad(d.getUTCMonth()+1)}.`;
+    const teile = r.zeilen.map(z=>z.kurz).join(' · ');
+    return `<div class="li" data-goto="${k}" style="cursor:pointer">
+      <span><b>${lbl}</b><div class="er-sub">${teile}</div></span>
+      <span style="display:flex;align-items:center;gap:8px"><span class="tag tag-eur">${eur0(r.brutto)}</span>${icon('chevronRight')}</span></div>`;
+  }).join('') : '<div class="li">Keine erfassten Tage.</div>';
+}
+
+function monatsText(ym){
+  const {summe, brutto, grund} = monatsDaten(ym);
+  const nf = nettoFaktoren();
+  const z = [`Erwartete Abrechnung – Leistungsmonat ${monatName(ym)}`,
+             `(variable Teile erscheinen in der Abrechnung ${monatName(plusMonate(ym,2))})`, ''];
+  LA_REIHE.filter(la=>summe[la]).forEach(la=>{
+    const s = summe[la];
+    z.push(`${la}  ${s.bez.padEnd(30)} ${menge2(round2(s.menge), s.einheit).padStart(12)}  ${eur(s.betrag).padStart(12)}`);
+  });
+  z.push(`050  ${'Grundvergütung'.padEnd(30)} ${'1 Monat'.padStart(12)}  ${eur(grund).padStart(12)}`);
+  z.push('');
+  z.push(`Brutto gesamt: ${eur(brutto + grund)}`);
+  z.push(`Netto geschätzt: ca. ${eur0((brutto + grund) * nf.schnitt/100)} (${Math.round(nf.schnitt)} %, ${nf.quelle})`);
+  return z.join('\n');
+}
+
+/* ---------- Bedienung ---------- */
+$('mPrev').onclick = ()=>{ geldMonat = plusMonate(geldMonat, -1); renderGeldMonat(); };
+$('mNext').onclick = ()=>{ geldMonat = plusMonate(geldMonat,  1); renderGeldMonat(); };
+$('geldMonat').onchange = e=>{ if(e.target.value){ geldMonat = e.target.value; renderGeldMonat(); } };
+$('gmTage').addEventListener('click', e=>{
+  const row = e.target.closest('[data-goto]'); if(!row) return;
+  cur = row.dataset.goto;
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on', x.dataset.tab==='tag'));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id==='tag'));
+  $('actionbar').style.display = 'block';
+  renderDay(); syncHeaderPad();
+});
+$('gmCopy').onclick = async ()=>{
+  const txt = monatsText(geldMonat);
+  try{ await navigator.clipboard.writeText(txt); $('gmCopyMsg').textContent = 'In die Zwischenablage kopiert.'; }
+  catch(err){ $('gmCopyMsg').innerHTML = `<pre style="white-space:pre-wrap;user-select:all">${txt.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</pre>`; }
+};
+
+/* ---------- Netto-Referenzmonate in den Einstellungen ---------- */
+function renderNettoRefs(){
+  const refs = (cfg.netto && cfg.netto.refs) || [];
+  $('nettoRefs').innerHTML = refs.length ? refs.map((r,i)=>`
+    <div class="einsatz">
+      <div class="hd"><b>Referenzmonat ${i+1}</b>
+        <button class="del" data-nettodel="${i}">${icon('square')}Löschen</button></div>
+      <div class="grid3">
+        <div class="field"><label>Monat</label><input type="month" data-nettof="monat" data-i="${i}" value="${r.monat||''}"></div>
+        <div class="field"><label>Brutto €</label><input inputmode="decimal" data-nettof="brutto" data-i="${i}" value="${r.brutto||''}"></div>
+        <div class="field"><label>Netto €</label><input inputmode="decimal" data-nettof="netto" data-i="${i}" value="${r.netto||''}"></div>
+      </div>
+    </div>`).join('') : '<div class="hint" style="margin-top:0">Noch keine Referenzmonate – es gelten die Standardannahmen.</div>';
+
+  nettoInfoAktualisieren();
+}
+/* Nur den Hinweistext neu schreiben. WICHTIG: beim Tippen darf NICHT die
+   ganze Liste neu gebaut werden - das wuerde das Eingabefeld, in dem gerade
+   getippt wird, mitten im Tippen ersetzen (beim Wechsel Brutto -> Netto
+   feuert zuerst das change-Event des Brutto-Feldes). */
+function nettoInfoAktualisieren(){
+  const nf = nettoFaktoren();
+  $('nettoInfo').innerHTML = `Aktuell verwendet: <b>${Math.round(nf.grenz)} %</b> Grenzfaktor, `
+    + `<b>${Math.round(nf.schnitt)} %</b> im Schnitt (Quelle: ${nf.quelle}).`
+    + (nf.geschaetzt ? '<br>⚠️ Teilweise Standardannahme: rund 42 % Steuer plus Soli, über den Beitragsbemessungsgrenzen fallen auf Zuschläge kaum noch Sozialabgaben an. Mit zwei echten Abrechnungsmonaten wird der Wert deutlich genauer.' : '');
+}
+$('nettoAdd').onclick = ()=>{
+  cfg.netto ||= {refs:[]}; cfg.netto.refs ||= [];
+  cfg.netto.refs.push({monat:'', brutto:'', netto:''});
+  save(LS.cfg, cfg); renderNettoRefs();
+};
+$('nettoRefs').addEventListener('input', e=>{
+  const f = e.target.dataset.nettof; if(!f) return;
+  cfg.netto.refs[+e.target.dataset.i][f] = e.target.value;
+  save(LS.cfg, cfg); nettoInfoAktualisieren();
+});
+$('nettoRefs').addEventListener('change', e=>{
+  if(!e.target.dataset.nettof) return;
+  nettoInfoAktualisieren(); renderTagGeld();
+});
+$('nettoRefs').addEventListener('click', e=>{
+  const b = e.target.closest('[data-nettodel]'); if(!b) return;
+  cfg.netto.refs.splice(+b.dataset.nettodel, 1);
+  save(LS.cfg, cfg); renderNettoRefs(); renderTagGeld();
+});
+['cfg_netto_grenz','cfg_netto_schnitt'].forEach(id=>{
+  $(id).addEventListener('change', ()=>{
+    cfg.netto ||= {refs:[]};
+    cfg.netto.grenz   = $('cfg_netto_grenz').value;
+    cfg.netto.schnitt = $('cfg_netto_schnitt').value;
+    save(LS.cfg, cfg); nettoInfoAktualisieren(); renderTagGeld();
+  });
+});
+
 /* ---------- Start ---------- */
-const APP_VERSION = '1.13.2';
+const APP_VERSION = '1.14.0';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){
@@ -1293,6 +1804,12 @@ showVersion();
   const leer = Object.keys(days).filter(k => !hasContent(k));
   if(leer.length){ leer.forEach(k => delete days[k]); persist(); }
 }
+function fuelleNettoFelder(){
+  $('cfg_netto_grenz').value   = (cfg.netto && cfg.netto.grenz)   || '';
+  $('cfg_netto_schnitt').value = (cfg.netto && cfg.netto.schnitt) || '';
+  renderNettoRefs();
+}
+fuelleNettoFelder();
 renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
 $('checkUpdate').onclick = async ()=>{
   const info = $('updateInfo');

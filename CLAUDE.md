@@ -402,6 +402,60 @@ bereits hinterlegt, erfasst wird nur zusätzliche Aktivzeit).
 - Der Diensttausch (`swap`) bleibt davon unberührt – er gehört zum Dienstplan,
   nicht zu den Eingaben im Tab „Tag".
 
+### PWA v1.14.0 – Gehalt: Tagesverdienst + Monatsvorschau (15.09.2026)
+
+Neu, **PWA-exklusiv** (nicht ins Desktop-Tool nachziehen – kein geteilter
+Fachlogik-Anteil, siehe „Zwei parallele Dateien"):
+
+- **Karte „Verdienst an diesem Tag"** unten im Tag-Tab: rechnet aus den
+  eingetragenen Daten live Brutto und geschätztes Netto, mit Aufschlüsselung
+  je Lohnart plus Tagesanteil der Grundvergütung.
+- **Neuer Tab „Gehalt"**: monatsweise Aufstellung je Lohnart (Menge, Betrag),
+  Brutto/Netto gesamt, Hinweis auf die **Zwei-Monats-Verzögerung**
+  (Leistungsmonat → Abrechnungsmonat), Tagesliste und Export als Text zum
+  Abgleich mit dem Papier-Zettel.
+- **Netto-Schätzung** in den Einstellungen: beliebig viele Referenzmonate
+  (Brutto/Netto aus alten Abrechnungen). Ab zwei Monaten wird per linearer
+  Regression der **Grenzfaktor** bestimmt (was von einem zusätzlich
+  verdienten Euro bleibt – der relevante Wert für Zuschläge); ein Monat
+  liefert nur den Durchschnittsfaktor. Beides von Hand überschreibbar.
+
+Die Formeln stammen aus dem Analyse-Repo
+`nomiknomik/tagesdokumentation-gehaltsberechnung` (`BERECHNUNG.md` kurz,
+`FORMELN.md` ausführlich). Kernpunkte für die Wartung:
+
+- **Zwei Stundensätze**: der eigene (56,46 € / ab 06/2026 57,59 €) gilt nur
+  für LA 734 und die Pauschalen 796/797; alle Zeit**zuschläge** (731, 735,
+  737, 752, 790, 791) bemessen sich am **Referenzstundensatz 60,94 €**
+  (Tabellenentgelt Stufe 3, §8 Abs. 1 Satz 2 TVöD). Im Code: `TARIF[].std`
+  vs. `TARIF[].ref`, Zuschläge als Prozentsätze in `LOHNART`.
+  ⚠️ `ref` ab 06/2026 (62,16 €) ist hochgerechnet, nicht belegt –
+  `refGeschaetzt:true` blendet dafür einen Hinweis ein.
+- **Mitternachts-Aufteilung** (`teileAnMitternacht`) ist der Kern: ein
+  Einsatz 18:00–02:52 ist 6,0 h am Starttag und 2,87 h am Folgetag. Ohne das
+  stimmt kein einziger Zuschlag.
+- **Rundung** nach §8 Abs. 3: Präsenz-Einsätze einzeln auf volle Stunde auf,
+  Telefonate als Tagessumme einmal (`einsatzDauern`). Diese Rundung zählt
+  fürs Entgelt (734/735), **nicht** für die Zeitfenster-Zuordnung von
+  790/791/752 – die rechnen mit roher Uhrzeit.
+- **731, 737 und 752 sind noch nicht auf allen Vergleichsmonaten bestätigt**
+  und in der App mit `*` markiert (`LOHNART[].unsicher`). Sobald die
+  Variantensuche im Analyse-Repo (`src/hypothesen.py`) einen Treffer liefert,
+  hier `gehaltMengen()` nachziehen und das Flag entfernen.
+- **DST-Falle umgangen**: alle Tages-/Zeitrechnungen laufen über UTC-Tages-
+  nummern (`tagNr`/`nrIso`) und Minuten seit Mitternacht, nicht über lokale
+  `Date`-Arithmetik – sonst hätten die Umstellungstage 23 bzw. 25 Stunden.
+- **Fallstrick beim Formular-Rendering** (hier schon einmal reingelaufen):
+  In den Netto-Referenzzeilen darf das `change`-Event NICHT die ganze Liste
+  neu bauen. Beim Wechsel von Brutto nach Netto feuert zuerst `change` auf
+  dem Brutto-Feld – ein `innerHTML`-Neuaufbau ersetzt dann das Netto-Feld
+  mitten im Tippen und die Eingabe geht verloren. Nur
+  `nettoInfoAktualisieren()` aufrufen, Rebuild ausschließlich bei
+  Hinzufügen/Löschen.
+
+Nebenbei repariert: das `phone`-Icon hatte einen ungültigen SVG-Pfad
+(`a2 0 0 1` statt `a2 2 0 0 1`) und wurde vom Browser verworfen.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).
