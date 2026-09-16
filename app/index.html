@@ -297,6 +297,10 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <div class="field"><label>Ist-Ende</label><input type="time" id="tats_dienstende"></div>
       <div class="field"><label>Überstunden</label><input id="ueberstunden_std" readonly></div>
       <div class="field full"><label>Grund der Überstunden</label><select id="grund_ueberstunden"></select></div>
+      <div class="field full" id="grundSonstigesRow" style="display:none">
+        <label>Begründung (Pflicht)</label>
+        <input id="grundSonstiges" placeholder="z.B. Nachbereitung einer Notoperation">
+      </div>
     </div>
     <div class="chk"><input type="checkbox" id="frn"><label style="flex:1">FRN – frei nach Dienst</label></div>
     <div class="field full" id="frnKommentarRow" style="display:none">
@@ -844,6 +848,7 @@ function renderDay(){
   }
   $('grund_ueberstunden').innerHTML = optsWith(GRUND_OPTS, d.grund_ueberstunden || '');
   FIELDS.forEach(f => $(f).value = d[f] || '');
+  syncGrundSonstiges();
   $('frn').checked = !!d.frn;
   $('frnKommentar').value = d.frn_kommentar || '';
   $('frnKommentarRow').style.display = d.frn ? 'block' : 'none';
@@ -856,8 +861,28 @@ FIELDS.forEach(f => $(f).oninput = $(f).onchange = e => {
   day()[f] = e.target.value;
   if(f==='tats_dienstende') $('lblGehen').textContent = e.target.value || '–';
   if(f==='ruhezeit_eingehalten') renderRuhezeitStatus();
+  if(f==='grund_ueberstunden') syncGrundSonstiges();
+  if(f==='erlaeuterung') $('grundSonstiges').value = e.target.value;
   calc(); persist();
 });
+/* "Sonstiges (bitte erläutern)" verlangt eine Begründung. Das Formular hat
+   dafuer nur die Erläuterung - im Desktop-Tool steht sie direkt unter dem
+   Grund, in dieser App weiter unten in der Zusammenfassung. Deshalb hier ein
+   zweites Eingabefeld auf DASSELBE Feld d.erlaeuterung; beide Ansichten
+   werden synchron gehalten. */
+const GRUND_SONSTIGES = 'Sonstiges (bitte erläutern)';
+function syncGrundSonstiges(){
+  const d = day();
+  const an = d.grund_ueberstunden === GRUND_SONSTIGES;
+  $('grundSonstigesRow').style.display = an ? 'block' : 'none';
+  if(an) $('grundSonstiges').value = d.erlaeuterung || '';
+}
+$('grundSonstiges').oninput = e => {
+  day().erlaeuterung = e.target.value;
+  $('erlaeuterung').value = e.target.value;
+  persist();
+};
+
 function syncFrnText(){
   const d = day();
   let txt = (d.erlaeuterung||'').replace(/FRN – frei nach Dienst(: [^–]*)?/,'').replace(/\s*–\s*–\s*/g,' – ').replace(/^\s*–\s*|\s*–\s*$/g,'').trim();
@@ -867,6 +892,7 @@ function syncFrnText(){
   }
   d.erlaeuterung = txt;
   $('erlaeuterung').value = txt;
+  $('grundSonstiges').value = txt;
 }
 $('frn').onchange = e => {
   const d = day(); d.frn = e.target.checked;
@@ -1304,6 +1330,8 @@ function pruefeTag(k){
   const d = days[k]; if(!d) return [];
   const w = [];
   if(d.frn && !(d.frn_kommentar||'').trim()) w.push('FRN ist angehakt, aber ohne Kommentar.');
+  if(d.grund_ueberstunden === GRUND_SONSTIGES && !(d.erlaeuterung||'').trim())
+    w.push('Grund „Sonstiges" gewählt, aber keine Begründung eingetragen.');
   const es = d.einsaetze || [];
   es.forEach((e,i)=>{
     const n = i+1;
@@ -1363,6 +1391,16 @@ async function buildTagesPdf(k, flatten){
     try{ const f = form.getTextField(id); f.setFontSize(id==='klinik_abteilung'?6.5:8); f.setText(v||''); }catch(e){}
   });
   form.updateFieldAppearances();
+
+  /* Heutiges Datum links unten bei "Datum, Unterschrift Ärztin/Arzt".
+     Dafuer gibt es kein Formularfeld - der Text wird direkt auf die Seite
+     gezeichnet, Position und Groesse wie im Desktop-Tool. Muss VOR dem
+     Flatten passieren und wandert so auch in die Monats-Sammel-PDF. */
+  const helv = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const heute = new Date();
+  const heuteStr = `${pad(heute.getDate())}.${pad(heute.getMonth()+1)}.${heute.getFullYear()}`;
+  pdfDoc.getPage(0).drawText(heuteStr, {x:40, y:148, size:9, font:helv, color:PDFLib.rgb(0,0,0)});
+
   if(flatten) form.flatten();
   return pdfDoc;
 }
@@ -2348,7 +2386,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.18.0';
+const APP_VERSION = '1.19.0';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){

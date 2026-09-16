@@ -688,6 +688,36 @@ diese beiden Einträge existieren ausschließlich, um das PWA-exklusive
 PDF-Bogen erzeugt) zwei verwirrende Optionen ohne Funktion. Wer das anders
 sieht, ergänzt `DIENSTART_OPTIONS` in `tagesdokumentation_erfassung.html`.
 
+### PWA v1.19.0 – Unterschriftsdatum + Begründung bei „Sonstiges" (16.09.2026)
+
+Beides gab es im Desktop-Tool schon, die PWA hat nachgezogen.
+
+**Heutiges Datum links unten bei „Datum, Unterschrift Ärztin/Arzt".** Dafür
+gibt es **kein Formularfeld** – der Text wird mit `page.drawText()` direkt auf
+die Seite gezeichnet, Position und Größe identisch zum Desktop-Tool
+(`x:40, y:148, size:9`). Muss **vor** `form.flatten()` passieren; so wandert
+er auch in die Monats-Sammel-PDF, die die Seiten kopiert.
+
+**„Sonstiges (bitte erläutern)" blendet ein Begründungsfeld ein.** Das
+Formular hat dafür nur die Erläuterung, und die steht im Desktop-Tool direkt
+unter dem Grund, in der PWA aber weit unten in der Zusammenfassung. Deshalb
+gibt es jetzt ein zweites Eingabefeld direkt unter dem Dropdown, das auf
+**dasselbe** `d.erlaeuterung` schreibt. Drei Stellen halten die beiden
+Ansichten synchron: das neue Feld, die Bindung in `FIELDS` und
+`syncFrnText()` (das schreibt ebenfalls in die Erläuterung). Wer eine vierte
+Schreibstelle ergänzt, muss dort mitziehen.
+
+`pruefeTag()` warnt vor dem PDF, wenn „Sonstiges" gewählt, aber nichts
+eingetragen ist – analog zum FRN-Kommentar.
+
+**Zum Testen von PDF-Änderungen:** cdnjs ist aus der Web-Session heraus
+gesperrt, `PDFLib` ist dort also undefiniert. Lösung im Test:
+`page.route('**/pdf-lib*.js', …)` mit der lokal per npm installierten
+`pdf-lib/dist/pdf-lib.min.js` beantworten. Das erzeugte PDF lässt sich dann
+mit `pdfjs-dist` rendern und die Textpositionen prüfen – so wurde
+verifiziert, dass das Datum wirklich über der Unterschriftszeile landet
+(y=148 gegen „Datum, Unterschrift Ärztin / Arzt" bei y=136).
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).
