@@ -649,6 +649,45 @@ Auszahlung kann abweichen" (Formel gegen die Dienstübersichten bestätigt,
 Die Einspringpauschale ist im Quellsystem Zeitart 99 „Holen aus dem frei",
 die im Export fehlt – deshalb weiterhin ein Handfeld.
 
+### PWA v1.18.0 – Fortbildung und Krankheit (16.09.2026)
+
+Die beiden Lücken im Überstundenkonto sind geschlossen. `FB` (Fortbildung,
+Zeitart 707) und `KRANK` (715) sind neue Dienstarten **ohne** `start`/`end` –
+dadurch erzeugen sie keine Dienstzeile und wirken nur im Konto. Zusammen mit
+Urlaub (705, aus der Urlaubsspalte des Dienstplans) und FRN (957) deckt die
+App jetzt alle Zeitarten ab, die der Rechenkern kennt.
+
+Die Zuordnung steht in einer Tabelle:
+
+```js
+const ABWESENHEIT = {FRN:'957', FB:'707', KRANK:'715'};
+```
+
+**Zwei Fallen, die dabei aufgefallen sind:**
+
+1. **Die FRN-Checkbox ist keine Abwesenheit.** Sie sitzt im Kommen/Gehen-Block
+   und schreibt nur einen Vermerk in die Erläuterung („FRN – frei nach Dienst:
+   Nachtoperation bis 03:40"), gehört also zu einem **gearbeiteten** Tag. In
+   v1.17.0 wurde sie als 957 gewertet – ein solcher Tag bekam damit sowohl
+   eine Dienstzeile als auch eine Abwesenheitszeile und zählte im Ist doppelt.
+   Abwesenheit hängt jetzt ausschließlich an der **Dienstart**. Nicht wieder
+   zusammenführen.
+2. **Abwesenheitstage unterdrücken die Dienstzeile hart.** Wer eine Dienstart
+   auf `KRANK` umstellt, hat oft noch alte Zeiten im Formular stehen
+   (`dienstbeginn`, `tats_dienstende`). Ohne die Unterdrückung entstünde daraus
+   eine Dienstzeile und der Tag zählte doppelt.
+
+Abwesenheiten werden nur an Werktagen (Mo–Fr, kein BW-Feiertag) gebucht – an
+einem freien Samstag gibt es nichts zu erfüllen – und mit der Nettozeit des
+Regeldienstes, den der Tag sonst gehabt hätte (Mo 8,42 h, Di–Fr 8,17 h).
+
+**Bewusste Abweichung vom Desktop-Tool:** `FB` und `KRANK` gibt es **nur in
+der PWA**. Die „IMMER BEIDE pflegen"-Regel zielt auf geteilte fachliche Logik;
+diese beiden Einträge existieren ausschließlich, um das PWA-exklusive
+Überstundenkonto zu füttern, und wären im Desktop-Tool (das nur den
+PDF-Bogen erzeugt) zwei verwirrende Optionen ohne Funktion. Wer das anders
+sieht, ergänzt `DIENSTART_OPTIONS` in `tagesdokumentation_erfassung.html`.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).

@@ -510,13 +510,17 @@ const DUTY = {
   FRN: {label:'FRN (frei nach Dienst)',                start:'07:25', end:'16:05'},
   BD:  {label:'Bereitschaftsdienst'},
   SPD: {label:'Spätdienst'},
-  SONST:{label:'Sonstiges'}
+  SONST:{label:'Sonstiges'},
+  /* Abwesenheiten: absichtlich ohne start/end - sie erzeugen keine
+     Dienstzeile und wirken nur im Ueberstundenkonto (siehe ABWESENHEIT). */
+  FB:  {label:'Fortbildung'},
+  KRANK:{label:'Krank'}
 };
 /* Auswahl je Funktion/Position – wie DIENSTART_OPTIONS im Desktop-Tool */
 const DIENSTART_BY_FUNKTION = {
-  'Oberarzt':            ['amb2','amb4','ZD1','ZD2','RBD','RBD2','FRN'],
-  'Assistenzarzt':       ['BD','SPD','SONST'],
-  'Physician Assistant': ['BD','SPD','SONST']
+  'Oberarzt':            ['amb2','amb4','ZD1','ZD2','RBD','RBD2','FRN','FB','KRANK'],
+  'Assistenzarzt':       ['BD','SPD','SONST','FB','KRANK'],
+  'Physician Assistant': ['BD','SPD','SONST','FB','KRANK']
 };
 const ART_OPTS  = ['','telefonisch (RBT)','Präsenz im Haus (RBA)','Operation / Eingriff','Sonstiges'];
 const GRUND_OPTS = ['','Notfall / Notoperation','OP-Verlängerung','Aufnahme / Ambulanz',
@@ -1824,6 +1828,9 @@ if (typeof window !== 'undefined') window.GEHALT = GEHALT;
    bauen wir die Eintragsliste hier selbst. */
 
 const RUFDIENST_CODES = ['ZD1','ZD2','RBD','RBD2'];
+/* Dienstart -> Zeitart des Ueberstundenkontos. Urlaub (705) kommt nicht von
+   hier, sondern aus der Urlaubsspalte des Dienstplans. */
+const ABWESENHEIT = {FRN:'957', FB:'707', KRANK:'715'};
 
 /* Grundverguetung (LA 050) - nicht Teil des Rechenkerns, weil sie nicht aus
    den Zeiten folgt. Der Wechsel liegt beim Leistungsmonat Juni 2026. */
@@ -1908,13 +1915,20 @@ function gehaltEintraege(ym){
     const d = days[k];
     const code = rufdienstCode(k);
     const rbd = RUFDIENST_CODES.includes(code);
-    const dienst = DUTY[code] && DUTY[code].start && code !== 'FRN' ? DUTY[code] : null;
+    /* Abwesenheitstage: Urlaub kommt aus dem Dienstplan, der Rest wird als
+       Dienstart gesetzt. Sie erzeugen KEINE Dienstzeile - sonst wuerde ein
+       Tag, an dem noch alte Zeiten im Formular stehen, doppelt zaehlen.
+       Die FRN-CHECKBOX zaehlt hier bewusst nicht mit: sie ist eine Notiz auf
+       einem gearbeiteten Tag ("FRN wegen Nachtoperation") und schreibt nur
+       einen Vermerk in die Erlaeuterung - kein Abwesenheitstag. */
+    const abwesend = istUrlaubstag(k) ? '705' : (ABWESENHEIT[code] || null);
+    const dienst = !abwesend && DUTY[code] && DUTY[code].start ? DUTY[code] : null;
 
     /* Dienstzeile: Ist aus den erfassten Zeiten, Soll aus dem Dienstplan.
        Die Pause kuerzt beide Seiten gleich und faellt in der Differenz
        heraus - 731 ist die einzige Lohnart, die istStd/sollStd hier nutzt. */
-    const vonZ = (d && d.dienstbeginn) || (dienst && dienst.start);
-    const bisZ = (d && (d.tats_dienstende || d.plan_dienstende)) || (dienst && dienst.end);
+    const vonZ = abwesend ? null : ((d && d.dienstbeginn) || (dienst && dienst.start));
+    const bisZ = abwesend ? null : ((d && (d.tats_dienstende || d.plan_dienstende)) || (dienst && dienst.end));
     if(vonZ && bisZ){
       out.push({_appTag:k, datum:k, von:vonZ, bis:bisZ,
                 istStd: nettoStd(vonZ, bisZ),
@@ -1926,22 +1940,18 @@ function gehaltEintraege(ym){
                 zeitart:'1', rbdTag:true});
     }
 
-    /* Abwesenheiten zaehlen im Ueberstundenkonto als erfuellte Arbeitszeit
-       (Zeitart 705 Urlaub, 957 frei nach aktivem Rufdienst). Angesetzt wird
-       die Nettozeit des Regeldienstes, den der Tag sonst gehabt haette - so
-       bucht es auch das Quellsystem. Fortbildung (707) und Krank (715) kennt
-       die App nicht; fehlen sie, faellt das Konto entsprechend zu niedrig aus.
+    /* Abwesenheiten zaehlen im Ueberstundenkonto als erfuellte Arbeitszeit.
+       Angesetzt wird die Nettozeit des Regeldienstes, den der Tag sonst
+       gehabt haette - so bucht es auch das Quellsystem. Nur an Werktagen:
+       an einem freien Samstag gibt es nichts zu erfuellen.
        Fuer die Gehaltsrechnung sind diese Zeilen ohne Wirkung: sie tragen
        weder zu 731 (nur Zeitart 1) noch zu einem Zuschlag bei. */
     const wd = new Date(n*86400000).getUTCDay();
-    const werktag = wd >= 1 && wd <= 5 && !isHoliday(k);
-    if(werktag){
+    if(abwesend && wd >= 1 && wd <= 5 && !isHoliday(k)){
       const regel = DUTY[wd === 1 ? 'amb2' : 'amb4'];
-      const abwesend = istUrlaubstag(k) ? '705'
-                     : (code === 'FRN' || (d && d.frn)) ? '957' : null;
-      if(abwesend) out.push({_appTag:k, datum:k, von:null, bis:null,
-                             istStd: nettoStd(regel.start, regel.end), sollStd:0,
-                             zeitart:abwesend, rbdTag:false});
+      out.push({_appTag:k, datum:k, von:null, bis:null,
+                istStd: nettoStd(regel.start, regel.end), sollStd:0,
+                zeitart:abwesend, rbdTag:false});
     }
 
     einsatzDauern(k).forEach(e => {
@@ -2156,7 +2166,7 @@ function kontoAbdeckung(ym){
   }
   return {arbeitstage, belegt, fehlend: arbeitstage - belegt};
 }
-const KONTO_ZEITARTEN_APP = new Set(['1','705','957']);
+const KONTO_ZEITARTEN_APP = new Set(['1','705','707','715','957']);
 
 function renderKonto(ym){
   const c = cfg.konto || {};
@@ -2185,7 +2195,8 @@ function renderKonto(ym){
     : '';
   $('kontoHinweis').innerHTML = warnung
     + `Fortgeschrieben seit ${monatName(c.abMonat)}. `
-    + `Fortbildung und Krankheit kennt die App nicht; solche Tage fehlen im Ist und drücken den Saldo. `
+    + `Urlaub kommt aus dem Dienstplan; Fortbildung und Krankheit trägst du als Dienstart des Tages ein – `
+    + `sie zählen dann als erfüllte Arbeitszeit. `
     + `Weicht der Stand von der Dienstübersicht ab, trag ihn hier einfach neu ein.`;
 }
 
@@ -2337,7 +2348,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.17.0';
+const APP_VERSION = '1.18.0';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){
