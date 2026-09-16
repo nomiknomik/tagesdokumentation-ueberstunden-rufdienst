@@ -595,6 +595,60 @@ Strich, der wie ein Komma aussieht. Seit 1.15.0 korrigiert. Wer so etwas
 prüfen will: `svg.querySelector('path').getBBox()` – ein abgebrochener Pfad
 hat Breite 0.
 
+### PWA v1.17.0 – Überstundenkonto + Rechenkern aktualisiert (16.09.2026)
+
+`gehalt.js` ist auf den Stand von `origin/main` des Analyse-Repos gebracht.
+Die Änderung war **rein additiv** – `berechneMengen()` und `berechneEuro()`
+sind unverändert, neu sind `monatssoll()` und `ueberstundenkonto()`.
+
+**Neu: Überstundenkonto** als Karte im Gehalt-Tab. Eigenes Rechenwerk,
+unabhängig von der Gehaltsprognose und besser belegt als LA 731 (6/6 Monate
+exakt gegen die echten Kontostände). Der Nutzer trägt einmal Monat und Saldo
+aus der Dienstübersicht ein (`cfg.konto`), die App schreibt ab da fort:
+
+```
+Soll = Arbeitstage (Mo–Fr ohne BW-Feiertag) × 8,00 h
+Ist  = Σ Ist-Std der Zeitarten 1, 705, 707, 715, 957
+```
+
+**Die Pausenregel ist der heikle Teil.** Fürs Konto zählt die
+Nettoarbeitszeit, die Tagesdaten der App enthalten aber Bruttospannen.
+`pauseFuer()` zieht ab 6 Std pauschal 30 Minuten ab – **von Ist UND Soll**,
+damit sich die Pause bei 731 heraus­kürzt und die gegen die Dienstübersichten
+validierte Zahl unverändert bleibt.
+
+Bewusst **nicht** gestaffelt: das ArbZG verlangt ab 9 Std 45 Minuten, aber ob
+das Quellsystem das so bucht, ist unbelegt — und die Staffel kürzt sich bei
+731 *nicht* heraus, sobald Ist und Soll in verschiedene Stufen fallen. Beim
+Versuch verlor ein Tag 07:10–18:05 gegen Plan bis 16:05 genau 0,25 Std
+Überstunden, 731 fiel von 2,00 auf 1,75. Die 30-Minuten-Stufe ist die einzige,
+die durch Daten gedeckt ist: sie trifft sowohl die 8,17 Std der Zeiterfassung
+(Regeldienst 07:25–16:05) als auch die 6,50 Std, die die Integrations-Spec
+für ZD1 (11:00–18:00) nennt. **Wer hier etwas ändert, muss vorher prüfen, dass
+731 gleich bleibt.**
+
+**Abwesenheiten:** der Adapter erzeugt für Urlaub (705, aus `derive()` →
+`abwesend`) und FRN (957) Zeilen mit der Nettozeit des Regeldienstes, den der
+Tag sonst gehabt hätte. Fortbildung (707) und Krankheit (715) kennt die App
+nicht – solche Tage fehlen im Ist und drücken den Saldo.
+
+**Abdeckungswarnung:** ohne importierten Dienstplan hat der Monat fast keine
+Zeilen und der Saldo sähe dramatisch negativ aus, obwohl nur Daten fehlen.
+`kontoAbdeckung()` zählt deshalb die Arbeitstage mit und ohne Zeile und warnt
+sichtbar. Beim Testen ohne Plan ist genau das zu sehen – das ist kein Bug.
+
+**Bekannte Drift:** ein voll belegter Monat ergibt ~180 Std Ist gegen 176 Std
+Soll, also rund +4,7 Std pro Monat. Das ist plausibel (der Dienstplan setzt
+8,17–8,42 Std/Tag an, das Konto rechnet mit 8,00), aber nicht verifiziert.
+Der erste Abgleich mit einem echten Kontostand zeigt, ob das Modell trägt;
+dafür lässt sich der Startwert jederzeit neu setzen.
+
+**Kennzeichnung angepasst:** 731 heißt jetzt „erfasste Überstunden – die
+Auszahlung kann abweichen" (Formel gegen die Dienstübersichten bestätigt,
+22/23 Wochen; in drei von sieben geprüften Monaten wurde weniger ausgezahlt).
+Die Einspringpauschale ist im Quellsystem Zeitart 99 „Holen aus dem frei",
+die im Export fehlt – deshalb weiterhin ein Handfeld.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).

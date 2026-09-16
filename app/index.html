@@ -187,6 +187,7 @@ select{color-scheme:light}
 .chk{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
 .chk input{width:22px;height:22px;accent-color:var(--color-primary)}
 .hint{font-size:12px;line-height:16px;color:var(--color-text-muted);margin-top:6px}
+.hint .warn{color:var(--color-warning);font-weight:600}
 
 .money{background:linear-gradient(135deg,#00636E,#0A7480);border:0;color:#fff;
   box-shadow:0 10px 24px rgba(0,99,110,.26)}
@@ -340,11 +341,21 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div id="gmTabelle"></div>
     <div class="row" style="margin-top:14px"><label>Einspringtage</label>
       <input id="gmEinspringen" inputmode="numeric" placeholder="0"></div>
-    <div class="hint">Einspringen hat keine eigene Zeitart und lässt sich nicht aus den erfassten
-      Zeiten ableiten – Tage bitte von Hand eintragen (LA 252, 50 € je Tag).</div>
+    <div class="hint">Einspringen läuft im Dienstplansystem als Zeitart 99 „Holen aus dem frei", die
+      im Export fehlt – also nicht ableitbar. Tage bitte von Hand eintragen (LA 252, 50 € je Tag).</div>
     <div class="hint" id="gmWarn" style="margin-top:10px"></div>
     <button class="btn outline" id="gmCopy" style="margin-top:12px">Aufstellung als Text kopieren</button>
     <div class="hint" id="gmCopyMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2><span data-icon="clock"></span>Überstundenkonto</h2>
+    <div id="kontoInhalt"></div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="field"><label>Stand Ende Monat</label><input type="month" id="kontoMonat"></div>
+      <div class="field"><label>Saldo (Std.)</label><input id="kontoStart" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="hint" id="kontoHinweis"></div>
   </div>
 
   <div class="card">
@@ -1753,9 +1764,50 @@ function eintraegeAusTagen(days, sollFuer, istRbdTag) {
   return out;
 }
 
+/* --- Ueberstundenkonto ---------------------------------------------------- */
+/** Zeitarten, die als erfuellte Arbeitszeit ins Konto zaehlen: Dienst, Urlaub,
+ *  Fortbildung, Krank, Frei nach aktivem Rufdienst. RB-Aktivzeiten (111/113)
+ *  zaehlen NICHT - die werden ueber 734/735 separat verguetet.
+ *  Verifiziert gegen die Kontostaende Jan-Juni 2026: 6/6 exakt. */
+const KONTO_ZEITARTEN = new Set(['1', '705', '707', '715', '957']);
+const STUNDEN_PRO_ARBEITSTAG = 8.0;
+
+/** Monatssoll = Arbeitstage (Mo-Fr ohne Feiertag) x 8,00 Std. */
+function monatssoll(monat) {
+  const [j, m] = monat.split('-').map(Number);
+  const feiertage = feiertageBW(j);
+  let d = new Date(Date.UTC(j, m - 1, 1));
+  let tage = 0;
+  while (d.getUTCMonth() === m - 1) {
+    const w = d.getUTCDay();
+    if (w >= 1 && w <= 5 && !feiertage.has(iso(d))) tage++;
+    d = plusTage(d, 1);
+  }
+  return tage * STUNDEN_PRO_ARBEITSTAG;
+}
+
+/**
+ * Bildet die Zeile des Ueberstundenkontos nach.
+ * @param {Array} eintraege - wie bei berechneMengen()
+ * @param {String} monat - 'YYYY-MM'
+ * @param {Number} [vormonatSaldo] - "Saldo gesamt" des Vormonats
+ */
+function ueberstundenkonto(eintraege, monat, vormonatSaldo) {
+  const soll = monatssoll(monat);
+  let ist = 0;
+  for (const e of eintraege) {
+    if (monatVon(e.datum) === monat && KONTO_ZEITARTEN.has(e.zeitart)) ist += e.istStd || 0;
+  }
+  const r = (x) => Math.round(x * 100) / 100;
+  const saldo = ist - soll;
+  return { soll: r(soll), ist: r(ist), saldo: r(saldo),
+           saldoGesamt: r((vormonatSaldo || 0) + saldo) };
+}
+
 const GEHALT = {
   feiertageBW, tagesabschnitte, ueberlappStunden, wochensaldo, ueberstundenWoche,
   wochenstartsFuerMonat, berechneMengen, berechneEuro, eintraegeAusTagen,
+  monatssoll, ueberstundenkonto,
   SAETZE_BIS_MAI_2026, SAETZE_AB_JUNI_2026, SAETZE_VOR_MAERZ_2026,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = GEHALT;
@@ -1781,7 +1833,7 @@ const grundFuer = ym => GRUNDVERGUETUNG.filter(g => g.ab <= ym).pop().betrag;
 /* Anzeigenamen fuer die Kompaktleiste + Verlaesslichkeit je Lohnart
    (Einstufung aus INTEGRATION.md, Abschnitt "Wie sicher ist was"). */
 const LA_INFO = {
-  731:{kurz:'Überstunden', unsicher:'731 Überstunden: geschätzt – die Formel trifft die erfassten Stunden, ausgezahlt wird durch Freizeitausgleich teils weniger.'},
+  731:{kurz:'Überstunden', unsicher:'731 zeigt die <b>erfassten</b> Überstunden – die Formel ist gegen die Dienstübersichten bestätigt (22 von 23 Wochen exakt). Die <b>Auszahlung</b> kann davon abweichen, in drei von sieben geprüften Monaten war sie niedriger.'},
   734:{kurz:'Rufdienst-Einsätze'}, 735:{kurz:'Zuschlag Einsätze'},
   737:{kurz:'Einsatz 0–6 Uhr'},    752:{kurz:'Sonntag'},
   753:{kurz:'Feiertag', unsicher:'753/754 Feiertag: bisher nur an einem Monat belegt.'},
@@ -1800,6 +1852,20 @@ const nrIso = n => { const d = new Date(n*86400000);
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; };
 const minVon = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
 const dauerStd = (von, bis) => { const d = (minVon(bis) - minVon(von))/60; return d < 0 ? d+24 : d; };
+/* Ruhepause: ab 6 Std pauschal 30 Minuten. Trifft beide bekannten
+   Datenpunkte exakt - Regeldienst Di-Fr 07:25-16:05 ergibt damit 8,17 Std
+   (so steht es in der Zeiterfassung) und ZD1 11:00-18:00 ergibt 6,50 Std
+   (so nennt es die Integrations-Spec).
+   BEWUSST NICHT gestaffelt: das Arbeitszeitgesetz verlangt ab 9 Std 45
+   Minuten, aber ob das Quellsystem das so bucht, ist unbelegt - und die
+   Staffel kuerzt sich bei 731 nicht heraus, sobald Ist und Soll in
+   verschiedene Stufen fallen (ein Tag 07:10-18:05 gegen Plan bis 16:05
+   verlor damit 0,25 Std Ueberstunden). Mit der pauschalen Pause bleibt 731
+   exakt das, was gegen die Dienstuebersichten validiert wurde.
+   WICHTIG: die Pause wird von Ist UND Soll abgezogen - fuer 731 kuerzt sie
+   sich damit heraus, fuers Ueberstundenkonto zaehlt die Nettoarbeitszeit. */
+const pauseFuer = h => h > 6 ? 0.5 : 0;
+const nettoStd = (von, bis) => { const h = dauerStd(von, bis); return round2(h - pauseFuer(h)); };
 const round2 = x => Math.round(x*100)/100;
 const ceilStd = h => h > 1e-9 ? Math.ceil(h - 1e-9) : 0;
 
@@ -1851,13 +1917,31 @@ function gehaltEintraege(ym){
     const bisZ = (d && (d.tats_dienstende || d.plan_dienstende)) || (dienst && dienst.end);
     if(vonZ && bisZ){
       out.push({_appTag:k, datum:k, von:vonZ, bis:bisZ,
-                istStd: round2(dauerStd(vonZ, bisZ)),
-                sollStd: dienst ? round2(dauerStd(dienst.start, dienst.end)) : 0,
+                istStd: nettoStd(vonZ, bisZ),
+                sollStd: dienst ? nettoStd(dienst.start, dienst.end) : 0,
                 zeitart:'1', rbdTag: rbd});
     } else if(rbd){
       /* Rufdienst ohne erfasste Zeiten: die Tagespauschale faellt trotzdem an */
       out.push({_appTag:k, datum:k, von:null, bis:null, istStd:0, sollStd:0,
                 zeitart:'1', rbdTag:true});
+    }
+
+    /* Abwesenheiten zaehlen im Ueberstundenkonto als erfuellte Arbeitszeit
+       (Zeitart 705 Urlaub, 957 frei nach aktivem Rufdienst). Angesetzt wird
+       die Nettozeit des Regeldienstes, den der Tag sonst gehabt haette - so
+       bucht es auch das Quellsystem. Fortbildung (707) und Krank (715) kennt
+       die App nicht; fehlen sie, faellt das Konto entsprechend zu niedrig aus.
+       Fuer die Gehaltsrechnung sind diese Zeilen ohne Wirkung: sie tragen
+       weder zu 731 (nur Zeitart 1) noch zu einem Zuschlag bei. */
+    const wd = new Date(n*86400000).getUTCDay();
+    const werktag = wd >= 1 && wd <= 5 && !isHoliday(k);
+    if(werktag){
+      const regel = DUTY[wd === 1 ? 'amb2' : 'amb4'];
+      const abwesend = istUrlaubstag(k) ? '705'
+                     : (code === 'FRN' || (d && d.frn)) ? '957' : null;
+      if(abwesend) out.push({_appTag:k, datum:k, von:null, bis:null,
+                             istStd: nettoStd(regel.start, regel.end), sollStd:0,
+                             zeitart:abwesend, rbdTag:false});
     }
 
     einsatzDauern(k).forEach(e => {
@@ -2032,6 +2116,79 @@ const plusMonate = (ym, n) => {
   return `${Math.floor(t/12)}-${pad(t%12 + 1)}`;
 };
 
+/* ---------- Überstundenkonto ----------
+   Eigenes Rechenwerk, unabhängig von der Gehaltsprognose und besser belegt
+   als LA 731 (6/6 Monate exakt gegen die echten Kontostände). Die App
+   schreibt es ab einem einmal eingetragenen Startsaldo Monat für Monat fort. */
+function kontoFuer(ym){
+  const c = cfg.konto || {};
+  if(!c.abMonat || !String(c.startSaldo || '').trim()) return null;
+  if(ym <= c.abMonat) return null;
+  let saldoGesamt = parseNum(c.startSaldo);
+  let letzte = null;
+  let m = plusMonate(c.abMonat, 1);
+  for(let i = 0; m <= ym && i < 120; i++){
+    const k = GEHALT.ueberstundenkonto(gehaltEintraege(m), m, saldoGesamt);
+    saldoGesamt = k.saldoGesamt;
+    letzte = Object.assign({monat:m}, k);
+    m = plusMonate(m, 1);
+  }
+  return letzte;
+}
+const std = x => (x > 0 ? '+' : '') + x.toLocaleString('de-DE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' h';
+
+/* Wie viele Arbeitstage des Monats liefern ueberhaupt eine Zeile? Ohne
+   importierten Dienstplan sind das fast keine, und der Saldo saehe dann
+   dramatisch negativ aus, obwohl nur die Daten fehlen. */
+function kontoAbdeckung(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const letzter = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const mitZeile = new Set(gehaltEintraege(ym)
+    .filter(e => e.datum.startsWith(ym) && KONTO_ZEITARTEN_APP.has(e.zeitart))
+    .map(e => e.datum));
+  let arbeitstage = 0, belegt = 0;
+  for(let i = 0; i < letzter; i++){
+    const k = nrIso(tagNr(`${ym}-01`) + i);
+    const wd = new Date(tagNr(k)*86400000).getUTCDay();
+    if(wd < 1 || wd > 5 || isHoliday(k)) continue;
+    arbeitstage++;
+    if(mitZeile.has(k)) belegt++;
+  }
+  return {arbeitstage, belegt, fehlend: arbeitstage - belegt};
+}
+const KONTO_ZEITARTEN_APP = new Set(['1','705','957']);
+
+function renderKonto(ym){
+  const c = cfg.konto || {};
+  $('kontoMonat').value = c.abMonat || '';
+  $('kontoStart').value = c.startSaldo || '';
+  const k = kontoFuer(ym);
+  if(k) k.abdeckung = kontoAbdeckung(ym);
+  if(!k){
+    $('kontoInhalt').innerHTML = `<div class="hint" style="margin-top:0">Trage einmal deinen
+      Kontostand aus der Dienstübersicht ein – Monat und Saldo. Ab dann schreibt die App das
+      Konto aus dem Dienstplan fort.</div>`;
+    $('kontoHinweis').innerHTML = c.abMonat && ym <= c.abMonat
+      ? `Der eingetragene Stand gilt für das Ende von ${monatName(c.abMonat)} – wähle oben einen späteren Monat.` : '';
+    return;
+  }
+  $('kontoInhalt').innerHTML = `<table class="patab">
+    <tr><td>Soll (${(GEHALT.monatssoll(ym)/8).toLocaleString('de-DE')} Arbeitstage × 8,00 h)</td><td class="r">${k.soll.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
+    <tr><td>Ist (geleistet und angerechnet)</td><td class="r">${k.ist.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
+    <tr><td>Saldo des Monats</td><td class="r">${std(k.saldo)}</td></tr>
+    <tr class="sum"><td>Saldo gesamt</td><td class="r">${std(k.saldoGesamt)}</td></tr>
+    </table>`;
+  const a = k.abdeckung;
+  const warnung = a.fehlend
+    ? `<span class="warn">⚠️ Für ${a.fehlend} von ${a.arbeitstage} Arbeitstagen liegt keine Zeile vor.`
+      + `${a.belegt === 0 ? ' Ist der Dienstplan importiert?' : ''} Diese Tage fehlen im Ist, der Saldo ist entsprechend zu niedrig.</span><br>`
+    : '';
+  $('kontoHinweis').innerHTML = warnung
+    + `Fortgeschrieben seit ${monatName(c.abMonat)}. `
+    + `Fortbildung und Krankheit kennt die App nicht; solche Tage fehlen im Ist und drücken den Saldo. `
+    + `Weicht der Stand von der Dienstübersicht ab, trag ihn hier einfach neu ein.`;
+}
+
 function renderGeldMonat(){
   $('geldMonat').value = geldMonat;
   const {posten, summe, grund, tage, urlaub} = monatsDaten(geldMonat);
@@ -2062,6 +2219,7 @@ function renderGeldMonat(){
     </table>`;
 
   $('gmEinspringen').value = extras[geldMonat] && extras[geldMonat][252] || '';
+  renderKonto(geldMonat);
 
   const warn = [...new Set(posten.map(pz => pz.unsicher).filter(Boolean))].map(t => '* ' + t);
   if(urlaub.length) warn.push(`In diesem Monat ${urlaub.length===1?'liegt 1 Urlaubstag':'liegen '+urlaub.length+' Urlaubstage'}. `
@@ -2106,6 +2264,10 @@ $('gmTage').addEventListener('click', e=>{
   $('actionbar').style.display = 'block';
   renderDay(); syncHeaderPad();
 });
+['kontoMonat','kontoStart'].forEach(id => $(id).addEventListener('change', ()=>{
+  cfg.konto = {abMonat: $('kontoMonat').value, startSaldo: $('kontoStart').value};
+  save(LS.cfg, cfg); renderKonto(geldMonat);
+}));
 $('gmEinspringen').addEventListener('change', e=>{
   const n = Math.max(0, Math.round(parseNum(e.target.value)));
   if(n) (extras[geldMonat] ||= {})[252] = n;
@@ -2175,7 +2337,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.16.2';
+const APP_VERSION = '1.17.0';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){
