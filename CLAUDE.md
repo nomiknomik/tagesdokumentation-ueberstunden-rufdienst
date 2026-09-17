@@ -860,3 +860,48 @@ Erste Runde aus der Screenshot-Feedbackmappe des Nutzers (IMG_0556–0558).
 - **FRN-Checkbox rund**: `appearance:none` + `border-radius:50%` plus
   `::after`-Haken. Das native Kästchen ließ sich nicht rund bekommen – die
   vier Ecken blieben sichtbar.
+
+### PWA v1.21.0 – Urlaub als Dienstart, ZD2 ist der Freitag (17.09.2026)
+
+- **`ZD2` heißt jetzt „Rufdienst (Fr, ZD2)"** – `derive()` vergibt ZD2
+  ohnehin nur am Freitag. Nachgezogen in `tagesdokumentation_erfassung.html`
+  (geteilte Logik). **Nicht** in `build_html.py`: das Skript ist veraltet und
+  erzeugt die heutige Erfassungsseite nicht mehr (dort stehen noch
+  „Rufdienst (Werktag)"/„(Wochenende/Feiertag)"), ein Eingriff hätte dort
+  nichts verbessert.
+- **`URLAUB` als Dienstart** (ohne `start`/`end`, wie `FB`/`KRANK`), in allen
+  drei Listen von `DIENSTART_BY_FUNKTION`. Zweck wie bei den anderen beiden:
+  das Überstundenkonto füttern (Zeitart 705), wenn der Tag nicht (oder noch
+  nicht) über die Urlaubsspalte des Dienstplans kommt.
+
+**Die Doppelzählungs-Frage** (ausdrücklicher Nutzerwunsch: ein Tag darf nie
+zweimal zählen, auch wenn er nach dem Excel-Import von Hand auf Urlaub
+gestellt wird). Gelöst über eine erweiterte `istUrlaubstag()`:
+
+```js
+const istUrlaubstag = k => rufdienstCode(k) === 'URLAUB' ||
+  (!(days[k] && days[k].dienstart_manuell) && derive(k).code === 'abwesend');
+```
+
+`URLAUB` steht bewusst **nicht** in `ABWESENHEIT` – sonst gäbe es zwei Wege
+zur 705. Die Zuordnung darunter bleibt ein Ternär
+(`istUrlaubstag(k) ? '705' : ABWESENHEIT[code]`), es entsteht also immer
+genau eine Zeile. Getestet, jeweils eine Zeile:
+
+| Fall | Ergebnis |
+|---|---|
+| Urlaub laut Excel (Mo) | 705, ist 8,42 h |
+| Von Hand URLAUB an einem Regeldiensttag (Di) | 705, ist 8,17 h |
+| Excel-Urlaub, von Hand auf Regeldienst gestellt | Zeitart 1, ist/soll 8,42 h |
+| Wieder auf URLAUB | 705, ist 8,42 h |
+
+Der dritte Fall ist nebenbei ein Bugfix: vorher hat der Excel-Urlaub die
+manuelle Dienstart überstimmt und den Tag als 705 gebucht, obwohl gearbeitet
+wurde.
+
+Damit der Dienstplan-Urlaub auch sichtbar ist, belegt `renderDay()` die
+Dienstart mit `URLAUB` vor, wenn `derive()` `abwesend` liefert (`abwesend`
+ist kein `DUTY`-Code, das Dropdown stand sonst auf „– keine –"). Ohne
+`dienstart_manuell` zählt das nicht als Eingabe, der Tag landet also nicht
+im Verlauf. Die Dienst-Box sagt an solchen Tagen „Mo · Urlaub" statt
+„Abwesend".
