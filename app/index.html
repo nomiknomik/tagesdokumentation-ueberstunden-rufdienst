@@ -76,7 +76,7 @@ section{display:none} section.on{display:block}
 .duty>.ic{width:22px;height:22px;color:var(--color-primary-light);margin-top:2px}
 .duty .label{font-size:12px;line-height:16px;font-weight:500;color:var(--color-text-muted);
   text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
-.duty b{font-size:20px;line-height:24px;font-weight:700;display:block}
+.duty b{font-size:17px;line-height:22px;font-weight:700;display:block}
 .duty small{display:block;color:var(--color-text-secondary);margin-top:3px;font-size:13px;line-height:18px}
 
 .stamp{border:0;border-radius:var(--radius-button);color:#fff;font-size:20px;line-height:24px;font-weight:700;
@@ -89,6 +89,14 @@ section{display:none} section.on{display:block}
 .stamp small{display:block;font-weight:400;font-size:13px;line-height:18px;opacity:.85;margin-top:2px}
 .stamp.start{background:linear-gradient(135deg,#1a9a52,var(--color-success));box-shadow:0 10px 24px rgba(21,143,71,.26)}
 .stamp.stop{background:linear-gradient(135deg,#DD6A4E,var(--color-danger));box-shadow:0 10px 24px rgba(194,73,46,.28)}
+/* Einsatz starten / Telefonat / Nachtragen ("+") nebeneinander in einer Zeile */
+.stamprow{display:flex;gap:8px;margin-bottom:var(--spacing-section)}
+.stamprow .stamp{flex:1;min-width:0;margin-bottom:0;font-size:16px;line-height:20px;gap:8px;padding:0 12px}
+.stamprow.running .stamp.stop{flex:1.7}
+.stamp.call{background:linear-gradient(135deg,#0A7480,var(--color-primary));box-shadow:0 10px 24px rgba(0,99,110,.24)}
+.stamp.add{flex:0 0 48px;padding:0;justify-content:center;background:var(--color-card);
+  color:var(--color-text-secondary);border:1px solid var(--color-border);box-shadow:none}
+.stamp.add .ic{width:22px;height:22px}
 
 .daymeta{text-align:center;font-size:13px;line-height:18px;color:var(--color-text-secondary);margin:-4px 0 10px}
 .daymeta b{color:var(--color-text);font-weight:600}
@@ -102,6 +110,9 @@ section{display:none} section.on{display:block}
 .weekstrip .mark{width:5px;height:5px;border-radius:50%;background:transparent}
 .weekstrip button.done .mark{background:var(--color-success)}
 .weekstrip button.on.done .mark{background:#fff}
+.weekstrip button.we,.weekstrip button.we .num{color:var(--color-danger)}
+.weekstrip button.on.we,.weekstrip button.on.we .num{color:#fff}
+.daymeta.we b,.daymeta.we{color:var(--color-danger)}
 
 .actionbar{position:fixed;left:0;right:0;z-index:15;padding:16px var(--spacing-page) 10px;
   background:linear-gradient(180deg,rgba(250,245,236,0),var(--color-background) 60%)}
@@ -185,7 +196,13 @@ select{color-scheme:light}
 .tag-grey{background:rgba(43,36,32,.06);color:var(--color-text-secondary)}
 
 .chk{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
-.chk input{width:22px;height:22px;accent-color:var(--color-primary)}
+/* echter runder Haken statt des nativen Kaestchens mit abgerundeten Ecken */
+.chk input{appearance:none;-webkit-appearance:none;width:24px;height:24px;flex:0 0 24px;margin:0;
+  border:2px solid var(--color-text-muted);border-radius:50%;background:var(--color-card);
+  position:relative;transition:background .15s ease,border-color .15s ease}
+.chk input:checked{background:var(--color-primary);border-color:var(--color-primary)}
+.chk input:checked::after{content:"";position:absolute;left:7px;top:3px;width:6px;height:11px;
+  border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
 .hint{font-size:12px;line-height:16px;color:var(--color-text-muted);margin-top:6px}
 .hint .warn{color:var(--color-warning);font-weight:600}
 
@@ -270,13 +287,18 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 
   <div class="card">
     <h2><span data-icon="star"></span>Rufdienst-Einsätze</h2>
-    <button class="stamp start" id="btnEinsatz">
-      <span class="ic" data-icon="plus"></span>
-      <span class="stxt" id="lblEinsatz">Einsatz starten<small id="subEinsatz">–</small></span>
-    </button>
-    <div class="row2">
-      <button class="btn outline" id="btnTelefonat" title="Telefonat: Ende = jetzt, Beginn = vor 5 Minuten"><span data-icon="phone"></span>Telefonat</button>
-      <button class="btn outline" id="btnEinsatzLeer"><span data-icon="plus"></span>Nachtragen</button>
+    <div class="stamprow" id="einsatzRow">
+      <button class="stamp start" id="btnEinsatz">
+        <span class="ic" data-icon="timer"></span>
+        <span class="stxt" id="lblEinsatz">Einsatz starten</span>
+      </button>
+      <button class="stamp call" id="btnTelefonat" title="Telefonat: Ende = jetzt, Beginn = vor 5 Minuten">
+        <span class="ic" data-icon="phone"></span>
+        <span class="stxt">Telefonat</span>
+      </button>
+      <button class="stamp add" id="btnEinsatzLeer" title="Einsatz nachtragen" aria-label="Einsatz nachtragen">
+        <span class="ic" data-icon="plus"></span>
+      </button>
     </div>
     <div id="einsaetze" style="margin-top:8px"></div>
     <div class="row" style="margin-top:10px"><label>Summe (Std.)</label><input id="summe_inanspruchnahme" readonly></div>
@@ -286,7 +308,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="clock"></span>Kommen/Gehen</h2>
     <button class="stamp" id="btnGehen">
-      <span data-icon="square"></span>
+      <span data-icon="logOut"></span>
       <span class="stxt">Gehen<small id="lblGehen">–</small></span>
     </button>
     <div class="row"><label>Dienstart</label><select id="dienstartSel"></select></div>
@@ -484,6 +506,8 @@ const ICONS = {
   settings:'<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
   checkCircle:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 17"></polyline>',
   alertTriangle:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
+  timer:'<line x1="10" y1="2" x2="14" y2="2"></line><line x1="12" y1="14" x2="15" y2="11"></line><circle cx="12" cy="14" r="8"></circle>',
+  logOut:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>',
   plus:'<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
   users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
   archive:'<polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>',
@@ -541,6 +565,9 @@ function optsWith(list, val){
 }
 const MONTHS = ['januar','februar','märz','april','mai','juni','juli','august','september','oktober','november','dezember'];
 const WDAY = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+const WDAY_KURZ = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+/* Samstag, Sonntag und Feiertage werden rot gezeichnet */
+const istRot = k => { const g = new Date(k+'T12:00:00').getDay(); return g===0 || g===6 || isHoliday(k); };
 const LS = {cfg:'tagesdoku_cfg', plan:'tagesdoku_plan', days:'tagesdoku_days', swap:'tagesdoku_swap',
             extra:'tagesdoku_extra'};
 
@@ -683,20 +710,20 @@ function renderDayContext(){
   const gestern = (()=>{ const d=new Date(); d.setDate(d.getDate()-1); return iso(d); })();
   const [y,m,dd] = cur.split('-');
   const rel = cur===heute ? 'Heute' : cur===gestern ? 'Gestern' : '';
-  $('dayMeta').innerHTML = `<b>${WDAY[new Date(cur+'T12:00:00').getDay()]}</b>, ${dd}.${m}.${y}` +
+  $('dayMeta').className = 'daymeta' + (istRot(cur) ? ' we' : '');
+  $('dayMeta').innerHTML = `<b>${WDAY_KURZ[new Date(cur+'T12:00:00').getDay()]}.</b> ${dd}.${m}.${y}` +
     (rel ? ` · ${rel}` : '') + (isHoliday(cur) ? ' · Feiertag' : '');
 
   const d0 = new Date(cur+'T12:00:00');
   const mo = new Date(d0); mo.setDate(d0.getDate() - ((d0.getDay()+6)%7));   // Montag der Woche
-  const kurz = ['Mo','Di','Mi','Do','Fr','Sa','So'];
   let html = '';
   for(let i=0;i<7;i++){
     const t = new Date(mo); t.setDate(mo.getDate()+i);
     const k = iso(t);
     const code = derive(k).code;
     const dienst = code && code!=='frei' && code!=='amb2' && code!=='amb4' && code!=='abwesend';
-    const cls = [k===cur?'on':'', hasContent(k)?'done':'', dienst?'duty':''].filter(Boolean).join(' ');
-    html += `<button class="${cls}" data-day="${k}"><span>${kurz[i]}</span><span class="num">${k.slice(8)}</span><span class="mark"></span></button>`;
+    const cls = [k===cur?'on':'', hasContent(k)?'done':'', dienst?'duty':'', istRot(k)?'we':''].filter(Boolean).join(' ');
+    html += `<button class="${cls}" data-day="${k}"><span>${WDAY_KURZ[(i+1)%7]}</span><span class="num">${k.slice(8)}</span><span class="mark"></span></button>`;
   }
   $('weekStrip').innerHTML = html;
   $('heuteBtn').style.display = cur===heute ? 'none' : 'block';   // nur noetig, wenn man woanders steht
@@ -709,19 +736,26 @@ $('weekStrip').addEventListener('click', e=>{
 function renderDuty(){
   const d = derive(cur);
   const p = plan[cur];
-  const wd = WDAY[new Date(cur+'T12:00:00').getDay()];
-  let html;
-  if(d.code && DUTY[d.code]) html = `<b>${wd} · ${DUTY[d.code].label}</b><small>${d.info} · ${DUTY[d.code].start}–${DUTY[d.code].end}</small>`;
-  else if(d.code==='abwesend') html = `<b>${wd} · Abwesend</b><small>${d.info}</small>`;
-  else if(d.code==='frei')     html = `<b>${wd} · Frei</b><small>${d.info}</small>`;
-  else                         html = `<b>${wd}</b><small>${d.info}</small>`;
+  const wd = WDAY_KURZ[new Date(cur+'T12:00:00').getDay()];
+  /* Kopfzeile: Wochentag kurz + Dienstart. Die Uhrzeit haengt hinten dran,
+     damit aus der frueheren Info-Zeile keine eigene Zeile mehr wird. */
+  const duty = d.code && DUTY[d.code];
+  const titel = duty ? duty.label : d.code==='abwesend' ? 'Abwesend' : d.code==='frei' ? 'Frei' : '';
+  const zeit  = duty && duty.start ? `${duty.start}–${duty.end}` : '';
+  let html = `<b>${wd}${titel ? ' · ' + titel : ''}</b>`;
+  /* zweite Zeile: Uhrzeit und Diensthabender zusammen - spart eine Zeile */
   const wer = oaOf(cur).trim();
+  const teile = [];
+  if(zeit) teile.push(zeit);
+  if(!titel) teile.push(d.info);
   if(d.swapped){
     const orig = ((p && p.oa) || '').trim();
-    html += `<small style="margin-top:4px;color:var(--color-warning)">Getauscht: Rufdienst hat ${wer || 'niemand'}` +
+    if(teile.length) html += `<small>${teile.join(' · ')}</small>`;
+    html += `<small style="color:var(--color-warning)">Getauscht: Rufdienst hat ${wer || 'niemand'}` +
             `${orig ? ` (laut Plan: ${orig})` : ' (laut Plan: niemand)'}</small>`;
-  }else if(wer){
-    html += `<small style="margin-top:4px">Rufdienst lt. Plan: ${wer}</small>`;
+  }else{
+    if(wer) teile.push(`Plan: ${wer}`);
+    if(teile.length) html += `<small>${teile.join(' · ')}</small>`;
   }
   $('dutyText').innerHTML = html;
 }
@@ -793,16 +827,17 @@ function renderEinsatzBtn(){
   const btn = $('btnEinsatz');
   btn.classList.toggle('stop', i>=0);
   btn.classList.toggle('start', i<0);
-  btn.querySelector('svg').innerHTML = ICONS[i>=0 ? 'square' : 'plus'];
+  btn.querySelector('svg').innerHTML = ICONS[i>=0 ? 'square' : 'timer'];
+  $('einsatzRow').classList.toggle('running', i>=0);
   if(timerId){ clearInterval(timerId); timerId = null; }
   if(i<0){
-    $('lblEinsatz').innerHTML = 'Einsatz starten<small>Beginn = aktuelle Uhrzeit</small>';
+    $('lblEinsatz').textContent = 'Einsatz starten';
     return;
   }
   const beginn = day().einsaetze[i].beginn;
   const heute = cur === iso(new Date());
   const tick = ()=>{
-    const sub = heute ? `läuft seit ${beginn} Uhr · ${laufzeitText(beginn)}` : `offen seit ${beginn} Uhr`;
+    const sub = heute ? `seit ${beginn} · ${laufzeitText(beginn)}` : `offen seit ${beginn}`;
     $('lblEinsatz').innerHTML = `Einsatz beenden<small>${sub}</small>`;
   };
   tick();
@@ -2393,8 +2428,8 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.19.1';
-const APP_BUILD   = '15.09.2026';
+const APP_VERSION = '1.20.0';
+const APP_BUILD   = '17.09.2026';
 
 function showVersion(){
   $('appVersion').textContent = 'v' + APP_VERSION;

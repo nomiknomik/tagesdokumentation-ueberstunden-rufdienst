@@ -837,3 +837,26 @@ Ziffern 12/3/6/9 und Zeigern auf 16:05 (planmaessiges Dienstende).
 - Icons stehen in der SHELL-Liste von `app/sw.js` und werden cache-first
   ausgeliefert: bei jedem Icon-Wechsel `CACHE` hochzaehlen (hier v11 → v12),
   sonst behalten installierte PWAs das alte Bild.
+
+### PWA v1.20.0 – Tag-Tab kompakter, Einsatz-Buttons in einer Zeile (17.09.2026)
+
+Erste Runde aus der Screenshot-Feedbackmappe des Nutzers (IMG_0556–0558).
+
+- **Rote Tage**: `istRot(k)` (Sa/So/Feiertag) färbt Wochenstreifen und `#dayMeta`.
+  Am aktiven Tag gewinnt das Weiß der Auswahlkachel.
+- **Wochentag zweistellig**: `WDAY_KURZ` neben `WDAY`; `#dayMeta` zeigt „Do.
+  17.09.2026 · Heute", die Dienst-Box „Do · …".
+- **Dienst-Box von 3 auf 2 Zeilen** (121 px → 95 px, kein Umbruch mehr):
+  Kopfzeile nur noch Wochentag + Dienstart bei 17 px statt 20 px, die zweite
+  Zeile fasst Uhrzeit und Diensthabenden zusammen („11:00–18:00 · Plan: X").
+  Die frühere `d.info`-Zeile entfällt und erscheint nur noch, wenn es keine
+  Dienstart gibt.
+- **Einsatz starten / Telefonat / „+" in einer Zeile** (`.stamprow`,
+  `#einsatzRow`): grün / petrol / heller Icon-Button. Der frühere Untertitel
+  „Beginn = aktuelle Uhrzeit" ist weg, das Icon ist ein Timer statt „+".
+  Läuft ein Einsatz, bekommt die Zeile `.running` und der rote Stop-Button
+  `flex:1.7`, damit „Einsatz beenden · seit 11:23 · 00:12:45" noch passt.
+- **Gehen-Icon**: `logOut` statt `square`.
+- **FRN-Checkbox rund**: `appearance:none` + `border-radius:50%` plus
+  `::after`-Haken. Das native Kästchen ließ sich nicht rund bekommen – die
+  vier Ecken blieben sichtbar.
