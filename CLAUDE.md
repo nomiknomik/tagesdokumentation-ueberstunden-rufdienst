@@ -905,3 +905,36 @@ ist kein `DUTY`-Code, das Dropdown stand sonst auf „– keine –"). Ohne
 `dienstart_manuell` zählt das nicht als Eingabe, der Tag landet also nicht
 im Verlauf. Die Dienst-Box sagt an solchen Tagen „Mo · Urlaub" statt
 „Abwesend".
+
+### PWA v1.22.0 – „wer hat wann Dienst" als Monatsraster (17.09.2026)
+
+Die Karte war eine Liste aus 31 Zeilen („2026-10-01 · Donnerstag  [Name] ›"),
+die man durchscrollen musste. Jetzt ist sie ein **7-Spalten-Monatsraster**
+(`teamKalender(mk)`), eine Kachel je Kalendertag mit Tagesnummer und dem
+Nachnamen auf zwei Buchstaben (`kurzName()`: „Zabelyshenskiy" → „Za").
+
+- Gezeichnet werden **alle** Kalendertage, nicht nur die mit Plan-Eintrag –
+  ein Kalender mit Löchern wäre keiner, und so lässt sich auch ein leerer Tag
+  jemandem zuweisen. Die Zahl in der Monatsüberschrift bleibt die Zahl der
+  Tage **mit** Eintrag.
+- Kachel-Zustände: petrol gefüllt = eigener Dienst, oranger Rahmen =
+  getauscht, rote Tagesnummer = Sa/So/Feiertag (`istRot()` aus v1.20.0),
+  fette Nummer = heute, Outline = gerade geöffnet. Dazu eine kleine Legende.
+- **Das Bearbeitungsfeld steht unter dem Raster**, nicht in der Zelle
+  (`teamEdit(k)`, aus dem früheren `teamRow()` herausgelöst) – in eine
+  44 px-Kachel passt kein Formular. Erneutes Antippen derselben Kachel
+  schließt es wieder. `setSwap()` ist unverändert.
+- Der zweizeilige Hinweis „Dienst getauscht? Tag antippen …" über der Karte
+  ist weg (Nutzerwunsch).
+
+**`renderGroupedList()` hat einen sechsten Parameter `bodyFn(mk, keys)`**, der
+den Standard-Rumpf `<div class="list">…rowFn…</div>` ersetzt. Nur die
+Team-Karte nutzt ihn; „Meine Dienste" und „Erfasste Tage" bleiben Listen
+(dort hängen die .ics- und Sammel-PDF-Buttons am `footerFn`).
+
+**Bewusste Umkehr gegenüber v1.8.0** („Monatsgruppen bleiben zugeklappt"):
+solange der Nutzer in einem Container noch nie selbst auf- oder zugeklappt
+hat, ist jetzt der **laufende Monat offen** und der Rest zu. Sobald
+`openGroups[containerId]` existiert, gilt wieder ausschließlich sein
+Zustand – auch eine leere Liste, also „alles zu", bleibt erhalten. Gilt für
+alle drei Listen.

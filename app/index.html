@@ -144,6 +144,28 @@ select{color-scheme:light}
 .btn.outline{background:var(--color-card);box-shadow:none;color:var(--color-text-secondary);border:1.5px solid var(--color-border)}
 .btn.ghost{background:transparent;box-shadow:none;color:var(--color-text-muted);font-weight:500;padding:10px;min-height:auto;margin-top:6px}
 
+/* Monatsraster der Karte "wer hat wann Dienst" */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:0 12px 12px}
+.cal .wd{text-align:center;font-size:10px;line-height:14px;font-weight:600;
+  color:var(--color-text-muted);padding-bottom:2px}
+.cal .wd.we{color:var(--color-danger)}
+.cal button{border:1px solid var(--color-border);background:var(--color-card);border-radius:10px;
+  min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;padding:3px 1px}
+.cal .d{font-size:11px;line-height:13px;color:var(--color-text-secondary)}
+.cal .nm{font-size:12px;line-height:14px;font-weight:700;color:var(--color-text)}
+.cal button.we .d{color:var(--color-danger)}
+.cal button.leer{background:transparent}
+.cal button.leer .nm{color:var(--color-text-muted);font-weight:500}
+.cal button.mine{background:var(--color-primary);border-color:var(--color-primary)}
+.cal button.mine .d,.cal button.mine .nm{color:#fff}
+.cal button.swapped{border-color:var(--color-warning);border-width:2px}
+.cal button.on{outline:2px solid var(--color-primary);outline-offset:1px}
+.cal button.today .d{font-weight:800;color:var(--color-text)}
+.cal button.today.mine .d{color:#fff}
+.callegend{display:flex;flex-wrap:wrap;gap:10px;padding:0 14px 12px;font-size:11px;line-height:15px;
+  color:var(--color-text-muted)}
+.callegend i{width:10px;height:10px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:4px}
 .row2{display:flex;gap:8px}
 .row2 .btn{flex:1;font-size:14px}
 
@@ -406,7 +428,6 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   </div>
   <div class="card">
     <h2><span data-icon="users"></span>Rufdienst – wer hat wann Dienst</h2>
-    <div class="hint">Dienst getauscht? Tag antippen und den Diensthabenden ändern – das schlägt den importierten Plan.</div>
     <div class="list" id="teamList" style="margin-top:8px"><div class="li">Noch kein Plan importiert.</div></div>
   </div>
   <div class="card">
@@ -1135,17 +1156,20 @@ function monthLabel(mk){
    Zustand ueber Re-Renders und App-Starts hinweg. */
 const OPEN_KEY = 'tagesdoku_open_groups';
 const openGroups = load(OPEN_KEY, {});
-function renderGroupedList(containerId, keys, rowFn, emptyMsg, footerFn){
+function renderGroupedList(containerId, keys, rowFn, emptyMsg, footerFn, bodyFn){
   const el = $(containerId);
   if(!keys.length){ el.innerHTML = `<div class="li">${emptyMsg}</div>`; return; }
   const groups = {};
   keys.forEach(k=>{ const mk = k.slice(0,7); (groups[mk] ||= []).push(k); });
   const monthKeys = Object.keys(groups).sort().reverse();
-  const openSet = new Set(openGroups[containerId] || []);
+  /* Voreinstellung: der laufende Monat ist offen, die uebrigen zu. Sobald der
+     Nutzer selbst einmal auf-/zugeklappt hat, gilt nur noch sein Zustand. */
+  const gemerkt = openGroups[containerId];
+  const openSet = new Set(gemerkt || [iso(new Date()).slice(0,7)]);
   el.innerHTML = monthKeys.map(mk=>`
     <details class="monthgroup" data-month="${mk}"${openSet.has(mk)?' open':''}>
       <summary><span>${monthLabel(mk)}<span class="cnt">(${groups[mk].length})</span></span>${icon('chevronRight')}</summary>
-      <div class="list">${groups[mk].map(rowFn).join('')}</div>
+      ${bodyFn ? bodyFn(mk, groups[mk]) : `<div class="list">${groups[mk].map(rowFn).join('')}</div>`}
       ${footerFn ? footerFn(mk, groups[mk]) : ''}
     </details>`).join('');
   el.querySelectorAll('details.monthgroup').forEach(d=>{
@@ -1185,33 +1209,64 @@ function bekannteNamen(){
   return [...set].sort((a,b)=>a.localeCompare(b,'de'));
 }
 
-function teamRow(k){
+/* Nachname auf zwei Buchstaben: "Zabelyshenskiy" -> "Za" */
+const kurzName = n => { n = (n||'').trim();
+  return n ? n.charAt(0).toUpperCase() + n.charAt(1).toLowerCase() : ''; };
+
+/* Bearbeitungsfeld eines Tages - steht unter dem Raster, nicht in der Zelle:
+   in eine 48px-Kachel passt kein Formular. */
+function teamEdit(k){
   const name = oaOf(k);
   const getauscht = swap[k] !== undefined;
-  if(teamOpen === k){
-    const own = (cfg.nachname||'').trim();
-    const opts = bekannteNamen().map(n=>`<option value="${n}"${n===name?' selected':''}>${n}</option>`).join('');
-    return `<div class="teamedit" data-edit="${k}">
-      <div class="hd"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}</span>
-        <button class="linkbtn" data-teamclose="1">Fertig</button></div>
-      <div class="row"><label>Diensthabend</label>
-        <select id="teamSel">${opts}<option value=""${name?'':' selected'}>– niemand –</option></select></div>
-      <div class="row2">
-        ${own ? `<button class="btn outline" data-teamme="${k}">Ich übernehme</button>` : ''}
-        ${getauscht ? `<button class="btn ghost" data-teamreset="${k}">Tausch zurücknehmen</button>` : ''}
-      </div>
-      <div class="hint" style="margin-top:6px">${getauscht ? `Laut Excel: ${(plan[k]&&plan[k].oa)||'niemand'}` : 'Auswahl wird sofort übernommen.'}</div>
-    </div>`;
+  const own = (cfg.nachname||'').trim();
+  const opts = bekannteNamen().map(n=>`<option value="${n}"${n===name?' selected':''}>${n}</option>`).join('');
+  const [y,m,dd] = k.split('-');
+  return `<div class="teamedit" data-edit="${k}">
+    <div class="hd"><span>${WDAY[new Date(k+'T12:00:00').getDay()]}, ${dd}.${m}.${y}</span>
+      <button class="linkbtn" data-teamclose="1">Fertig</button></div>
+    <div class="row"><label>Diensthabend</label>
+      <select id="teamSel">${opts}<option value=""${name?'':' selected'}>– niemand –</option></select></div>
+    <div class="row2">
+      ${own ? `<button class="btn outline" data-teamme="${k}">Ich übernehme</button>` : ''}
+      ${getauscht ? `<button class="btn ghost" data-teamreset="${k}">Tausch zurücknehmen</button>` : ''}
+    </div>
+    <div class="hint" style="margin-top:6px">${getauscht ? `Laut Excel: ${(plan[k]&&plan[k].oa)||'niemand'}` : 'Auswahl wird sofort übernommen.'}</div>
+  </div>`;
+}
+
+/* Ein Monat als 7-Spalten-Raster. Gezeichnet werden ALLE Kalendertage, nicht
+   nur die mit Eintrag - ein Kalender mit Luecken waere keiner, und so laesst
+   sich auch ein bisher leerer Tag jemandem zuweisen. */
+function teamKalender(mk){
+  const [y,m] = mk.split('-').map(Number);
+  const tage = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const pad  = (new Date(mk+'-01T12:00:00').getDay() + 6) % 7;   // Montag = Spalte 0
+  const own  = (cfg.nachname||'').trim().toLowerCase();
+  let h = ['Mo','Di','Mi','Do','Fr','Sa','So']
+            .map((w,i)=>`<div class="wd${i>=5?' we':''}">${w}</div>`).join('')
+        + '<div></div>'.repeat(pad);
+  for(let t=1; t<=tage; t++){
+    const k = `${mk}-${String(t).padStart(2,'0')}`;
+    const name = oaOf(k).trim();
+    const cls = [ name ? '' : 'leer',
+                  swap[k] !== undefined ? 'swapped' : '',
+                  own && name.toLowerCase().includes(own) ? 'mine' : '',
+                  istRot(k) ? 'we' : '',
+                  k === iso(new Date()) ? 'today' : '',
+                  teamOpen === k ? 'on' : '' ].filter(Boolean).join(' ');
+    h += `<button class="${cls}" data-team="${k}" title="${k}${name ? ' · '+name : ''}">` +
+         `<span class="d">${t}</span><span class="nm">${kurzName(name) || '·'}</span></button>`;
   }
-  return `<div class="li${getauscht?' swapped':''}" data-team="${k}" style="cursor:pointer">
-    <span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}${getauscht?' · getauscht':''}</span>
-    <span style="display:flex;align-items:center;gap:8px"><span class="tag${getauscht?' tag-amber':''}">${name||'–'}</span>${icon('chevronRight')}</span></div>`;
+  return `<div class="cal">${h}</div>` +
+    `<div class="callegend"><span><i style="background:var(--color-primary)"></i>eigener Dienst</span>` +
+    `<span><i style="border:2px solid var(--color-warning)"></i>getauscht</span></div>` +
+    (teamOpen && teamOpen.slice(0,7) === mk ? teamEdit(teamOpen) : '');
 }
 
 function renderTeamList(){
   const keys = [...new Set([...Object.keys(plan), ...Object.keys(swap)])]
     .filter(k => oaOf(k).trim() || swap[k] !== undefined).sort();
-  renderGroupedList('teamList', keys, teamRow, 'Keine Rufdienst-Einträge gefunden.');
+  renderGroupedList('teamList', keys, null, 'Keine Rufdienst-Einträge gefunden.', null, teamKalender);
 }
 
 function setSwap(k, name){
@@ -1237,7 +1292,7 @@ $('teamList').addEventListener('click', e=>{
   if(rs){ delete swap[rs.dataset.teamreset]; save(LS.swap, swap); teamOpen = null; renderTeamList(); renderPlanList(); renderDay(); return; }
   if(e.target.closest('[data-teamclose]')){ teamOpen = null; renderTeamList(); return; }
   const row = e.target.closest('[data-team]');
-  if(row){ teamOpen = row.dataset.team; renderTeamList(); }
+  if(row){ teamOpen = teamOpen === row.dataset.team ? null : row.dataset.team; renderTeamList(); }
 });
 $('teamList').addEventListener('change', e=>{
   if(e.target.id !== 'teamSel') return;
@@ -2437,7 +2492,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.21.0';
+const APP_VERSION = '1.22.0';
 const APP_BUILD   = '17.09.2026';
 
 function showVersion(){
