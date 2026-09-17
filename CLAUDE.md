@@ -22,6 +22,41 @@ curl -s https://nomiknomik.github.io/tagesdokumentation-ueberstunden-rufdienst/a
 zusätzlich `CACHE` in `app/sw.js` hochzählen (`tagesdoku-vN`), sonst bekommen
 installierte PWAs den alten Stand aus dem Cache serviert.
 
+## Für Design-Arbeit an der PWA
+
+Alles Visuelle steckt in `app/index.html`. Die Farb- und Maßtokens stehen
+ganz oben im `:root`-Block (Zeile ~14) – Palette, Radien, Abstände,
+Touch-Zielgröße, Buttonhöhe. Wer die Optik ändert, ändert am besten dort und
+nicht in den einzelnen Regeln.
+
+**Drei Stellen, an denen Layout und Logik verzahnt sind** – hier vor dem
+Umbauen kurz nachlesen, sonst rechnet die App falsch oder verdeckt Inhalt:
+
+1. **`syncHeaderPad()`** misst Header-, Nav- und Leistenhöhe und setzt daraus
+   das Padding von `main`. Ändert sich eine dieser Höhen, muss die Funktion
+   weiter stimmen. Sie reserviert bewusst die **aufgeklappte** Höhe der
+   Verdienstleiste.
+2. **Die Verdienstleiste** (`.geldbar`) klappt allein am Scrollstand auf
+   (`geldBarPruefen()`). Kein zweiter Auf/Zu-Zustand – der würde sich mit dem
+   Scrollen beißen.
+3. **Der Block zwischen `>>>>> gehalt.js BEGINN` und `<<<<< gehalt.js ENDE`**
+   ist fremder Code und wird nur als Ganzes ausgetauscht. Nichts darin
+   umformatieren.
+
+**Pflicht bei jeder Änderung an `app/`** (weil `main` live ist, siehe oben):
+`APP_VERSION` in `app/index.html` **und** `CACHE` in `app/sw.js` hochzählen.
+Ohne den Cache-Zähler bekommen installierte PWAs den alten Stand serviert.
+
+**Vor dem Push tatsächlich rendern.** Playwright gegen `app/index.html`, auf
+390 × 844 (Telefonbreite). Die bestehenden Testläufe prüfen nicht nur Zahlen,
+sondern auch, dass nichts unter der Leiste verschwindet und die Tabs sauber
+umschalten.
+
+**Achtung, parallele Sessions:** an diesem Repo arbeiten mehrere Chats. Vor
+dem Push `git pull --rebase`; bei einem Konflikt in der Zeile `APP_VERSION`
+gewinnt die höhere Nummer, und der `CACHE`-Zähler muss dann über beide
+hinausgehen. Das ist hier schon einmal passiert (v1.16.2 Icon gegen v1.17.0).
+
 ## Versionsnummer im Footer
 `tagesdokumentation_erfassung.html` hat im Footer eine Versionsnummer
 („vX.Y · Alexander Zabelyshenskiy"), identisch in `build_html.py` gepflegt.
