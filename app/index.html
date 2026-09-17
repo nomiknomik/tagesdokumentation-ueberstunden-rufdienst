@@ -1060,12 +1060,21 @@ Object.entries(CFGMAP).forEach(([id,key])=>{
   };
 });
 $('exportData').onclick = ()=>{
-  const blob = new Blob([JSON.stringify({cfg, plan, days: echteTage(), swap, extras},null,2)],{type:'application/json'});
+  const jetzt = new Date();
+  const p2 = n => String(n).padStart(2,'0');
+  const uhr = `${p2(jetzt.getHours())}-${p2(jetzt.getMinutes())}`;   // kein ":" - im Dateinamen unzulaessig
+  /* meta steht VOR den Daten, damit man die Herkunft einer Sicherung auch im
+     Texteditor auf den ersten Blick sieht. Der Import liest nur die bekannten
+     Schluessel, aeltere Sicherungen ohne meta funktionieren unveraendert. */
+  const daten = {meta:{app:'Tagesdokumentation', version:APP_VERSION, build:APP_BUILD,
+                       erstellt:jetzt.toISOString()},
+                 cfg, plan, days: echteTage(), swap, extras};
+  const blob = new Blob([JSON.stringify(daten,null,2)],{type:'application/json'});
   const a = document.createElement('a');
-  /* Datum im Dateinamen, ISO-Format: so liegen mehrere Sicherungen im
-     Dateimanager von selbst in der richtigen Reihenfolge. */
+  /* Datum zuerst und ISO: so liegen mehrere Sicherungen im Dateimanager von
+     selbst in der richtigen Reihenfolge, die Uhrzeit trennt mehrere am Tag. */
   a.href = URL.createObjectURL(blob);
-  a.download = `tagesdoku_backup_${iso(new Date())}.json`;
+  a.download = `tagesdoku_backup_${iso(jetzt)}_${uhr}_v${APP_VERSION}.json`;
   a.click();
 };
 
@@ -1078,7 +1087,13 @@ $('importData').onchange = async e => {
     if(!data || typeof data !== 'object' || (!data.cfg && !data.plan && !data.days))
       throw new Error('Keine Sicherungsdatei dieser App.');
     const nPlan = Object.keys(data.plan||{}).length, nDays = Object.keys(data.days||{}).length;
-    if(!confirm(`Backup laden?\n\nDienstplan: ${nPlan} Tage\nErfasste Tage: ${nDays}\n\nDie aktuell gespeicherten Daten werden dadurch ersetzt.`)){
+    /* Sicherungen vor v1.24.0 haben keinen meta-Block - dann bleibt die
+       Herkunftszeile einfach weg. */
+    const m = data.meta || {};
+    const herkunft = m.version
+      ? `\nErstellt mit v${m.version}${m.erstellt ? ' am ' + new Date(m.erstellt).toLocaleString('de-DE') : ''}`
+      : '';
+    if(!confirm(`Backup laden?${herkunft}\n\nDienstplan: ${nPlan} Tage\nErfasste Tage: ${nDays}\n\nDie aktuell gespeicherten Daten werden dadurch ersetzt.`)){
       e.target.value = ''; return;
     }
     if(data.cfg  && typeof data.cfg  === 'object'){ cfg  = Object.assign(cfg, data.cfg); save(LS.cfg,  cfg);  }
@@ -1090,7 +1105,8 @@ $('importData').onchange = async e => {
     fuelleNettoFelder();
     expanded = new Set(); lastRenderedDay = null;
     renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDuty();
-    msg.innerHTML = `<span class="ok">Backup geladen: ${nPlan} Plantage, ${nDays} erfasste Tage.</span>`;
+    msg.innerHTML = `<span class="ok">Backup geladen: ${nPlan} Plantage, ${nDays} erfasste Tage` +
+      `${m.version ? ` (Sicherung aus v${m.version})` : ''}.</span>`;
   }catch(err){
     msg.innerHTML = `<span class="note">Laden fehlgeschlagen: ${err.message}</span>`;
   }
@@ -2610,7 +2626,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.23.1';
+const APP_VERSION = '1.24.0';
 const APP_BUILD   = '17.09.2026';
 
 function showVersion(){

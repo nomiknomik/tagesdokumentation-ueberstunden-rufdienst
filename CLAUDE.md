@@ -1003,3 +1003,40 @@ eigene Zeile – in der Monatstabelle und im Textexport steht sie deshalb jetzt
 In der Verdienstleiste des Tag-Tabs bleibt sie unten als „Tagesanteil" vor
 der Tagessumme: dort gibt es keine LA-Spalte, die Zeile ist Teil der
 Summenbildung.
+
+### PWA v1.24.0 – Sicherung mit Uhrzeit und Version (17.09.2026)
+
+Dateiname jetzt `tagesdoku_backup_JJJJ-MM-TT_HH-MM_vX.Y.Z.json`. Datum bleibt
+vorn (ISO, damit die Sortierung im Dateimanager stimmt), die Uhrzeit trennt
+mehrere Sicherungen am selben Tag. **Bindestrich statt Doppelpunkt** – `:` ist
+in Dateinamen unzulässig bzw. wird von macOS/iOS umgeschrieben.
+
+Zusätzlich steht die Herkunft **in** der Datei, als erster Block:
+
+```json
+"meta": {"app":"Tagesdokumentation","version":"1.24.0",
+         "build":"17.09.2026","erstellt":"2026-09-17T10:14:21.336Z"}
+```
+
+Der Import zeigt sie in der Rückfrage („Erstellt mit v1.24.0 am 17.9.2026,
+10:14:21") und in der Erfolgsmeldung. Sicherungen **ohne** `meta` (alles vor
+v1.24.0) laufen unverändert durch, die Herkunftszeile bleibt dann einfach
+weg – der Import liest ohnehin nur die Schlüssel, die er kennt.
+
+**Kompatibilität v1.19.1 → v1.24.0 geprüft** (echtes Backup des Nutzers,
+153 Plantage, 20 erfasste Tage): dieselbe Datei in beide Versionen geladen,
+Brutto je Monat auf den Cent gleich, Postenlisten und Mengen identisch,
+Urlaubstage gleich, keine Fehler.
+
+| Monat | v1.19.1 | v1.24.0 |
+|---|---|---|
+| 2026-06 | 3756,45 € | 3756,45 € |
+| 2026-07 | 839,81 € | 839,81 € |
+| 2026-08 | 829,57 € | 829,57 € |
+| 2026-09 | 1095,23 € | 1095,23 € |
+| 2026-10 | 1044,84 € | 1044,84 € |
+
+Zwischen 1.19.1 und 1.24.0 hat sich **kein** Datenformat geändert; alle
+Neuerungen (v1.20–v1.23) lesen dieselben Felder wie zuvor. Wer künftig etwas
+am Format ändert, kann `meta.version` als Ansatzpunkt für eine Migration
+nutzen – bisher braucht es keine.
