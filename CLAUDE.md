@@ -988,3 +988,18 @@ undefiniert): `page.route('**/pdf-lib*.js', …)` mit der lokal per
 per Base64 herausreichen. Gerendert wurde danach mit PyMuPDF
 (`page.get_pixmap(dpi=120)`) – Playwright und Chromium liegen unter
 `/opt/pw-browsers/chromium`, `playwright install` läuft hier nicht.
+
+### PWA v1.23.1 – Lohnarten aufsteigend nach LA-Ziffer (17.09.2026)
+
+`postenSortiert()` sortierte nach der festen Liste `LA_REIHE`
+(`796,797,734,735,737,790,791,752,753,754,252,731` – gewachsen, nicht
+begründet). Jetzt `sort((a,b) => a.la - b.la)`; `LA_REIHE` ist ersatzlos weg.
+Die Aufstellung steht damit in derselben Reihenfolge wie die Abrechnung des
+Klinikums: 050, 252, 731, 734, 735, 737, 752, 753, 754, 790, 791, 796, 797.
+
+Die Grundvergütung (LA 050) ist kein Posten des Rechenkerns, sondern eine
+eigene Zeile – in der Monatstabelle und im Textexport steht sie deshalb jetzt
+**vor** den übrigen Zeilen statt dahinter, sonst bräche sie die Reihenfolge.
+In der Verdienstleiste des Tag-Tabs bleibt sie unten als „Tagesanteil" vor
+der Tagessumme: dort gibt es keine LA-Spalte, die Zeile ist Teil der
+Summenbildung.

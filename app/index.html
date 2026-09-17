@@ -2106,7 +2106,6 @@ const LA_INFO = {
   252:{kurz:'Einspringen'}
 };
 /* Anzeigereihenfolge: die dicken Posten zuerst */
-const LA_REIHE = [796,797,734,735,737,790,791,752,753,754,252,731];
 
 /* ---- kleine Datums-/Zeithelfer (UTC-Tagesnummern, damit die
         Zeitumstellungstage nicht 23 bzw. 25 Stunden haben) ---- */
@@ -2237,7 +2236,9 @@ function gehaltEintraege(ym){
 const extraFuer = ym => ({252: (extras[ym] && extras[ym][252]) || 0});
 
 function postenSortiert(posten){
-  return posten.slice().sort((a,b) => LA_REIHE.indexOf(a.la) - LA_REIHE.indexOf(b.la))
+  /* aufsteigend nach LA-Ziffer - so steht die Aufstellung in derselben
+     Reihenfolge wie die Abrechnung des Klinikums. */
+  return posten.slice().sort((a,b) => a.la - b.la)
     .map(p => ({...p, ...(LA_INFO[p.la] || {})}));
 }
 
@@ -2485,8 +2486,8 @@ function renderGeldMonat(){
       + `<td class="r">${eur(pz.betrag)}</td></tr>`).join('');
   $('gmTabelle').innerHTML = `<table class="patab">
     <tr><th>LA</th><th>Lohnart</th><th class="r">Menge</th><th class="r">Betrag</th></tr>
-    ${zeilen || '<tr><td colspan="4" style="color:var(--color-text-muted);padding:10px 0">Für diesen Monat ist nichts erfasst.</td></tr>'}
     <tr class="sub"><td class="la">050</td><td>Grundvergütung</td><td class="r">1 Monat</td><td class="r">${eur(grund)}</td></tr>
+    ${zeilen || '<tr><td colspan="4" style="color:var(--color-text-muted);padding:10px 0">Für diesen Monat ist sonst nichts erfasst.</td></tr>'}
     <tr class="sum"><td></td><td>Brutto gesamt</td><td></td><td class="r">${eur(gesamt)}</td></tr>
     </table>`;
 
@@ -2513,9 +2514,9 @@ function monatsText(ym){
   const nf = nettoFaktoren();
   const z = [`Erwartete Abrechnung – Leistungsmonat ${monatName(ym)}`,
              `(variable Teile erscheinen in der Abrechnung ${monatName(plusMonate(ym,2))})`, ''];
+  z.push(`050  ${'Grundvergütung'.padEnd(32)} ${'1 Monat'.padStart(12)}  ${eur(grund).padStart(12)}`);
   posten.forEach(pz =>
     z.push(`${pz.la}  ${pz.bezeichnung.padEnd(32)} ${menge2(pz.menge, pz.einheit).padStart(12)}  ${eur(pz.betrag).padStart(12)}`));
-  z.push(`050  ${'Grundvergütung'.padEnd(32)} ${'1 Monat'.padStart(12)}  ${eur(grund).padStart(12)}`);
   z.push('');
   z.push(`Brutto gesamt: ${eur(summe + grund)}`);
   z.push(`Netto geschätzt: ca. ${eur0((summe + grund) * nf.schnitt/100)} (${Math.round(nf.schnitt)} %, ${nf.quelle})`);
@@ -2609,7 +2610,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.23.0';
+const APP_VERSION = '1.23.1';
 const APP_BUILD   = '17.09.2026';
 
 function showVersion(){
