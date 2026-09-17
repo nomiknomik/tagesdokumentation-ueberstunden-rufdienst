@@ -614,11 +614,14 @@ let cur = iso(new Date());
 let lastRenderedDay = null;
 let expanded = new Set();
 const day = () => (days[cur] ||= blank());
-const persist = () => {
+/* Nur Tage mit echten Eingaben. Der bloss angeschaute Tag liegt als leeres
+   Geruest in days und gehoert weder in den Speicher noch in die Sicherung. */
+const echteTage = () => {
   const out = {};
   for(const k in days) if(hasContent(k)) out[k] = days[k];
-  save(LS.days, out);
+  return out;
 };
+const persist = () => save(LS.days, echteTage());
 
 /* ---------- Rechnen (identisch zum Desktop-Tool) ---------- */
 const dec = t => { if(!t) return null; const [h,m]=t.split(':').map(Number); return h+m/60; };
@@ -997,9 +1000,13 @@ Object.entries(CFGMAP).forEach(([id,key])=>{
   };
 });
 $('exportData').onclick = ()=>{
-  const blob = new Blob([JSON.stringify({cfg,plan,days,swap,extras},null,2)],{type:'application/json'});
+  const blob = new Blob([JSON.stringify({cfg, plan, days: echteTage(), swap, extras},null,2)],{type:'application/json'});
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'tagesdoku_backup.json'; a.click();
+  /* Datum im Dateinamen, ISO-Format: so liegen mehrere Sicherungen im
+     Dateimanager von selbst in der richtigen Reihenfolge. */
+  a.href = URL.createObjectURL(blob);
+  a.download = `tagesdoku_backup_${iso(new Date())}.json`;
+  a.click();
 };
 
 $('importDataBtn').onclick = ()=> $('importData').click();
@@ -2386,7 +2393,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.19.0';
+const APP_VERSION = '1.19.1';
 const APP_BUILD   = '15.09.2026';
 
 function showVersion(){

@@ -718,6 +718,21 @@ mit `pdfjs-dist` rendern und die Textpositionen prüfen – so wurde
 verifiziert, dass das Datum wirklich über der Unterschriftszeile landet
 (y=148 gegen „Datum, Unterschrift Ärztin / Arzt" bei y=136).
 
+### PWA v1.19.1 – Backup-Dateiname mit Datum (17.09.2026)
+
+Die Sicherung heißt jetzt `tagesdoku_backup_JJJJ-MM-TT.json` statt immer
+gleich. ISO-Format bewusst: so sortieren sich mehrere Sicherungen im
+Dateimanager von selbst richtig.
+
+Dabei mitgenommen: der Export schrieb `days` **ungefiltert** raus und damit
+auch das leere Tagesgerüst des gerade angeschauten Tages – eine Sicherung mit
+einem erfassten Tag enthielt zwei Einträge. Export und `persist()` teilen sich
+jetzt `echteTage()`, den Filter auf `hasContent()`.
+
+**Zum Testen des Imports:** er fragt per `confirm()` nach. Playwright weist
+Dialoge standardmäßig ab, der Import läuft dann still ins Leere und sieht wie
+ein Bug aus. Im Test `page.on('dialog', d => d.accept())` setzen.
+
 ### Offene Punkte PWA (Stand 13.09.2026)
 - Ruhezeit-Check weiterhin nur Badge über manuelles Dropdown, keine
   Automatik (siehe oben, gilt für Desktop-Tool genauso).
