@@ -433,7 +433,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="archive"></span>Erfasste Tage</h2>
     <div class="list" id="historyList"><div class="li">Noch keine Tage erfasst.</div></div>
-    <div class="hint" id="historyInfo">Der Sammel-Druck fasst alle erfassten Tage eines Monats zu einer PDF zusammen – ein Blatt je Tag, Felder festgeschrieben.</div>
+    <div class="hint" id="historyInfo">„Sammel-PDF“ = der amtliche Bogen, ein Blatt je Tag. „Übersicht“ = eine Tabelle mit allen Tagen und jedem einzelnen Einsatz zum Abgleich mit TDA.</div>
   </div>
 </section>
 
@@ -1326,7 +1326,10 @@ function renderHistory(){
     if(d.einsaetze && d.einsaetze.length) parts.push(d.einsaetze.length+' Einsatz');
     return `<div class="li" data-goto="${k}" style="cursor:pointer"><span>${k}</span><span style="display:flex;align-items:center;gap:8px"><span class="tag">${parts.join(' · ')||'erfasst'}</span>${icon('chevronRight')}</span></div>`;
   }, 'Noch keine Tage erfasst.',
-  (mk, ks)=>`<div style="padding:0 14px 12px"><button class="btn outline" style="font-size:14px;min-height:44px" data-monthpdf="${mk}">${icon('fileText')}Monat als Sammel-PDF</button></div>`);
+  (mk, ks)=>`<div class="row2" style="padding:0 14px 12px">
+      <button class="btn outline" style="font-size:13px;min-height:44px" data-monthpdf="${mk}">${icon('fileText')}Sammel-PDF</button>
+      <button class="btn outline" style="font-size:13px;min-height:44px" data-monthtab="${mk}">${icon('archive')}Übersicht</button>
+    </div>`);
 }
 $('historyList').addEventListener('click', e=>{
   const row = e.target.closest('[data-goto]'); if(!row) return;
@@ -1544,10 +1547,124 @@ async function monatsPdf(mk, info){
   await teilePdf(await out.save(), `Tagesdokumentation_${mk}.pdf`, monthLabel(mk));
   if(info) info.innerHTML = `<span class="ok">${monthLabel(mk)}: ${keys.length} Tage als Sammel-PDF erzeugt.</span>`;
 }
+/* ---------- Monats-Übersicht als eigene Tabelle (nicht der Klinik-Bogen) ----------
+   Zweck laut Nutzer: Zeile für Zeile gegen die TDA-Auswertung abgleichen.
+   Deshalb steht JEDER Einsatz einzeln drin; mehrere Blätter sind in Ordnung. */
+const TAB_SPALTEN = [   // x-Offset ab Seitenrand, Breite, rechtsbündig?
+  {x:  0, w: 74}, {x: 74, w:140}, {x:214, w: 62},
+  {x:276, w: 44, r:true}, {x:320, w:152}, {x:472, w: 55}
+];
+/* pdf-lib zeichnet mit WinAnsi; alles andere wirft beim Speichern. Freitexte
+   (Grund, Fallnummer) koennen aber alles enthalten. */
+const WINANSI_EXTRA = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ'
+                    + '‘’“”•–—˜™š›œžŸ';
+const san = t => String(t == null ? '' : t).replace(/\s+/g, ' ').trim()
+  .replace(/[^\x20-\x7E\xA0-\xFF]/g, c => WINANSI_EXTRA.includes(c) ? c : '?');
+
+async function monatsTabellePdf(mk, info){
+  const keys = Object.keys(days).filter(k => k.slice(0,7) === mk && hasContent(k)).sort();
+  if(!keys.length){ if(info) info.innerHTML = '<span class="note">Für diesen Monat ist nichts erfasst.</span>'; return; }
+  if(info) info.innerHTML = '<span class="ok">Erzeuge Übersicht …</span>';
+
+  const doc  = await PDFLib.PDFDocument.create();
+  const reg  = await doc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const bold = await doc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+  const S = {b:595.28, h:841.89, rand:34, unten:48};
+  const breite = S.b - 2*S.rand;
+  const grau = PDFLib.rgb(.42,.37,.32), schwarz = PDFLib.rgb(.12,.10,.09),
+        linie = PDFLib.rgb(.78,.74,.70), zebra = PDFLib.rgb(.96,.94,.90);
+
+  /* Text auf die Spaltenbreite kürzen statt in die Nachbarspalte laufen lassen */
+  const fit = (txt, w, size, font) => {
+    let t = san(txt);
+    if(font.widthOfTextAtSize(t, size) <= w) return t;
+    while(t.length > 1 && font.widthOfTextAtSize(t + '…', size) > w) t = t.slice(0, -1);
+    return t + '…';
+  };
+
+  let seiten = [], page, y;
+  const neueSeite = ()=>{
+    page = doc.addPage([S.b, S.h]); seiten.push(page);
+    page.drawText('Tagesdokumentation – Monatsübersicht', {x:S.rand, y:S.h-52, size:12, font:bold, color:schwarz});
+    const kopf = [monthLabel(mk), san(cfg.name), cfg.pnr ? 'Pers.-Nr. ' + san(cfg.pnr) : '']
+                   .filter(Boolean).join('  ·  ');
+    page.drawText(kopf, {x:S.rand, y:S.h-66, size:8.5, font:reg, color:grau});
+    y = S.h - 88;
+    ['Datum / Zeit','Dienstart bzw. Art','Dienstzeit','Std.','Grund / Anlass','Fall-Nr.']
+      .forEach((t,i)=>{ const c = TAB_SPALTEN[i];
+        page.drawText(t, {x:S.rand + c.x + (c.r ? c.w - 4 - bold.widthOfTextAtSize(t,7) : 0),
+                          y, size:7, font:bold, color:grau}); });
+    y -= 4;
+    page.drawLine({start:{x:S.rand,y}, end:{x:S.rand+breite,y}, thickness:.8, color:linie});
+    y -= 13;
+  };
+  /* Zellen einer Zeile zeichnen; cells = [text, …] in Spaltenreihenfolge */
+  const zeile = (cells, size, font, farbe, einzug)=>{
+    cells.forEach((t,i)=>{
+      if(!t) return;
+      const c = TAB_SPALTEN[i], w = c.w - 4, ein = (i === 0 ? (einzug||0) : 0);
+      const s = fit(t, w - ein, size, font);
+      page.drawText(s, {x: S.rand + c.x + ein + (c.r ? w - ein - font.widthOfTextAtSize(s,size) : 0),
+                        y, size, font, color:farbe});
+    });
+  };
+  const platzPruefen = h => { if(y - h < S.unten) neueSeite(); };
+
+  neueSeite();
+  let sumUe = 0, sumAkt = 0, sumAnz = 0;
+  keys.forEach((k, idx)=>{
+    const d = days[k];
+    const {ue, summe, anzahl, dauern} = calcFor(k);
+    const eins = (d.einsaetze || []).filter(e => e.beginn || e.ende || e.art || e.grund_anlass || e.fallnr);
+    platzPruefen(15 + eins.length * 11);
+
+    /* Der Streifen muss von der Oberkante der Tageszeile NACH UNTEN wachsen.
+       Nach oben gezeichnet uebermalt er die letzte Zeile des Vortages. */
+    const bh = 13 + eins.length*11;
+    if(idx % 2) page.drawRectangle({x:S.rand-2, y:y+10-bh, width:breite+4, height:bh, color:zebra});
+    const code = d.dienstart || derive(k).code;
+    /* Urlaub/Fortbildung/Krank haben keine Dienstzeit - die Felder koennen aus
+       einem frueheren Stand noch gefuellt sein, gehoeren hier aber nicht hin. */
+    const frei = istUrlaubstag(k) || !!ABWESENHEIT[code];
+    const dz = frei ? '' : [d.dienstbeginn, d.tats_dienstende || d.plan_dienstende].filter(Boolean).join('–');
+    zeile([`${WDAY_KURZ[new Date(k+'T12:00:00').getDay()]} ${k.slice(8)}.${k.slice(5,7)}.`,
+           (DUTY[code] && DUTY[code].label) || (code === 'abwesend' ? 'Urlaub' : code || ''),
+           dz, (frei || ue === null) ? '' : fmt(ue), frei ? '' : (d.grund_ueberstunden || ''), ''],
+          8, bold, schwarz, 0);
+    y -= 12;
+    eins.forEach((e,i)=>{
+      zeile([[e.beginn, e.ende].filter(Boolean).join('–') || '–',
+             e.art || '', '', dauern[i] || '', e.grund_anlass || '', e.fallnr || ''],
+            7.5, reg, grau, 8);
+      y -= 11;
+    });
+    y -= 3;
+    if(!frei && ue !== null) sumUe += ue;
+    sumAkt += summe; sumAnz += anzahl;
+  });
+
+  platzPruefen(26);
+  y -= 2;
+  page.drawLine({start:{x:S.rand,y:y+8}, end:{x:S.rand+breite,y:y+8}, thickness:.8, color:linie});
+  zeile([`${keys.length} ${keys.length===1?'Tag':'Tage'}`, `${sumAnz} Einsätze · Aktivzeit ${fmt(sumAkt)} h`,
+         'Überstunden', fmt(sumUe), '', ''], 8, bold, schwarz, 0);
+
+  const heute = new Date().toLocaleDateString('de-DE');
+  seiten.forEach((p,i)=> p.drawText(`Seite ${i+1} von ${seiten.length}  ·  erzeugt am ${heute}`,
+      {x:S.rand, y:28, size:7, font:reg, color:grau}));
+
+  await teilePdf(await doc.save(), `Monatsuebersicht_${mk}.pdf`, monthLabel(mk));
+  if(info) info.innerHTML = `<span class="ok">${monthLabel(mk)}: ${keys.length} ${keys.length===1?'Tag':'Tage'}, ` +
+    `${sumAnz} ${sumAnz===1?'Einsatz':'Einsätze'} auf ${seiten.length} ${seiten.length===1?'Blatt':'Blättern'}.</span>`;
+}
+
 $('historyList').addEventListener('click', async e=>{
-  const btn = e.target.closest('[data-monthpdf]'); if(!btn) return;
+  const btn = e.target.closest('[data-monthpdf],[data-monthtab]'); if(!btn) return;
   e.preventDefault();
-  try{ await monatsPdf(btn.dataset.monthpdf, $('historyInfo')); }
+  try{
+    if(btn.dataset.monthtab) await monatsTabellePdf(btn.dataset.monthtab, $('historyInfo'));
+    else                     await monatsPdf(btn.dataset.monthpdf, $('historyInfo'));
+  }
   catch(err){ if(err.name!=='AbortError') $('historyInfo').innerHTML = `<span class="note">Fehler: ${err.message}</span>`; }
 });
 
@@ -2492,7 +2609,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.22.0';
+const APP_VERSION = '1.23.0';
 const APP_BUILD   = '17.09.2026';
 
 function showVersion(){

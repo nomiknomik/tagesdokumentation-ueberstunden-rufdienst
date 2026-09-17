@@ -938,3 +938,53 @@ hat, ist jetzt der **laufende Monat offen** und der Rest zu. Sobald
 `openGroups[containerId]` existiert, gilt wieder ausschließlich sein
 Zustand – auch eine leere Liste, also „alles zu", bleibt erhalten. Gilt für
 alle drei Listen.
+
+### PWA v1.23.0 – Monatsübersicht als eigene Tabelle (17.09.2026)
+
+Neben „Sammel-PDF" (der amtliche Bogen, ein Blatt je Tag) steht in jeder
+Monatsgruppe von „Erfasste Tage" jetzt ein zweiter Knopf **„Übersicht"**
+(`data-monthtab` → `monatsTabellePdf(mk, info)`). Zweck laut Nutzer: Zeile für
+Zeile gegen die TDA-Auswertung abgleichen. Deshalb steht **jeder Einsatz
+einzeln** drin, und mehrere Blätter sind ausdrücklich in Ordnung.
+
+Das ist ein **selbst gezeichnetes** PDF (`PDFDocument.create()`, Helvetica),
+kein befülltes Formular – der amtliche Bogen hat für so eine Tabelle kein
+Layout. Aufbau je Tag: eine fette Tageszeile (Datum · Dienstart · Dienstzeit ·
+Überstunden · Grund) und darunter je Einsatz eine eingerückte graue Zeile
+(Beginn–Ende · Art · Dauer · Anlass · Fall-Nr.). Am Ende eine Summenzeile
+(Tage, Einsätze, Aktivzeit, Überstunden), auf jedem Blatt Kopf und
+„Seite n von m".
+
+Vier Dinge, die beim Nachbauen Ärger machen:
+
+1. **Der Zebra-Streifen muss nach UNTEN wachsen.** Erste Fassung zeichnete
+   `drawRectangle` ab `y` mit der Blockhöhe nach oben – das Rechteck des
+   nächsten Tages hat damit die letzte Zeile des vorigen übermalt. Im
+   Testlauf fehlten dadurch 10 von 28 Tagen im fertigen PDF, ohne dass ein
+   Fehler geworfen wurde. Nur eine Sichtprüfung der gerenderten Seite fängt
+   das; die Textextraktion allein hätte gereicht (`get_text()` zeigt
+   übermalten Text nicht mehr), eine reine „PDF wurde erzeugt"-Prüfung nicht.
+2. **pdf-lib zeichnet WinAnsi.** Alles außerhalb wirft beim `save()`. Die
+   Freitexte (Grund, Fallnummer, Erläuterung) können aber alles enthalten,
+   deshalb `san()`: Whitespace normalisieren und alles außerhalb von
+   Latin-1 + den WinAnsi-Extras (`–`, `·`, `…`, typografische Anführungs-
+   zeichen …) durch `?` ersetzen.
+3. **Spaltentexte kürzen, nicht überlaufen lassen** – `fit()` schneidet mit
+   `widthOfTextAtSize` auf die Spaltenbreite und hängt `…` an. Die
+   Spaltenbreiten stehen als `TAB_SPALTEN` beieinander; sie müssen zusammen
+   527 pt ergeben (A4 minus 2 × 34 pt Rand).
+4. **Abwesenheitstage haben keine Dienstzeit.** `frei = istUrlaubstag(k) ||
+   ABWESENHEIT[code]` unterdrückt Dienstzeit, Überstunden und Grund – sonst
+   stehen dort Reste aus einem früheren Stand, und die Überstundensumme
+   stimmt nicht (im Test 47,00 statt 35,50 h).
+
+Eine Plausibilitätswarnung wie beim Sammel-PDF gibt es hier bewusst nicht:
+die Übersicht dient dem Abgleich, da stört ein Dialog.
+
+**Zum Testen** (cdnjs ist aus der Web-Session gesperrt, `PDFLib` also
+undefiniert): `page.route('**/pdf-lib*.js', …)` mit der lokal per
+`npm i pdf-lib` installierten `dist/pdf-lib.min.js` beantworten,
+`teilePdf` im Seitenkontext durch einen Sammler ersetzen und die Bytes
+per Base64 herausreichen. Gerendert wurde danach mit PyMuPDF
+(`page.get_pixmap(dpi=120)`) – Playwright und Chromium liegen unter
+`/opt/pw-browsers/chromium`, `playwright install` läuft hier nicht.
