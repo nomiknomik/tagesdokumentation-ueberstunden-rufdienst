@@ -659,7 +659,16 @@ const oaOf = k => (swap[k] !== undefined ? swap[k] : (plan[k] ? plan[k].oa : '')
 const blank = () => ({dienstart:'', dienstbeginn:'', plan_dienstende:'', tats_dienstende:'',
   grund_ueberstunden:'', frn:false, frn_kommentar:'', erlaeuterung:'', angeordnet_durch:'', einsaetze:[],
   ruhezeit_eingehalten:'ja', gewuenschter_ausgleich:'', geplanter_ausgleichstag:''});
-let cur = iso(new Date());
+/* Startet die App vor 07:30, ist der Bogen von gestern gemeint: ein
+   Nachteinsatz um 00:20 gehoert auf das Blatt des Tages, an dem der Dienst
+   begann. Ab 07:30 (frueheste Dienstzeit am Wochenende) wieder heute. */
+const START_UMSCHALT = 7*60 + 30;
+function startTag(){
+  const n = new Date();
+  if(n.getHours()*60 + n.getMinutes() < START_UMSCHALT) n.setDate(n.getDate() - 1);
+  return iso(n);
+}
+let cur = startTag();
 let lastRenderedDay = null;
 let expanded = new Set();
 const day = () => (days[cur] ||= blank());
@@ -857,13 +866,15 @@ function renderEinsatzBtn(){
     return;
   }
   const beginn = day().einsaetze[i].beginn;
-  const heute = cur === iso(new Date());
+  /* Der Timer laeuft auf dem gerade bearbeiteten Bogen, nicht auf dem
+     Kalendertag: nachts ist das der Vortag (siehe startTag). */
+  const aktiv = cur === startTag();
   const tick = ()=>{
-    const sub = heute ? `seit ${beginn} · ${laufzeitText(beginn)}` : `offen seit ${beginn}`;
+    const sub = aktiv ? `seit ${beginn} · ${laufzeitText(beginn)}` : `offen seit ${beginn}`;
     $('lblEinsatz').innerHTML = `Einsatz beenden<small>${sub}</small>`;
   };
   tick();
-  if(heute) timerId = setInterval(tick, 1000);
+  if(aktiv) timerId = setInterval(tick, 1000);
 }
 
 const FIELDS = ['dienstbeginn','plan_dienstende','tats_dienstende','grund_ueberstunden',
@@ -2626,8 +2637,8 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.24.0';
-const APP_BUILD   = '17.09.2026';
+const APP_VERSION = '1.25.0';
+const APP_BUILD   = '18.09.2026';
 
 function showVersion(){
   $('appVersion').textContent = 'v' + APP_VERSION;

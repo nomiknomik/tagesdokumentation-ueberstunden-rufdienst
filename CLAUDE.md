@@ -1040,3 +1040,32 @@ Zwischen 1.19.1 und 1.24.0 hat sich **kein** Datenformat geändert; alle
 Neuerungen (v1.20–v1.23) lesen dieselben Felder wie zuvor. Wer künftig etwas
 am Format ändert, kann `meta.version` als Ansatzpunkt für eine Migration
 nutzen – bisher braucht es keine.
+
+### PWA v1.25.0 – Startet nachts auf dem Bogen des Vortags (18.09.2026)
+
+Ein Anruf um 00:20 gehört auf das Blatt des Tages, an dem der Dienst begann –
+sonst steht ein Dienst auf zwei Zetteln. Die App öffnet deshalb **vor 07:30
+den Vortag**, ab 07:30 wieder den laufenden Tag:
+
+```js
+const START_UMSCHALT = 7*60 + 30;   // fruehester Dienstbeginn (Sa/So/Feiertag)
+function startTag(){ … }            // liefert gestern oder heute
+let cur = startTag();
+```
+
+Die Schwelle ist bewusst die früheste Dienstbeginnzeit (Wochenende/Feiertag
+07:30), nicht die 11:00 der Werktage – ab 07:30 kann ein neuer Dienst laufen.
+
+Für die **Gehaltsrechnung** ändert das nichts: der Adapter datiert
+RB-Einsätze vor 06:00 ohnehin um (`cfg.nachtBuchung`, siehe v1.16.0), der
+Einsatz zählt also weiterhin als 18.09. 00:20 für die Zuschläge, obwohl er
+auf dem Bogen des 17.09. steht.
+
+**Mitgezogen: der Live-Timer** in `renderEinsatzBtn()` hing an
+`cur === iso(new Date())` und wäre nachts genau auf dem Bogen ausgefallen,
+auf dem er gebraucht wird. Er hängt jetzt an `cur === startTag()`.
+`laufzeitText()` rechnete schon über Mitternacht (negative Differenz + 24 h).
+
+Getestet mit gefälschter Uhr (`page.clock.install`): 06:10, 07:29 → Vortag;
+07:31, 09:00 → heute; 01.10. 02:20 → 30.09. (Monatswechsel). Ein um 00:20
+gestempelter Einsatz landet im Tag 2026-09-17 und der Timer zählt hoch.
