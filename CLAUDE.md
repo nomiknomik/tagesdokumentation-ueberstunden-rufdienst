@@ -1081,3 +1081,23 @@ aus Fließkommaresten ein „0.00" in „Überstunden gesamt" stehen.
 Gehaltsrechnung und Konto unverändert – der Adapter rechnete schon immer ab
 `d.dienstbeginn`, nur das Formularfeld hatte ihn ignoriert. Der Verlauf nutzt
 jetzt ebenfalls `calcFor()` statt einer eigenen Kopie der Formel.
+
+### PWA v1.27.0 – Empfänger-Adresse für WeTransfer (23.09.2026)
+
+Eine PWA kann weder eine bestimmte App ansteuern noch dem iOS-Teilen-Menü
+einen Empfänger mitgeben. Deshalb: beim Erzeugen einer PDF (Einzel-PDF,
+Sammel-PDF, Übersicht) kopiert `kopiereEmpfaenger()` die Adresse aus
+`cfg.empfaenger` (Einstellungen → „PDF versenden", Default
+`Alexander.Zabelyshenskiy@klf-net.de`, leer = nichts kopieren) in die
+Zwischenablage und zeigt kurz einen `toast()`. In WeTransfer dann nur noch
+„Einsetzen".
+
+**Muss synchron am Anfang des Klick-Handlers stehen**: iOS erlaubt
+`clipboard.writeText` nur innerhalb der Nutzergeste, nach dem `await` auf die
+PDF-Erzeugung wäre sie verbraucht. Default per `??=`, damit ein bewusst
+geleertes Feld leer bleibt.
+
+**Zum Testen**: Playwright-Kontext mit `serviceWorkers:'block'` anlegen. Auf
+`http://localhost` registriert sich sonst der Service Worker, das
+`controllerchange` löst `location.reload()` aus, und der erste Klick geht ins
+Leere – sieht aus wie ein Bug, ist aber nur das Testumfeld.

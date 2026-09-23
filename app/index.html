@@ -225,6 +225,11 @@ select{color-scheme:light}
 .chk input:checked{background:var(--color-primary);border-color:var(--color-primary)}
 .chk input:checked::after{content:"";position:absolute;left:7px;top:3px;width:6px;height:11px;
   border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);
+  z-index:30;max-width:calc(100% - 32px);background:var(--color-text);color:var(--color-card);
+  font-size:13px;line-height:18px;padding:10px 14px;border-radius:var(--radius-input);
+  box-shadow:0 6px 20px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
 .hint{font-size:12px;line-height:16px;color:var(--color-text-muted);margin-top:6px}
 .hint .warn{color:var(--color-warning);font-weight:600}
 
@@ -449,6 +454,12 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <select id="cfg_klinik"><option>Allgemein-, Viszeral- u. Gefäßchirurgie</option><option>Unfallchirurgie</option></select></div>
   </div>
   <div class="card">
+    <h2><span data-icon="fileText"></span>PDF versenden</h2>
+    <div class="row"><label>Empfänger-Adresse</label><input id="cfg_empfaenger" type="email" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <div class="hint">Wird beim Erzeugen einer PDF in die Zwischenablage kopiert. Im Teilen-Menü
+      WeTransfer wählen, ins Empfängerfeld tippen und „Einsetzen“. Leer lassen, um nichts zu kopieren.</div>
+  </div>
+  <div class="card">
     <h2><span data-icon="search"></span>Erkennung im Dienstplan</h2>
     <div class="row"><label>Nachname (Spalte OÄ)</label><input id="cfg_nachname"></div>
     <div class="row"><label>Kürzel (Spalte Urlaub)</label><input id="cfg_kuerzel"></div>
@@ -598,6 +609,7 @@ const load = (k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }cat
 const save = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
 let cfg   = load(LS.cfg, {name:'',pnr:'',funktion:'Oberarzt',klinik:'Allgemein-, Viszeral- u. Gefäßchirurgie',nachname:'',kuerzel:''});
 cfg.nachtBuchung ||= 'kalendertag';
+cfg.empfaenger ??= 'Alexander.Zabelyshenskiy@klf-net.de';   // leer = bewusst nichts kopieren
 let plan  = load(LS.plan, {});   // "2026-09-07" -> {wd, oa, urlaub}
 let days  = load(LS.days, {});   // "2026-09-07" -> Tagesdaten
 let swap  = load(LS.swap, {});   // "2026-09-07" -> Name des Diensthabenden (Tausch nach dem Excel-Import)
@@ -1065,13 +1077,15 @@ $('datum').onchange = e => { if(e.target.value){ cur = e.target.value; renderDay
 
 /* ---------- Einstellungen ---------- */
 const CFGMAP = {cfg_name:'name', cfg_pnr:'pnr', cfg_funktion:'funktion', cfg_klinik:'klinik',
-                cfg_nachname:'nachname', cfg_kuerzel:'kuerzel', cfg_nachtbuchung:'nachtBuchung'};
+                cfg_nachname:'nachname', cfg_kuerzel:'kuerzel', cfg_nachtbuchung:'nachtBuchung',
+                cfg_empfaenger:'empfaenger'};
 Object.entries(CFGMAP).forEach(([id,key])=>{
   $(id).value = cfg[key] || '';
   $(id).oninput = $(id).onchange = e => {
     cfg[key] = e.target.value; save(LS.cfg,cfg);
     if(key==='funktion') renderDay();
     else if(key==='nachtBuchung') renderTagGeld();
+    else if(key==='empfaenger') {}
     else renderDuty();
   };
 });
@@ -1540,6 +1554,23 @@ async function buildTagesPdf(k, flatten){
   return pdfDoc;
 }
 
+/* Empfaenger in die Zwischenablage, damit er in WeTransfer nur eingesetzt werden muss.
+   Muss SYNCHRON am Anfang des Klick-Handlers laufen: iOS erlaubt writeText nur
+   innerhalb der Nutzergeste, nach dem await auf die PDF-Erzeugung waere sie verbraucht. */
+function kopiereEmpfaenger(){
+  const adr = (cfg.empfaenger || '').trim();
+  if(!adr || !navigator.clipboard) return;
+  navigator.clipboard.writeText(adr)
+    .then(()=>toast(`${adr} kopiert – im Empfängerfeld „Einsetzen“`))
+    .catch(()=>{});
+}
+let toastId = null;
+function toast(txt){
+  let el = $('toast');
+  if(!el){ el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
+  el.textContent = txt; el.classList.add('on');
+  clearTimeout(toastId); toastId = setTimeout(()=>el.classList.remove('on'), 4000);
+}
 async function teilePdf(bytes, fname, titel){
   const blob = new Blob([bytes],{type:'application/pdf'});
   const file = new File([blob], fname, {type:'application/pdf'});
@@ -1552,6 +1583,7 @@ async function teilePdf(bytes, fname, titel){
 }
 
 $('pdfBtn').onclick = async ()=>{
+  kopiereEmpfaenger();
   try{
     const w = pruefeTag(cur);
     if(w.length && !confirm('Bitte prüfen:\n\n• ' + w.join('\n• ') + '\n\nPDF trotzdem erzeugen?')) return;
@@ -1692,6 +1724,7 @@ async function monatsTabellePdf(mk, info){
 $('historyList').addEventListener('click', async e=>{
   const btn = e.target.closest('[data-monthpdf],[data-monthtab]'); if(!btn) return;
   e.preventDefault();
+  kopiereEmpfaenger();
   try{
     if(btn.dataset.monthtab) await monatsTabellePdf(btn.dataset.monthtab, $('historyInfo'));
     else                     await monatsPdf(btn.dataset.monthpdf, $('historyInfo'));
@@ -2641,7 +2674,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.26.0';
+const APP_VERSION = '1.27.0';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
