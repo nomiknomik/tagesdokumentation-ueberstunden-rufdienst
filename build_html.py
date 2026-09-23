@@ -52,7 +52,7 @@ html_template = r'''<!DOCTYPE html>
     <table class="grid">
       <tr>
         <td class="label" style="width:16%">Name, Vorname:</td>
-        <td style="width:34%"><input class="ro" id="name_vorname" value="Zabelyshenskiy, Alexander" readonly></td>
+        <td style="width:34%"><input class="ro" id="name_vorname" value="" readonly></td>
         <td class="label" style="width:10%">Datum:</td>
         <td style="width:40%">
           <div class="date-wrap">
@@ -64,7 +64,7 @@ html_template = r'''<!DOCTYPE html>
       </tr>
       <tr>
         <td class="label">Personalnummer:</td>
-        <td><input class="ro" id="personalnummer" value="421761" readonly></td>
+        <td><input class="ro" id="personalnummer" value="" readonly></td>
         <td class="label">Klinik / Abteilung:</td>
         <td><input class="ro" id="klinik_abteilung" value="Allgemein-, Viszeral- u. Gefäßchirurgie" readonly></td>
       </tr>
@@ -191,7 +191,7 @@ html_template = r'''<!DOCTYPE html>
   <div class="footer">
     <button id="downloadBtn">PDF ausfüllen &amp; herunterladen</button>
     <p><small>Erzeugt das offizielle Formular als ausgefüllte PDF-Datei (Original-Layout unverändert).</small></p>
-    <p><small style="color:#999;">v1.6 &middot; <a href="mailto:Alexander.Zabelyshenskiy@klf-net.de" style="color:#999;">Alexander Zabelyshenskiy</a></small></p>
+    <p><small style="color:#999;">v1.8</small></p>
   </div>
 </div>
 

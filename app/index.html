@@ -609,7 +609,7 @@ const load = (k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }cat
 const save = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
 let cfg   = load(LS.cfg, {name:'',pnr:'',funktion:'Oberarzt',klinik:'Allgemein-, Viszeral- u. Gefäßchirurgie',nachname:'',kuerzel:''});
 cfg.nachtBuchung ||= 'kalendertag';
-cfg.empfaenger ??= 'Alexander.Zabelyshenskiy@klf-net.de';   // leer = bewusst nichts kopieren
+cfg.empfaenger ??= '';   // leer = bewusst nichts kopieren
 let plan  = load(LS.plan, {});   // "2026-09-07" -> {wd, oa, urlaub}
 let days  = load(LS.days, {});   // "2026-09-07" -> Tagesdaten
 let swap  = load(LS.swap, {});   // "2026-09-07" -> Name des Diensthabenden (Tausch nach dem Excel-Import)
@@ -1255,7 +1255,7 @@ function bekannteNamen(){
   return [...set].sort((a,b)=>a.localeCompare(b,'de'));
 }
 
-/* Nachname auf zwei Buchstaben: "Zabelyshenskiy" -> "Za" */
+/* Nachname auf zwei Buchstaben: "Mustermann" -> "Mu" */
 const kurzName = n => { n = (n||'').trim();
   return n ? n.charAt(0).toUpperCase() + n.charAt(1).toLowerCase() : ''; };
 
@@ -2674,7 +2674,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.27.0';
+const APP_VERSION = '1.27.1';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){

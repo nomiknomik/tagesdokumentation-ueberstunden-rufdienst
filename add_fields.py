@@ -90,8 +90,8 @@ def add_text_field(name, rect, value="", font_size=7, readonly=False, multiline=
 # ---------------------------------------------------------------
 HEADER = [
     # (name, x0, top, x1, bottom, value, readonly) - exakte Zellgrenzen aus Original-PDF
-    ("name_vorname",   139.2, 86.9, 271.9, 104.8, "Zabelyshenskiy, Alexander", True),
-    ("personalnummer", 139.2, 104.8, 271.9, 122.8, "421761", True),
+    ("name_vorname",   139.2, 86.9, 271.9, 104.8, "", False),
+    ("personalnummer", 139.2, 104.8, 271.9, 122.8, "", False),
     ("funktion",       139.2, 122.8, 271.9, 140.7, "Oberarzt", True),
     ("klinik_abteilung", 363.8, 104.8, 557.9, 122.8, "Allgemein-, Viszeral- u. Gefäßchirurgie", True),
     ("datum",          363.8, 86.9, 496.6, 104.8, "", False),
