@@ -428,7 +428,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="calendar"></span>Meine Dienste</h2>
     <div class="list" id="planList"><div class="li">Noch kein Plan importiert.</div></div>
-    <div class="hint" id="icsInfo">Jeder Monat lässt sich einzeln als Kalender-Datei (.ics) ausgeben – Monat aufklappen und auf „In den Kalender“ tippen. Auf dem iPhone danach „Teilen“ → Kalender hinzufügen.</div>
+    <div class="hint" id="icsInfo">Jeder Monat lässt sich einzeln als Kalender-Datei (.ics) ausgeben – Monat aufklappen. „In Safari“ versucht den direkten Import („Alle hinzufügen“); klappt das nicht, „Teilen“ → Mail an dich selbst und dort den Anhang antippen.</div>
     <button class="btn ghost" id="planClear">Alle Pläne löschen</button>
   </div>
   <div class="card">
@@ -1240,7 +1240,9 @@ function renderPlanList(){
     const label = d.code==='abwesend' ? 'Abwesend' : d.code;
     return `<div class="li"><span>${k} · ${WDAY[new Date(k+'T12:00:00').getDay()]}${d.swapped?' · getauscht':''}</span><span class="tag${d.swapped?' tag-amber':''}">${label}</span></div>`;
   }, 'Keine Rufdienste/Abwesenheiten gefunden. Nachname und Kürzel in den Einstellungen prüfen.',
-  (mk, ks)=>`<div style="padding:0 14px 12px"><button class="btn outline" style="font-size:14px;min-height:44px" data-ics="${mk}">${icon('calendar')}In den Kalender</button></div>`);
+  (mk, ks)=>`<div class="row2" style="padding:0 14px 12px">
+      <button class="btn outline" style="font-size:13px;min-height:44px" data-ics="${mk}">${icon('calendar')}Teilen</button>
+      <button class="btn outline" style="font-size:13px;min-height:44px" data-ics="${mk}" data-icsdirekt="1">${icon('calendar')}In Safari</button></div>`);
 }
 /* ---------- Wer hat wann Dienst (inkl. Diensttausch je Tag) ---------- */
 let teamOpen = null;                       // Datum, dessen Zeile gerade bearbeitet wird
@@ -1448,7 +1450,17 @@ $('planList').addEventListener('click', async e=>{
   const keys = myDutyKeys().filter(k => k.slice(0,7) === mk);
   if(!keys.length){ info.innerHTML = '<span class="note">Für diesen Monat sind keine Dienste gespeichert.</span>'; return; }
   const fname = `Dienste_${mk}.ics`;
-  const blob = new Blob([buildIcs(keys)], {type:'text/calendar;charset=utf-8'});
+  const ics = buildIcs(keys);
+  /* Versuch fuer iOS: Safari zeigt bei text/calendar selbst den Import-Dialog.
+     data:-URL statt Blob, weil ein Blob nicht aus der Home-Screen-App nach Safari mitwandert. */
+  if(btn.dataset.icsdirekt){
+    const w = window.open('data:text/calendar;charset=utf-8,' + encodeURIComponent(ics), '_blank');
+    info.innerHTML = w
+      ? `<span class="ok">${monthLabel(mk)}: ${keys.length} Termine geöffnet – im Dialog „Alle hinzufügen“.</span>`
+      : '<span class="note">Öffnen wurde blockiert. Bitte „Teilen“ nutzen.</span>';
+    return;
+  }
+  const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
   const file = new File([blob], fname, {type:'text/calendar'});
   try{
     if(navigator.canShare && navigator.canShare({files:[file]})){
@@ -2674,7 +2686,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.27.2';
+const APP_VERSION = '1.28.0';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
