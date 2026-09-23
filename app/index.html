@@ -1424,8 +1424,8 @@ function buildIcs(keys){
   keys.forEach(k=>{
     const d = derive(k);
     const duty = DUTY[d.code];
-    const title = d.code==='abwesend' ? 'Abwesend' : (duty ? duty.label : d.code);
-    const desc  = duty ? `Dienstzeit laut Vorgabe: ${duty.start}–${duty.end} Uhr` : d.info || '';
+    const title = d.code==='abwesend' ? 'Abwesend' : 'Dienst';
+    const desc  = [duty && duty.label, duty && duty.start && `${duty.start}–${duty.end} Uhr`].filter(Boolean).join(' · ') || d.info || '';
     lines.push('BEGIN:VEVENT',
       `UID:tagesdoku-${k}-${d.code}@klf`,
       `DTSTAMP:${stamp}`,
@@ -2674,7 +2674,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.27.1';
+const APP_VERSION = '1.27.2';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
