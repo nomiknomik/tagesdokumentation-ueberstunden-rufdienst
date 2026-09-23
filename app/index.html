@@ -701,7 +701,12 @@ function calc(){
 function calcFor(k){
   const d = days[k] || blank();
   const p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
-  const ue = (p!==null && t!==null) ? t-p : null;
+  let ue = (p!==null && t!==null) ? t-p : null;
+  /* Frueher gekommen (bzw. spaeter): Abweichung vom Soll-Beginn der Dienstart
+     zaehlt mit - dieselbe Spanne rechnet auch der Gehalts-Adapter. */
+  const b = dec(d.dienstbeginn), s = dec(DUTY[d.dienstart] && DUTY[d.dienstart].start);
+  if(b!==null && s!==null && b!==s) ue = (ue ?? 0) + (s-b);
+  if(ue!==null) ue = Math.round(ue*60)/60;
   let summe=0, anzahl=0;
   const dauern = (d.einsaetze||[]).map(e=>{
     const b=dec(e.beginn), en=dec(e.ende);
@@ -1346,8 +1351,7 @@ function renderHistory(){
   const keys = Object.keys(days).filter(hasContent).sort();
   renderGroupedList('historyList', keys, k=>{
     const d = days[k];
-    const p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
-    const ue = (p!==null && t!==null) ? fmt(t-p) : '';
+    const ue = fmt(calcFor(k).ue);
     const parts = [];
     if(ue) parts.push('Ü '+ue+'h');
     if(d.einsaetze && d.einsaetze.length) parts.push(d.einsaetze.length+' Einsatz');
@@ -2637,8 +2641,8 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.25.0';
-const APP_BUILD   = '18.09.2026';
+const APP_VERSION = '1.26.0';
+const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
   $('appVersion').textContent = 'v' + APP_VERSION;

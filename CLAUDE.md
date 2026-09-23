@@ -1069,3 +1069,15 @@ auf dem er gebraucht wird. Er hängt jetzt an `cur === startTag()`.
 Getestet mit gefälschter Uhr (`page.clock.install`): 06:10, 07:29 → Vortag;
 07:31, 09:00 → heute; 01.10. 02:20 → 30.09. (Monatswechsel). Ein um 00:20
 gestempelter Einsatz landet im Tag 2026-09-17 und der Timer zählt hoch.
+
+### PWA v1.26.0 / Desktop v1.7 – früher gekommen zählt als Überstunde (23.09.2026)
+
+Überstunden = (Ist-Ende − Plan-Ende) **+ (Soll-Beginn − Dienstbeginn)**. Der
+Soll-Beginn kommt aus der Dienstart (`DUTY[code].start` bzw. `data-start` der
+Option im Desktop-Tool). Früher gekommen ist damit auch ohne Ist-Ende eine
+Überstunde (09:30 statt 11:00 → 1,50 h), später gekommen wird negativ.
+Ergebnis auf volle Minuten gerundet (`Math.round(ue*60)/60`), sonst bleibt
+aus Fließkommaresten ein „0.00" in „Überstunden gesamt" stehen.
+Gehaltsrechnung und Konto unverändert – der Adapter rechnete schon immer ab
+`d.dienstbeginn`, nur das Formularfeld hatte ihn ignoriert. Der Verlauf nutzt
+jetzt ebenfalls `calcFor()` statt einer eigenen Kopie der Formel.

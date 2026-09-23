@@ -176,7 +176,7 @@
   <div class="footer">
     <button id="downloadBtn">PDF ausfüllen &amp; herunterladen</button>
     <p><small>Erzeugt das offizielle Formular als ausgefüllte PDF-Datei (Original-Layout unverändert).</small></p>
-    <p><small style="color:#999;">v1.6 &middot; <a href="mailto:Alexander.Zabelyshenskiy@klf-net.de" style="color:#999;">Alexander Zabelyshenskiy</a></small></p>
+    <p><small style="color:#999;">v1.7 &middot; <a href="mailto:Alexander.Zabelyshenskiy@klf-net.de" style="color:#999;">Alexander Zabelyshenskiy</a></small></p>
   </div>
 </div>
 
@@ -283,6 +283,13 @@ function recalcDuty(){
   if (plan !== null && tats !== null){
     diff = tats - plan;
   }
+  // Früher gekommen (bzw. später): Abweichung vom Soll-Beginn der Dienstart zählt mit
+  const beginn = timeToDec(document.getElementById('dienstbeginn').value);
+  const soll = timeToDec(document.getElementById('dienstart').selectedOptions[0]?.dataset.start || '');
+  if (beginn !== null && soll !== null && !isNaN(beginn) && beginn !== soll){
+    diff = (diff ?? 0) + (soll - beginn);
+  }
+  if (diff !== null) diff = Math.round(diff * 60) / 60;
   document.getElementById('ueberstunden_std').value = diff !== null ? fmt(diff) : "";
   recalcTotal();
 }
@@ -333,6 +340,7 @@ function shiftDate(days){
 document.getElementById('datePrev').addEventListener('click', () => shiftDate(-1));
 document.getElementById('dateNext').addEventListener('click', () => shiftDate(1));
 
+document.getElementById('dienstbeginn').addEventListener('input', recalcDuty);
 document.getElementById('plan_dienstende').addEventListener('input', recalcDuty);
 document.getElementById('tats_dienstende').addEventListener('input', recalcDuty);
 document.querySelectorAll('.rd-beginn, .rd-ende').forEach(el=>{
