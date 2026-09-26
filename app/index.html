@@ -91,8 +91,13 @@ section{display:none} section.on{display:block}
 .stamp.stop{background:linear-gradient(135deg,#DD6A4E,var(--color-danger));box-shadow:0 10px 24px rgba(194,73,46,.28)}
 /* Einsatz starten / Telefonat / Nachtragen ("+") nebeneinander in einer Zeile */
 .stamprow{display:flex;gap:8px;margin-bottom:var(--spacing-section)}
-.stamprow .stamp{flex:1;min-width:0;margin-bottom:0;font-size:16px;line-height:20px;gap:8px;padding:0 12px}
-.stamprow.running .stamp.stop{flex:1.7}
+.stamprow .stamp{flex:1;min-width:0;height:var(--button-height);margin-bottom:0;font-size:16px;line-height:20px;gap:8px;padding:0 12px}
+.stamprow .stamp .ic{flex:0 0 auto}
+.stamprow .stamp .stxt{min-width:0;overflow:hidden}
+.stamprow .stamp small{font-size:12px;line-height:16px;margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+/* laufender Einsatz: Stopp-Knopf breit, Telefonat nur als Symbol */
+.stamprow.running .stamp.call{flex:0 0 56px;padding:0;justify-content:center}
+.stamprow.running .stamp.call .stxt{display:none}
 .stamp.call{background:linear-gradient(135deg,#0A7480,var(--color-primary));box-shadow:0 10px 24px rgba(0,99,110,.24)}
 .stamp.add{flex:0 0 48px;padding:0;justify-content:center;background:var(--color-card);
   color:var(--color-text-secondary);border:1px solid var(--color-border);box-shadow:none}
@@ -180,7 +185,9 @@ select{color-scheme:light}
 
 .einsatz{border:1px solid var(--color-border);border-radius:var(--radius-input);padding:12px;margin-bottom:10px;background:var(--color-input-bg)}
 .einsatz .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}
-.einsatz .hd b{font-size:14px;flex:1}
+.einsatz .hd b{font-size:14px;flex:1 0 auto;white-space:nowrap}
+.einsatz .hd .tag{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.einsatz .hd .del,.einsatz .hd .linkbtn{flex:0 0 auto}
 .linkbtn{background:none;border:0;color:var(--color-primary-light);font-size:13px;font-weight:600;padding:4px;display:flex;align-items:center;gap:4px}
 .del{background:none;border:0;color:var(--color-danger);font-size:13px;padding:4px;display:flex;align-items:center;gap:4px}
 
@@ -888,7 +895,7 @@ function renderEinsatzBtn(){
   const aktiv = cur === startTag();
   const tick = ()=>{
     const sub = aktiv ? `seit ${beginn} · ${laufzeitText(beginn)}` : `offen seit ${beginn}`;
-    $('lblEinsatz').innerHTML = `Einsatz beenden<small>${sub}</small>`;
+    $('lblEinsatz').innerHTML = `Ende<small>${sub}</small>`;
   };
   tick();
   if(aktiv) timerId = setInterval(tick, 1000);
@@ -2675,7 +2682,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.28.1';
+const APP_VERSION = '1.28.2';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
