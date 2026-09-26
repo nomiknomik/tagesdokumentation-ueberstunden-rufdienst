@@ -8,6 +8,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
 
 ## Arbeitsweise
 - Direkt auf `main` (Pages liefert aus `main`, `main` ist live). Kein PR.
+  Gilt auch, wenn die Sitzung einen `claude/…`-Branch vorgibt: immer gleich
+  auf `main` pushen.
 - Vor dem Push `git pull --rebase`; bei Konflikt in `APP_VERSION` gewinnt die
   höhere Nummer, `CACHE` muss über beide hinausgehen.
 - Vor dem Push rendern: Playwright gegen `app/index.html` bei 390 × 844.
