@@ -56,6 +56,9 @@ kein +24h-Wrap), FRN-Verhalten. Alles andere in der PWA ist PWA-exklusiv.
   Feldnamen und datiert Nacht-Einsätze vor 06:00 einen Tag zurück.
 - Überstundenkonto: pauschal 30 min Pause ab 6 h von Ist UND Soll – ändern
   nur, wenn LA 731 danach gleich bleibt.
+- Ab 09/2026 werden Überstunden an Rufdienst-Beginntagen zum 734-Satz
+  ausgezahlt (`ueAuszahlStd()`, Posten „ÜA“, außerhalb gehalt.js); 731 bleibt,
+  `kontoFuer()` zieht sie vom Konto ab.
 - Abwesenheit hängt nur an der Dienstart (`ABWESENHEIT`, `URLAUB` über
   `istUrlaubstag()`), nie an der FRN-Checkbox; ein Tag zählt nie doppelt.
 - `hasContent()` entscheidet, was als erfasst gilt; `persist()` und Export
