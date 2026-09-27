@@ -268,8 +268,6 @@ select{color-scheme:light}
 .gbinner .ln{display:flex;justify-content:space-between;gap:10px;font-size:13px;line-height:18px;
   padding:3px 0;color:rgba(255,255,255,.9)}
 .gbinner .ln .amt{font-variant-numeric:tabular-nums;font-weight:600;flex:0 0 auto}
-.gbinner .ln.tot{border-top:1px solid rgba(255,255,255,.22);margin-top:6px;padding-top:8px;font-weight:700;color:#fff}
-.gbinner .ln.base{color:rgba(255,255,255,.7)}
 .gbinner .hint{color:rgba(255,255,255,.62)}
 .gbinner .warn{color:#FFD9A8}
 
@@ -2403,8 +2401,6 @@ function nettoFaktoren(){
 function renderTagGeld(){
   const {posten, summe} = gehaltTag(cur);
   const nf = nettoFaktoren();
-  const [y,m] = cur.split('-').map(Number);
-  const grundAnteil = grundFuer(cur.slice(0,7)) / new Date(Date.UTC(y, m, 0)).getUTCDate();
   const dt = new Date(tagNr(cur)*86400000);
 
   $('gbLabel').innerHTML = `Verdienst <span style="opacity:.72">`
@@ -2419,8 +2415,6 @@ function renderTagGeld(){
       eur(pz.betrag))).join('');
   if(!posten.length)
     html += `<div class="ln"><span>Noch nichts eingetragen, was zusätzlich vergütet wird.</span></div>`;
-  html += ln('Grundvergütung (Tagesanteil)', eur(grundAnteil), 'base');
-  html += ln('Tagessumme brutto', eur(summe + grundAnteil), 'tot');
 
   const noten = [];
   if(summe > 0) noten.push(`Zuschläge und Rufdienste werden zwei Monate später abgerechnet `
@@ -2682,7 +2676,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.28.2';
+const APP_VERSION = '1.28.3';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
