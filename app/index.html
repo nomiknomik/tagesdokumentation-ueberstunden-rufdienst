@@ -2173,7 +2173,8 @@ const LA_INFO = {
   754:{kurz:'Feiertagszuschlag', unsicher:'753/754 Feiertag: bisher nur an einem Monat belegt.'},
   790:{kurz:'Nacht'},  791:{kurz:'Samstag'},
   796:{kurz:'Rufdienst Werktag'},  797:{kurz:'Rufdienst Wo-Ende'},
-  252:{kurz:'Einspringen'}
+  252:{kurz:'Einspringen'},
+  'ÜA':{kurz:'Überstunden ausgezahlt', unsicher:'Ab September 2026 angenommen: Überstunden an Tagen mit Rufdienst-Beginn werden zum Aktivzeit-Satz (wie 734) ausgezahlt und verlassen das Überstundenkonto; der 15-%-Zuschlag (731) bleibt. Lohnart-Nummer und Satz sind noch nicht gegen eine Abrechnung geprüft.'}
 };
 /* Anzeigereihenfolge: die dicken Posten zuerst */
 
@@ -2308,7 +2309,7 @@ const extraFuer = ym => ({252: (extras[ym] && extras[ym][252]) || 0});
 function postenSortiert(posten){
   /* aufsteigend nach LA-Ziffer - so steht die Aufstellung in derselben
      Reihenfolge wie die Abrechnung des Klinikums. */
-  return posten.slice().sort((a,b) => a.la - b.la)
+  return posten.slice().sort((a,b) => (a.ord ?? a.la) - (b.ord ?? b.la))
     .map(p => ({...p, ...(LA_INFO[p.la] || {})}));
 }
 
@@ -2317,11 +2318,12 @@ function postenSortiert(posten){
 function monatsDaten(ym){
   const alle = gehaltEintraege(ym);
   const mengen = GEHALT.berechneMengen(alle, ym);
-  const {posten, summe} = GEHALT.berechneEuro(mengen, ym, extraFuer(ym));
+  const r0 = GEHALT.berechneEuro(mengen, ym, extraFuer(ym));
+  const {posten, summe} = mitAuszahlung(r0, ym, auszahlStdMonat(ym));
   const tage = [];
   const kandidaten = [...new Set(alle.map(e => e._appTag))].filter(k => k.startsWith(ym)).sort();
   kandidaten.forEach(k => {
-    const r = tagesAnteil(alle, mengen, ym, k);
+    const r = mitAuszahlung(tagesAnteil(alle, mengen, ym, k), ym, ueAuszahlStd(k));
     if(r.posten.length) tage.push({tag:k, ...r});
   });
   /* Urlaubstage ueber ALLE Kalendertage suchen, nicht nur ueber die mit
@@ -2353,7 +2355,36 @@ function tagesAnteil(alle, mengenMit, ym, k){
 function gehaltTag(k){
   const ym = k.slice(0,7);
   const alle = gehaltEintraege(ym);
-  return tagesAnteil(alle, GEHALT.berechneMengen(alle, ym), ym, k);
+  return mitAuszahlung(tagesAnteil(alle, GEHALT.berechneMengen(alle, ym), ym, k), ym, ueAuszahlStd(k));
+}
+
+/* Ueberstunden-Auszahlung (ab Leistungsmonat September 2026): Ueberstunden
+   eines Tages, an dem ein Rufdienst BEGINNT, werden zum Aktivzeit-Satz (734)
+   ausgezahlt und verlassen das Ueberstundenkonto. Der 15-%-Zuschlag (731)
+   und alle Zeitzuschlaege bleiben unveraendert. Tageswert = dieselbe
+   Ueberstundenrechnung wie im Formular (calcFor), nur positive Werte.
+   Bewusst ausserhalb des Rechenkerns (gehalt.js), der nur als Ganzes
+   getauscht wird. */
+const UE_AUSZAHLUNG_AB = '2026-09';
+function ueAuszahlStd(k){
+  if(k.slice(0,7) < UE_AUSZAHLUNG_AB) return 0;
+  if(!RUFDIENST_CODES.includes(rufdienstCode(k)) || istUrlaubstag(k)) return 0;
+  const ue = calcFor(k).ue;
+  return ue > 0 ? round2(ue) : 0;
+}
+function auszahlStdMonat(ym){
+  const [y,m] = ym.split('-').map(Number);
+  let h = 0;
+  for(let i = 0; i < new Date(Date.UTC(y, m, 0)).getUTCDate(); i++) h += ueAuszahlStd(nrIso(tagNr(`${ym}-01`) + i));
+  return round2(h);
+}
+function mitAuszahlung(r, ym, std){
+  if(!(std > 0)) return r;
+  const satz = (ym < '2026-06' ? GEHALT.SAETZE_BIS_MAI_2026 : GEHALT.SAETZE_AB_JUNI_2026)[734];
+  const betrag = round2(std * satz);
+  const pz = {la:'ÜA', ord:733, bezeichnung:'Überstunden-Auszahlung',
+              menge:std, satz, betrag, einheit:'Std.'};
+  return {posten: postenSortiert([...r.posten, pz]), summe: round2(r.summe + betrag)};
 }
 
 const eur = x => x.toLocaleString('de-DE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
@@ -2467,6 +2498,10 @@ function kontoFuer(ym){
   let m = plusMonate(c.abMonat, 1);
   for(let i = 0; m <= ym && i < 120; i++){
     const k = GEHALT.ueberstundenkonto(gehaltEintraege(m), m, saldoGesamt);
+    /* ausgezahlte Ueberstunden (Rufdienst-Tage ab 09/2026) verlassen das Konto */
+    k.ausgezahlt = auszahlStdMonat(m);
+    k.saldo = round2(k.saldo - k.ausgezahlt);
+    k.saldoGesamt = round2(k.saldoGesamt - k.ausgezahlt);
     saldoGesamt = k.saldoGesamt;
     letzte = Object.assign({monat:m}, k);
     m = plusMonate(m, 1);
@@ -2513,6 +2548,7 @@ function renderKonto(ym){
   $('kontoInhalt').innerHTML = `<table class="patab">
     <tr><td>Soll (${(GEHALT.monatssoll(ym)/8).toLocaleString('de-DE')} Arbeitstage × 8,00 h)</td><td class="r">${k.soll.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
     <tr><td>Ist (geleistet und angerechnet)</td><td class="r">${k.ist.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
+    ${k.ausgezahlt ? `<tr><td>Ausgezahlt (Überstunden an Rufdienst-Tagen)</td><td class="r">−${k.ausgezahlt.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>` : ''}
     <tr><td>Saldo des Monats</td><td class="r">${std(k.saldo)}</td></tr>
     <tr class="sum"><td>Saldo gesamt</td><td class="r">${std(k.saldoGesamt)}</td></tr>
     </table>`;
@@ -2676,7 +2712,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.28.3';
+const APP_VERSION = '1.29.0';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
