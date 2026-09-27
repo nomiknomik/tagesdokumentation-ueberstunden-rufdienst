@@ -2429,8 +2429,18 @@ function nettoFaktoren(){
 }
 
 /* ---------- Anzeige: Verdienstleiste unten am Tag-Tab ---------- */
+/* Negative Tagesanteile entstehen nur beim wochenweisen 731: ein kuerzerer
+   Tag gleicht Ueberstunden anderer Tage aus. Das ist kein Abzug - der Monat
+   wird nie negativ -, deshalb zeigen wir sie als Ausgleich in Stunden ohne
+   Euro und lassen sie aus der Tagessumme heraus. */
+function tagOhneAusgleich(r){
+  const posten = r.posten.filter(pz => pz.betrag >= 0);
+  const ausgleich = r.posten.filter(pz => pz.betrag < 0);
+  return {posten, ausgleich, summe: round2(posten.reduce((a,pz) => a + pz.betrag, 0))};
+}
+
 function renderTagGeld(){
-  const {posten, summe} = gehaltTag(cur);
+  const {posten, ausgleich, summe} = tagOhneAusgleich(gehaltTag(cur));
   const nf = nettoFaktoren();
   const dt = new Date(tagNr(cur)*86400000);
 
@@ -2444,13 +2454,18 @@ function renderTagGeld(){
       `${pz.kurz}${pz.unsicher ? '<span class="warn"> *</span>' : ''} `
       + `<span style="opacity:.6">${menge2(pz.menge, pz.einheit)}</span>`,
       eur(pz.betrag))).join('');
-  if(!posten.length)
+  html += ausgleich.map(pz => ln(
+      `Ausgleich <span style="opacity:.6">${menge2(pz.menge, pz.einheit)}</span>`
+      + `<br><span style="opacity:.6;font-size:12px">mindert Überstunden der Woche</span>`, '')).join('');
+  if(!posten.length && !ausgleich.length)
     html += `<div class="ln"><span>Noch nichts eingetragen, was zusätzlich vergütet wird.</span></div>`;
 
   const noten = [];
   if(summe > 0) noten.push(`Zuschläge und Rufdienste werden zwei Monate später abgerechnet `
     + `(Netto mit ${Math.round(nf.grenz)} % Grenzfaktor geschätzt).`);
   if(istUrlaubstag(cur)) noten.push('Urlaubstag: der Urlaubsaufschlag (LA 031) ist noch nicht entschlüsselt und fehlt hier.');
+  if(ausgleich.length) noten.push('Ausgleich: an diesem Tag weniger als geplant gearbeitet. Das verrechnet '
+    + 'sich mit Überstunden derselben oder der Vorwoche (§ 7 Abs. 7 TVöD) – abgezogen wird nichts.');
   [...new Set(posten.map(pz => pz.unsicher).filter(Boolean))]
     .forEach(t => noten.push(`<span class="warn">*</span> ${t}`));
   if(noten.length) html += `<div class="hint">${noten.join('<br>')}</div>`;
@@ -2607,7 +2622,7 @@ function renderGeldMonat(){
     const lbl = `${WDAY[d.getUTCDay()].slice(0,2)} ${pad(d.getUTCDate())}.${pad(d.getUTCMonth()+1)}.`;
     return `<div class="li" data-goto="${t.tag}" style="cursor:pointer">
       <span><b>${lbl}</b><div class="er-sub">${t.posten.map(pz=>pz.kurz).join(' · ')}</div></span>
-      <span style="display:flex;align-items:center;gap:8px"><span class="tag tag-eur">${eur0(t.summe)}</span>${icon('chevronRight')}</span></div>`;
+      <span style="display:flex;align-items:center;gap:8px"><span class="tag tag-eur">${eur0(tagOhneAusgleich(t).summe)}</span>${icon('chevronRight')}</span></div>`;
   }).join('') : '<div class="li">Keine erfassten Tage.</div>';
 }
 
@@ -2712,7 +2727,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.29.0';
+const APP_VERSION = '1.29.1';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
