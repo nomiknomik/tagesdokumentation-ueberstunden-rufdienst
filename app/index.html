@@ -105,7 +105,10 @@ section{display:none} section.on{display:block}
 
 .daymeta{text-align:center;font-size:13px;line-height:18px;color:var(--color-text-secondary);margin:-4px 0 10px}
 .daymeta b{color:var(--color-text);font-weight:600}
-.weekstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--spacing-section)}
+.weekstrip{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;
+  overscroll-behavior-x:contain;margin-bottom:var(--spacing-section)}
+.weekstrip::-webkit-scrollbar{display:none}
+.weekstrip .wk{flex:0 0 100%;display:grid;grid-template-columns:repeat(7,1fr);gap:4px;scroll-snap-align:start;scroll-snap-stop:always}
 .weekstrip button{border:1px solid transparent;background:var(--color-card);border-radius:12px;padding:6px 0 5px;
   display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--color-text-secondary);font-size:11px;line-height:14px}
 .weekstrip .num{font-size:15px;line-height:18px;font-weight:600;color:var(--color-text)}
@@ -768,19 +771,46 @@ function renderDayContext(){
     (rel ? ` · ${rel}` : '') + (isHoliday(cur) ? ' · Feiertag' : '');
 
   const d0 = new Date(cur+'T12:00:00');
-  const mo = new Date(d0); mo.setDate(d0.getDate() - ((d0.getDay()+6)%7));   // Montag der Woche
-  let html = '';
-  for(let i=0;i<7;i++){
-    const t = new Date(mo); t.setDate(mo.getDate()+i);
-    const k = iso(t);
-    const code = derive(k).code;
-    const dienst = code && code!=='frei' && code!=='amb2' && code!=='amb4' && code!=='abwesend';
-    const cls = [k===cur?'on':'', hasContent(k)?'done':'', dienst?'duty':'', istRot(k)?'we':''].filter(Boolean).join(' ');
-    html += `<button class="${cls}" data-day="${k}"><span>${WDAY_KURZ[(i+1)%7]}</span><span class="num">${k.slice(8)}</span><span class="mark"></span></button>`;
-  }
-  $('weekStrip').innerHTML = html;
+  stripMo = new Date(d0); stripMo.setDate(d0.getDate() - ((d0.getDay()+6)%7));   // Montag der Woche
+  renderWeekStrip();
   $('heuteBtn').style.display = cur===heute ? 'none' : 'block';   // nur noetig, wenn man woanders steht
 }
+/* Wochenstreifen: Vorwoche | angezeigte Woche | Folgewoche nebeneinander,
+   per Wischen blaetterbar (scroll-snap). Nach dem Einrasten wird neu um die
+   erreichte Woche herum aufgebaut; der gewaehlte Tag aendert sich erst beim Tippen. */
+let stripMo = null;
+function renderWeekStrip(){
+  let html = '';
+  for(let w=-1; w<=1; w++){
+    html += '<div class="wk">';
+    for(let i=0;i<7;i++){
+      const t = new Date(stripMo); t.setDate(stripMo.getDate()+w*7+i);
+      const k = iso(t);
+      const code = derive(k).code;
+      const dienst = code && code!=='frei' && code!=='amb2' && code!=='amb4' && code!=='abwesend';
+      const cls = [k===cur?'on':'', hasContent(k)?'done':'', dienst?'duty':'', istRot(k)?'we':''].filter(Boolean).join(' ');
+      html += `<button class="${cls}" data-day="${k}"><span>${WDAY_KURZ[(i+1)%7]}</span><span class="num">${k.slice(8)}</span><span class="mark"></span></button>`;
+    }
+    html += '</div>';
+  }
+  const ws = $('weekStrip');
+  ws.innerHTML = html;
+  ws.scrollLeft = ws.clientWidth;
+}
+(()=>{
+  const ws = $('weekStrip');
+  let t = null;
+  const eingerastet = ()=>{
+    const w = ws.clientWidth; if(!w) return;
+    const seite = Math.round(ws.scrollLeft / w);
+    if(seite===1) return;
+    stripMo.setDate(stripMo.getDate() + (seite-1)*7);
+    renderWeekStrip();
+  };
+  ws.addEventListener('scroll', ()=>{ clearTimeout(t); t = setTimeout(eingerastet, 120); }, {passive:true});
+  // Tab war beim Rendern versteckt (Breite 0) -> beim Sichtbarwerden mittig stellen
+  new ResizeObserver(()=>{ if(stripMo) ws.scrollLeft = ws.clientWidth; }).observe(ws);
+})();
 $('weekStrip').addEventListener('click', e=>{
   const b = e.target.closest('[data-day]'); if(!b) return;
   cur = b.dataset.day; renderDay();
@@ -1458,7 +1488,7 @@ $('planList').addEventListener('click', async e=>{
   const file = new File([blob], fname, {type:'text/calendar'});
   try{
     if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:monthLabel(mk)});
+      await navigator.share({files:[file]});
     }else{
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = fname; a.click();
@@ -1581,7 +1611,7 @@ async function teilePdf(bytes, fname, titel){
   const blob = new Blob([bytes],{type:'application/pdf'});
   const file = new File([blob], fname, {type:'application/pdf'});
   if(navigator.canShare && navigator.canShare({files:[file]})){
-    await navigator.share({files:[file], title: titel || fname});
+    await navigator.share({files:[file]});   // ohne title: iOS reicht ihn sonst als extra .txt an die Ziel-App weiter
   }else{
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = fname; a.click();
@@ -2727,7 +2757,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.29.1';
+const APP_VERSION = '1.30.0';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
