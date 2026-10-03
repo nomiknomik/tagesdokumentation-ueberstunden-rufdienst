@@ -503,11 +503,34 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   </div>
   <div class="card">
     <h2><span data-icon="save"></span>Daten</h2>
+    <div class="field"><label><b>Online-Backup &amp; Sync (privates GitHub-Repo, verschlüsselt)</b></label></div>
+    <div class="row"><label>Repo (Besitzer/Name)</label><input id="sync_repo" placeholder="mustermann/tagesdoku-backup" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <div class="row"><label>Token</label><input id="sync_token" type="password" placeholder="github_pat_…" autocomplete="off"></div>
+    <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" placeholder="auf allen Geräten gleich" autocomplete="new-password"></div>
+    <div class="row2">
+      <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
+      <button class="btn outline" id="syncNow" style="font-size:14px;min-height:44px">Jetzt abgleichen</button>
+    </div>
+    <div class="hint" id="syncMsg"></div>
+    <div class="hint">Sichert automatisch beim Öffnen und Verlassen der App, sobald sich etwas geändert hat. Ein anderes Gerät mit denselben drei Angaben übernimmt den Stand. Die Daten werden vor dem Hochladen mit dem Passwort verschlüsselt (AES-256), GitHub sieht nur unlesbaren Text. <b>Ohne das Passwort ist das Backup verloren.</b> Token: GitHub → Settings → Developer settings → Fine-grained tokens, nur dieses Repo, Berechtigung „Contents: Read and write“.</div>
+
+    <div class="field" style="margin-top:14px"><label><b>Automatische Kopien auf diesem Gerät</b></label></div>
+    <div class="row2"><select id="snapSel"></select>
+      <button class="btn outline" id="snapLoad" style="font-size:14px;min-height:44px;flex:0 0 40%">Wiederherstellen</button></div>
+    <div class="hint">Eine Kopie pro Tag, die letzten 14 Tage; „(vorher)“ ist der Stand vor einer Übernahme vom anderen Gerät. Hilft bei versehentlichem Löschen, nicht bei Verlust des Geräts.</div>
+
+    <div id="dirBox" style="display:none">
+      <div class="field" style="margin-top:14px"><label><b>Sicherungsordner auf diesem Computer</b></label></div>
+      <button class="btn outline" id="dirPick" style="font-size:14px;min-height:44px">Ordner wählen</button>
+      <div class="hint" id="dirMsg"></div>
+    </div>
+
+    <div class="field" style="margin-top:14px"><label><b>Manuell</b></label></div>
     <button class="btn outline" id="exportData">Alle Daten als JSON sichern</button>
     <button class="btn outline" id="importDataBtn" style="margin-top:8px">Backup aus JSON laden</button>
     <input type="file" id="importData" accept=".json,application/json" style="display:none">
     <div class="hint" id="importDataMsg"></div>
-    <div class="hint">Alles liegt ausschließlich lokal auf diesem Gerät (localStorage). Zur Startseite hinzufügen, damit iOS die Daten nicht nach 7 Tagen löscht.</div>
+    <div class="hint">Die Arbeitsdaten liegen lokal auf dem Gerät (localStorage). Zur Startseite hinzufügen, damit iOS sie nicht nach 7 Tagen löscht.</div>
     <div class="hint" id="storageInfo"></div>
   </div>
   <div class="card">
@@ -624,7 +647,9 @@ const LS = {cfg:'tagesdoku_cfg', plan:'tagesdoku_plan', days:'tagesdoku_days', s
 
 /* ---------- Speicher ---------- */
 const load = (k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } };
-const save = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
+/* Jede Datenaenderung markiert den Stand als "noch nicht online gesichert" (Sync) */
+const LS_DIRTY = 'tagesdoku_dirty';
+const save = (k,v)=>{ localStorage.setItem(k, JSON.stringify(v)); localStorage.setItem(LS_DIRTY, '1'); };
 let cfg   = load(LS.cfg, {name:'',pnr:'',funktion:'Oberarzt',klinik:'Allgemein-, Viszeral- u. Gefäßchirurgie',nachname:'',kuerzel:''});
 cfg.nachtBuchung ||= 'kalendertag';
 cfg.empfaenger ??= '';   // leer = bewusst nichts kopieren
@@ -1184,6 +1209,34 @@ Object.entries(CFGMAP).forEach(([id,key])=>{
     else renderDuty();
   };
 });
+/* Sicherungsobjekt - dasselbe Format fuer Datei, Geraete-Kopie, Ordner und Online */
+function backupDaten(){
+  return {meta:{app:'Tagesdokumentation', version:APP_VERSION, build:APP_BUILD,
+                erstellt:new Date().toISOString()},
+          cfg, plan, days: echteTage(), swap, extras};
+}
+const backupInfo = data => {
+  const nPlan = Object.keys(data.plan||{}).length, nDays = Object.keys(data.days||{}).length;
+  const m = data.meta || {};
+  return {nPlan, nDays, m,
+    herkunft: m.version ? `\nErstellt mit v${m.version}${m.erstellt ? ' am ' + new Date(m.erstellt).toLocaleString('de-DE') : ''}${m.geraet ? ' ('+m.geraet+')' : ''}` : ''};
+};
+/* Ersetzt den lokalen Stand durch eine Sicherung (ohne Rueckfrage) */
+function uebernehmeBackup(data){
+  if(!data || typeof data !== 'object' || (!data.cfg && !data.plan && !data.days))
+    throw new Error('Keine Sicherungsdatei dieser App.');
+  lokaleKopie('-vorher');   // Stand vor dem Ueberschreiben bleibt als eigene Geraete-Kopie erhalten
+  if(data.cfg  && typeof data.cfg  === 'object'){ cfg  = Object.assign(cfg, data.cfg); save(LS.cfg,  cfg);  }
+  if(data.plan && typeof data.plan === 'object'){ plan = data.plan;  save(LS.plan, plan); }
+  if(data.days && typeof data.days === 'object'){ days = data.days;  save(LS.days, days); }
+  if(data.swap && typeof data.swap === 'object'){ swap = data.swap;  save(LS.swap, swap); }
+  if(data.extras && typeof data.extras === 'object'){ extras = data.extras; save(LS.extra, extras); }
+  Object.entries(CFGMAP).forEach(([id,key])=> $(id).value = cfg[key] || '');
+  fuelleNettoFelder();
+  expanded = new Set(); lastRenderedDay = null;
+  renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDuty();
+}
+
 $('exportData').onclick = ()=>{
   const jetzt = new Date();
   const p2 = n => String(n).padStart(2,'0');
@@ -1191,10 +1244,7 @@ $('exportData').onclick = ()=>{
   /* meta steht VOR den Daten, damit man die Herkunft einer Sicherung auch im
      Texteditor auf den ersten Blick sieht. Der Import liest nur die bekannten
      Schluessel, aeltere Sicherungen ohne meta funktionieren unveraendert. */
-  const daten = {meta:{app:'Tagesdokumentation', version:APP_VERSION, build:APP_BUILD,
-                       erstellt:jetzt.toISOString()},
-                 cfg, plan, days: echteTage(), swap, extras};
-  const blob = new Blob([JSON.stringify(daten,null,2)],{type:'application/json'});
+  const blob = new Blob([JSON.stringify(backupDaten(),null,2)],{type:'application/json'});
   const a = document.createElement('a');
   /* Datum zuerst und ISO: so liegen mehrere Sicherungen im Dateimanager von
      selbst in der richtigen Reihenfolge, die Uhrzeit trennt mehrere am Tag. */
@@ -1211,25 +1261,11 @@ $('importData').onchange = async e => {
     const data = JSON.parse(await file.text());
     if(!data || typeof data !== 'object' || (!data.cfg && !data.plan && !data.days))
       throw new Error('Keine Sicherungsdatei dieser App.');
-    const nPlan = Object.keys(data.plan||{}).length, nDays = Object.keys(data.days||{}).length;
-    /* Sicherungen vor v1.24.0 haben keinen meta-Block - dann bleibt die
-       Herkunftszeile einfach weg. */
-    const m = data.meta || {};
-    const herkunft = m.version
-      ? `\nErstellt mit v${m.version}${m.erstellt ? ' am ' + new Date(m.erstellt).toLocaleString('de-DE') : ''}`
-      : '';
+    const {nPlan, nDays, m, herkunft} = backupInfo(data);
     if(!confirm(`Backup laden?${herkunft}\n\nDienstplan: ${nPlan} Tage\nErfasste Tage: ${nDays}\n\nDie aktuell gespeicherten Daten werden dadurch ersetzt.`)){
       e.target.value = ''; return;
     }
-    if(data.cfg  && typeof data.cfg  === 'object'){ cfg  = Object.assign(cfg, data.cfg); save(LS.cfg,  cfg);  }
-    if(data.plan && typeof data.plan === 'object'){ plan = data.plan;  save(LS.plan, plan); }
-    if(data.days && typeof data.days === 'object'){ days = data.days;  save(LS.days, days); }
-    if(data.swap && typeof data.swap === 'object'){ swap = data.swap;  save(LS.swap, swap); }
-    if(data.extras && typeof data.extras === 'object'){ extras = data.extras; save(LS.extra, extras); }
-    Object.entries(CFGMAP).forEach(([id,key])=> $(id).value = cfg[key] || '');
-    fuelleNettoFelder();
-    expanded = new Set(); lastRenderedDay = null;
-    renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDuty();
+    uebernehmeBackup(data);
     msg.innerHTML = `<span class="ok">Backup geladen: ${nPlan} Plantage, ${nDays} erfasste Tage` +
       `${m.version ? ` (Sicherung aus v${m.version})` : ''}.</span>`;
   }catch(err){
@@ -1237,6 +1273,232 @@ $('importData').onchange = async e => {
   }
   e.target.value = '';
 };
+
+/* ---------- Automatische Sicherungen ----------
+   1. Geraete-Kopie: eine pro Kalendertag in IndexedDB (die letzten 14), wird
+      beim Verlassen der App mit dem aktuellen Stand ueberschrieben.
+   2. Ordner (nur Chrome/Edge am Computer): gleiche Datei taeglich in einen
+      gewaehlten Ordner, z. B. OneDrive.
+   3. Online: verschluesselt in ein privates GitHub-Repo. Abgleich ueber den
+      Datei-SHA: weicht er vom zuletzt gesehenen ab, hat ein anderes Geraet
+      gesichert. Lokale Aenderungen markiert save() mit LS_DIRTY. */
+const SNAP_MAX = 14;
+function idb(){
+  return new Promise((ok, fail)=>{
+    const r = indexedDB.open('tagesdoku_backup', 1);
+    r.onupgradeneeded = ()=>{ r.result.createObjectStore('snaps'); r.result.createObjectStore('kv'); };
+    r.onsuccess = ()=> ok(r.result); r.onerror = ()=> fail(r.error);
+  });
+}
+async function idbTx(store, mode, fn){
+  const db = await idb();
+  return new Promise((ok, fail)=>{
+    const tx = db.transaction(store, mode), st = tx.objectStore(store);
+    const res = fn(st);
+    tx.oncomplete = ()=> ok(res && 'result' in res ? res.result : undefined);
+    tx.onerror = ()=> fail(tx.error);
+  });
+}
+async function lokaleKopie(zusatz = ''){
+  try{
+    if(!echteTageAnzahl()) return;
+    const data = backupDaten();   // vor dem ersten await: der Stand JETZT
+    await idbTx('snaps', 'readwrite', st => st.put(data, iso(new Date()) + zusatz));
+    const keys = (await idbTx('snaps', 'readonly', st => st.getAllKeys())).sort();
+    if(keys.length > SNAP_MAX)
+      await idbTx('snaps', 'readwrite', st => keys.slice(0, keys.length - SNAP_MAX).forEach(k => st.delete(k)));
+    renderSnaps();
+  }catch(e){ /* privater Modus o. ae.: dann eben ohne Kopie */ }
+}
+const echteTageAnzahl = ()=> Object.keys(echteTage()).length + Object.keys(plan).length;
+async function renderSnaps(){
+  const sel = $('snapSel');
+  try{
+    const keys = (await idbTx('snaps', 'readonly', st => st.getAllKeys())).sort().reverse();
+    sel.innerHTML = keys.length
+      ? keys.map(k => `<option value="${k}">${new Date(k.slice(0,10)+'T12:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})}${k.length > 10 ? ' (vorher)' : ''}</option>`).join('')
+      : '<option value="">Noch keine Kopie</option>';
+  }catch(e){ sel.innerHTML = '<option value="">Nicht verfügbar</option>'; }
+}
+$('snapLoad').onclick = async ()=>{
+  const k = $('snapSel').value; if(!k) return;
+  const data = await idbTx('snaps', 'readonly', st => st.get(k));
+  if(!data) return;
+  const {nPlan, nDays, herkunft} = backupInfo(data);
+  if(!confirm(`Kopie vom ${k} laden?${herkunft}\n\nDienstplan: ${nPlan} Tage\nErfasste Tage: ${nDays}\n\nDer aktuelle Stand wird ersetzt.`)) return;
+  uebernehmeBackup(data);
+  $('importDataMsg').innerHTML = `<span class="ok">Kopie vom ${k} geladen.</span>`;
+};
+
+/* --- Ordner (File System Access API, nur Desktop-Chromium) --- */
+const kvGet = k => idbTx('kv', 'readonly', st => st.get(k));
+const kvSet = (k,v) => idbTx('kv', 'readwrite', st => st.put(v, k));
+async function ordnerSichern(interaktiv){
+  const msg = $('dirMsg');
+  try{
+    const dir = await kvGet('dir'); if(!dir) return;
+    let perm = await dir.queryPermission({mode:'readwrite'});
+    if(perm !== 'granted' && interaktiv) perm = await dir.requestPermission({mode:'readwrite'});
+    if(perm !== 'granted'){
+      msg.innerHTML = `<span class="note">Ordner „${dir.name}“: Zugriff muss bestätigt werden – „Ordner wählen“ antippen.</span>`;
+      return;
+    }
+    const f = await dir.getFileHandle(`tagesdoku_backup_${iso(new Date())}.json`, {create:true});
+    const w = await f.createWritable();
+    await w.write(JSON.stringify(backupDaten(),null,2)); await w.close();
+    msg.innerHTML = `<span class="ok">Gesichert in „${dir.name}“ um ${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}.</span>`;
+  }catch(e){ msg.innerHTML = `<span class="note">Ordner-Sicherung fehlgeschlagen: ${e.message}</span>`; }
+}
+if('showDirectoryPicker' in window){
+  $('dirBox').style.display = '';
+  kvGet('dir').then(d => { if(d) $('dirMsg').textContent = `Ordner: „${d.name}“ – täglich eine Datei, wird beim Verlassen aktualisiert.`; }).catch(()=>{});
+  $('dirPick').onclick = async ()=>{
+    try{
+      const alt = await kvGet('dir');
+      if(alt && await alt.queryPermission({mode:'readwrite'}) !== 'granted'
+         && await alt.requestPermission({mode:'readwrite'}) === 'granted'
+         && !confirm(`Zugriff auf „${alt.name}“ erneuert. Einen anderen Ordner wählen?`)){ await ordnerSichern(true); return; }
+      const dir = await window.showDirectoryPicker({id:'tagesdoku', mode:'readwrite'});
+      await kvSet('dir', dir);
+      await ordnerSichern(true);
+    }catch(e){ if(e.name !== 'AbortError') $('dirMsg').innerHTML = `<span class="note">${e.message}</span>`; }
+  };
+}
+
+/* --- Online (GitHub Contents API, AES-GCM) --- */
+const LS_SYNC = 'tagesdoku_sync';   // {repo, token, pw, sha, zuletzt} - bewusst NICHT im Backup
+let sync = load(LS_SYNC, {});
+const saveSync = ()=> localStorage.setItem(LS_SYNC, JSON.stringify(sync));   // nicht save(): kein Dirty-Flag
+const syncAktiv = ()=> !!(sync.repo && sync.token && sync.pw);
+const SYNC_DATEI = 'tagesdoku_backup.json';
+const b64 = buf => {   // in Stuecken: String.fromCharCode(...grosses Array) sprengt den Stack
+  const u = new Uint8Array(buf); let s = '';
+  for(let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const PBKDF2_ITER = 310000;
+const schluesselCache = {};
+async function schluessel(pw, salt){
+  const id = pw + '|' + b64(salt);
+  if(schluesselCache[id]) return schluesselCache[id];
+  const basis = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return schluesselCache[id] = crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:PBKDF2_ITER, hash:'SHA-256'},
+    basis, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+const geraet = ()=> /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone/iPad'
+  : /Android/.test(navigator.userAgent) ? 'Android' : /Windows/.test(navigator.userAgent) ? 'Windows'
+  : /Mac/.test(navigator.userAgent) ? 'Mac' : 'Browser';
+async function verschluesseln(data){
+  sync.salt ||= b64(crypto.getRandomValues(new Uint8Array(16)));
+  const salt = unb64(sync.salt), iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await schluessel(sync.pw, salt);
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, new TextEncoder().encode(JSON.stringify(data)));
+  return {meta:{...data.meta, geraet:geraet(), tage:Object.keys(data.days||{}).length},
+          enc:{alg:'AES-GCM-256', kdf:'PBKDF2-SHA256', iter:PBKDF2_ITER, salt:sync.salt, iv:b64(iv), data:b64(ct)}};
+}
+async function entschluesseln(datei){
+  const e = datei.enc;
+  if(!e || e.alg !== 'AES-GCM-256') throw new Error('Unbekanntes Backup-Format.');
+  try{
+    const key = await schluessel(sync.pw, unb64(e.salt));
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:unb64(e.iv)}, key, unb64(e.data));
+    const data = JSON.parse(new TextDecoder().decode(pt));
+    data.meta = {...data.meta, geraet: datei.meta && datei.meta.geraet};
+    return data;
+  }catch(err){ throw new Error('Entschlüsseln fehlgeschlagen – Backup-Passwort falsch?'); }
+}
+async function gh(method, body){
+  const res = await fetch(`https://api.github.com/repos/${sync.repo}/contents/${SYNC_DATEI}` + (method==='GET' ? '?t='+Date.now() : ''), {
+    method, cache:'no-store',
+    headers:{Authorization:'Bearer '+sync.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'},
+    body: body && JSON.stringify(body)
+  });
+  if(method==='GET' && res.status===404){
+    // Datei fehlt (erste Sicherung) oder Repo/Token falsch - das Repo selbst pruefen
+    const r = await fetch(`https://api.github.com/repos/${sync.repo}`, {cache:'no-store', headers:{Authorization:'Bearer '+sync.token}});
+    if(!r.ok) throw new Error(r.status===401 ? 'Token ungültig oder abgelaufen.' : 'Repo nicht gefunden oder Token hat keinen Zugriff darauf.');
+    return null;
+  }
+  if(res.status===401) throw new Error('Token ungültig oder abgelaufen.');
+  if(res.status===403) throw new Error('Token darf nicht schreiben („Contents: Read and write“ fehlt).');
+  if(!res.ok && !(method==='PUT' && (res.status===409 || res.status===422))) throw new Error('GitHub antwortet mit ' + res.status + '.');
+  return res.status===409 || res.status===422 ? {konflikt:true} : res.json();
+}
+const utf8b64 = s => b64(new TextEncoder().encode(s));
+async function hochladen(){
+  const datei = await verschluesseln(backupDaten());
+  const r = await gh('PUT', {message:`Backup ${datei.meta.erstellt} (${datei.meta.geraet}, v${APP_VERSION})`,
+                             content: utf8b64(JSON.stringify(datei,null,1)), ...(sync.sha ? {sha:sync.sha} : {})});
+  if(r.konflikt) return false;   // jemand anderes war schneller -> neu abgleichen
+  sync.sha = r.content.sha; sync.zuletzt = datei.meta.erstellt; saveSync();
+  localStorage.removeItem(LS_DIRTY);
+  return true;
+}
+let syncLaeuft = false;
+async function abgleichen(manuell){
+  if(!syncAktiv() || syncLaeuft || !navigator.onLine) return;
+  syncLaeuft = true;
+  const msg = $('syncMsg');
+  if(manuell) msg.textContent = 'Gleiche ab …';
+  try{
+    for(let versuch = 0; versuch < 2; versuch++){
+      const remote = await gh('GET');
+      const dirty = !!localStorage.getItem(LS_DIRTY);
+      if(!remote){                                   // noch nie gesichert
+        sync.sha = null;
+        if(echteTageAnzahl() && !(await hochladen())) continue;
+        break;
+      }
+      const datei = JSON.parse(new TextDecoder().decode(unb64(remote.content.replace(/\s/g,''))));
+      if(remote.sha === sync.sha){                   // online = unser letzter Stand
+        if(dirty && !(await hochladen())) continue;
+        break;
+      }
+      // Online liegt ein Stand von einem anderen Geraet
+      const data = await entschluesseln(datei);
+      const {nPlan, nDays, herkunft} = backupInfo(data);
+      const ersteVerbindung = !sync.sha;
+      if(!dirty && !ersteVerbindung || !echteTageAnzahl()
+         || confirm(`${ersteVerbindung ? 'Online-Backup gefunden' : 'Auf beiden Geräten wurde etwas geändert'}.${herkunft}\nDienstplan: ${nPlan} Tage, erfasste Tage: ${nDays}\n\nOK = Online-Stand übernehmen (lokaler Stand bleibt als Geräte-Kopie)\nAbbrechen = diesen Stand hochladen und online überschreiben`)){
+        sync.sha = remote.sha; saveSync();
+        uebernehmeBackup(data);
+        localStorage.removeItem(LS_DIRTY);
+        sync.zuletzt = data.meta.erstellt; saveSync();
+        msg.innerHTML = `<span class="ok">Stand von ${data.meta.geraet||'anderem Gerät'} übernommen (${new Date(data.meta.erstellt).toLocaleString('de-DE')}).</span>`;
+        syncLaeuft = false; return;
+      }
+      sync.sha = remote.sha;
+      if(await hochladen()) break;
+    }
+    msg.innerHTML = `<span class="ok">Online gesichert: ${sync.zuletzt ? new Date(sync.zuletzt).toLocaleString('de-DE') : '–'}.</span>`;
+  }catch(err){
+    msg.innerHTML = `<span class="note">Online-Backup: ${err.message}</span>`;
+  }
+  syncLaeuft = false;
+}
+$('sync_repo').value = sync.repo || ''; $('sync_token').value = sync.token || ''; $('sync_pw').value = sync.pw || '';
+if(syncAktiv() && sync.zuletzt) $('syncMsg').innerHTML = `<span class="ok">Online gesichert: ${new Date(sync.zuletzt).toLocaleString('de-DE')}.</span>`;
+$('syncSave').onclick = ()=>{
+  const repo = $('sync_repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$|\/$/g,'');
+  const token = $('sync_token').value.trim(), pw = $('sync_pw').value;
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ $('syncMsg').innerHTML = '<span class="note">Repo bitte als „besitzer/name“ angeben.</span>'; return; }
+  if(!token || pw.length < 8){ $('syncMsg').innerHTML = '<span class="note">Token und ein Passwort mit mindestens 8 Zeichen eintragen.</span>'; return; }
+  // Neues Ziel oder Passwort: Abgleich beginnt von vorn (sha vergessen -> Rueckfrage statt stillem Ueberschreiben)
+  if(repo !== sync.repo || pw !== sync.pw) sync = {repo, token, pw}; else sync.token = token;
+  saveSync();
+  abgleichen(true);
+};
+$('syncNow').onclick = ()=> abgleichen(true);
+
+/* Ausloeser: Start, Rueckkehr in die App, Verlassen der App */
+function autoSichern(){
+  lokaleKopie();
+  if(localStorage.getItem(LS_DIRTY)) ordnerSichern(false);
+  abgleichen(false);
+}
+document.addEventListener('visibilitychange', ()=> autoSichern());
+if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 
 /* ---------- Dienstplan-Import ---------- */
 $('xlsFile').onchange = async e => {
@@ -2820,8 +3082,8 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.33.0';
-const APP_BUILD   = '23.09.2026';
+const APP_VERSION = '1.34.0';
+const APP_BUILD   = '03.10.2026';
 
 function showVersion(){
   $('appVersion').textContent = 'v' + APP_VERSION;
@@ -2876,6 +3138,7 @@ function fuelleNettoFelder(){
 }
 fuelleNettoFelder();
 renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
+renderSnaps(); autoSichern();
 $('checkUpdate').onclick = async ()=>{
   const info = $('updateInfo');
   info.textContent = 'Suche nach Update …';

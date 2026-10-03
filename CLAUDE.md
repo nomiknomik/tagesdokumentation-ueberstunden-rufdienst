@@ -65,7 +65,12 @@ kein +24h-Wrap), FRN-Verhalten. Alles andere in der PWA ist PWA-exklusiv.
   speichern nur solche Tage (`echteTage()`).
 - Zeit-/Tagesrechnung über UTC-Tagesnummern (DST).
 - `clipboard.writeText` synchron am Anfang des Klick-Handlers (iOS-Geste).
-- Service Worker: `index.html` network-first, Rest cache-first.
+- Service Worker: `index.html` network-first, Rest cache-first, `api.github.com`
+  nie über den SW.
+- Backup/Sync: `save()` setzt `tagesdoku_dirty`; Sync-Zugangsdaten
+  (`tagesdoku_sync`) nur über `saveSync()`, nie im Backup. Online-Datei im
+  privaten Repo, AES-GCM/PBKDF2, Abgleich über Datei-SHA; bei Konflikt ganz
+  oder gar nicht, der Verlierer bleibt als Geräte-Kopie „-vorher“ (IndexedDB).
 
 ## Bekannte Abweichungen App ↔ TDA (für Gehaltsabgleich)
 - 09/2026, ein Wochenend-RBD: TDA hat alle Einsätze pauschal als 9005 „RB aktiv

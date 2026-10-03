@@ -1,4 +1,4 @@
-const CACHE = 'tagesdoku-v31';
+const CACHE = 'tagesdoku-v32';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf',
@@ -18,6 +18,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).hostname === 'api.github.com') return;   // Online-Backup nie aus dem Cache
   const isPage = e.request.mode === 'navigate' || e.request.url.endsWith('/index.html') || e.request.url.endsWith('/app/');
   if (isPage) {
     // Network-first fuer die App-Seite selbst: Updates kommen sofort an,
