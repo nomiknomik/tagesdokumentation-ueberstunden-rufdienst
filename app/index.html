@@ -40,20 +40,20 @@ body{margin:0;min-height:100dvh;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Arial,sans-serif;
   background:var(--color-background);color:var(--color-text)}
 header{background:var(--color-background);color:var(--color-text);
-  padding:calc(env(safe-area-inset-top) + 12px) var(--spacing-page) 10px;
+  padding:calc(env(safe-area-inset-top) + 6px) var(--spacing-page) 6px;
   position:fixed;top:0;left:0;right:0;z-index:10;border-bottom:1px solid var(--color-border)}
-h1{margin:0;font-size:20px;line-height:24px;font-weight:700}
-header .hd{display:flex;align-items:flex-start;gap:12px}
+h1{margin:0;font-size:18px;line-height:22px;font-weight:700;display:inline}
+header .hd{display:flex;align-items:center;gap:8px}
 header .hdtxt{flex:1;min-width:0}
 header .hdundo{display:flex;gap:6px;flex:0 0 auto}
-header .hdundo .iconbtn{width:38px;height:38px}
+header .hdundo .iconbtn,header #pdfBtn{width:36px;height:36px}
 .iconbtn:disabled{opacity:.35;pointer-events:none}
 .iconbtn{flex:0 0 auto;width:var(--touch-target);height:var(--touch-target);border:1.5px solid var(--color-border);
   border-radius:999px;background:var(--color-card);color:var(--color-primary);
   display:flex;align-items:center;justify-content:center;transition:transform .15s ease}
 .iconbtn .ic{width:20px;height:20px}
 .iconbtn:active{transform:scale(.94)}
-.vchip{display:inline-block;margin-top:4px;font-size:11px;line-height:14px;font-weight:600;letter-spacing:.02em;
+.vchip{display:inline-block;margin:0 0 0 6px;vertical-align:2px;font-size:11px;line-height:14px;font-weight:600;letter-spacing:.02em;
   color:var(--color-text-muted);background:var(--color-card);border:1px solid var(--color-border);
   border-radius:999px;padding:2px 8px}
 main{padding:0 var(--spacing-page) calc(96px + env(safe-area-inset-bottom));max-width:480px;margin:0 auto}
@@ -289,9 +289,9 @@ select{color-scheme:light}
 .patab .u{color:var(--color-warning);font-weight:700}
 
 nav{display:flex;background:var(--color-card);border-top:1px solid var(--color-border);
-  padding:8px 6px calc(8px + env(safe-area-inset-bottom));position:fixed;left:0;right:0;bottom:0;z-index:20;gap:4px}
+  padding:3px 6px max(3px, calc(env(safe-area-inset-bottom) - 12px));position:fixed;left:0;right:0;bottom:0;z-index:20;gap:4px}
 nav button{flex:1;background:transparent;color:var(--color-text-muted);border:0;border-radius:12px;
-  padding:8px 4px;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:4px}
+  padding:4px 4px;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:1px}
 nav button .ic{width:22px;height:22px}
 nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 </style>
@@ -299,7 +299,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 <body>
 <header>
   <div class="hd">
-    <div class="hdtxt"><h1>Tagesdokumentation – Überstunden &amp; Rufdienst</h1><span class="vchip" id="appVersion">v–</span></div>
+    <div class="hdtxt"><h1>Zeiterfassung</h1><span class="vchip" id="appVersion">v–</span></div>
     <div class="hdundo">
       <button class="iconbtn" id="undoBtn" aria-label="Rückgängig" disabled><span data-icon="undo"></span></button>
       <button class="iconbtn" id="redoBtn" aria-label="Wiederholen" disabled><span data-icon="redo"></span></button>
@@ -2820,7 +2820,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.32.0';
+const APP_VERSION = '1.33.0';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
