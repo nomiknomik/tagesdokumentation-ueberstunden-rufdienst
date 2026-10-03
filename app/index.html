@@ -234,6 +234,13 @@ select{color-scheme:light}
 .monthgroup summary .ic{width:16px;height:16px;color:var(--color-text-muted);transition:transform .15s ease}
 .monthgroup[open] summary .ic{transform:rotate(90deg)}
 .monthgroup .list{padding:0 14px}
+/* Netto-Referenzmonate: eingeklappt, damit Gehaltszahlen nicht offen stehen.
+   Monat ueber volle Breite - das iOS-Monatsfeld ist breiter als eine 1fr-Spalte. */
+.nettoref .body{padding:0 14px 4px}
+.nettoref .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:10px}
+.nettoref .grid2 .field label{margin-bottom:4px;font-size:12px}
+.nettoref input{min-width:0;width:100%;box-sizing:border-box}
+.nettoref .del{margin-bottom:12px}
 
 .tag{font-size:12px;font-weight:600;padding:4px 8px;border-radius:999px;background:rgba(43,36,32,.06);color:var(--color-text-secondary);white-space:nowrap}
 .tag-eur{font-variant-numeric:tabular-nums;color:var(--color-primary);background:rgba(0,99,110,.09)}
@@ -3116,18 +3123,21 @@ $('gmCopy').onclick = async ()=>{
 };
 
 /* ---------- Netto-Referenzmonate in den Einstellungen ---------- */
+const nettoOffen = new Set();   // nur fuer diese Sitzung; nach dem Start ist alles zu
 function renderNettoRefs(){
   const refs = (cfg.netto && cfg.netto.refs) || [];
   $('nettoRefs').innerHTML = refs.length ? refs.map((r,i)=>`
-    <div class="einsatz">
-      <div class="hd"><b>Referenzmonat ${i+1}</b>
-        <button class="del" data-nettodel="${i}">${icon('square')}Löschen</button></div>
-      <div class="grid3">
+    <details class="monthgroup nettoref" data-i="${i}"${nettoOffen.has(i)?' open':''}>
+      <summary><span>Referenzmonat ${i+1}<span class="cnt" data-nettolabel="${i}">${r.monat?monthLabel(r.monat):''}</span></span>${icon('chevronRight')}</summary>
+      <div class="body">
         <div class="field"><label>Monat</label><input type="month" data-nettof="monat" data-i="${i}" value="${r.monat||''}"></div>
-        <div class="field"><label>Brutto €</label><input inputmode="decimal" data-nettof="brutto" data-i="${i}" value="${r.brutto||''}"></div>
-        <div class="field"><label>Netto €</label><input inputmode="decimal" data-nettof="netto" data-i="${i}" value="${r.netto||''}"></div>
+        <div class="grid2">
+          <div class="field"><label>Brutto €</label><input inputmode="decimal" data-nettof="brutto" data-i="${i}" value="${r.brutto||''}"></div>
+          <div class="field"><label>Netto €</label><input inputmode="decimal" data-nettof="netto" data-i="${i}" value="${r.netto||''}"></div>
+        </div>
+        <button class="del" data-nettodel="${i}">${icon('square')}Löschen</button>
       </div>
-    </div>`).join('') : '<div class="hint" style="margin-top:0">Noch keine Referenzmonate – es gelten die Standardannahmen.</div>';
+    </details>`).join('') : '<div class="hint" style="margin-top:0">Noch keine Referenzmonate – es gelten die Standardannahmen.</div>';
 
   nettoInfoAktualisieren();
 }
@@ -3144,20 +3154,28 @@ function nettoInfoAktualisieren(){
 $('nettoAdd').onclick = ()=>{
   cfg.netto ||= {refs:[]}; cfg.netto.refs ||= [];
   cfg.netto.refs.push({monat:'', brutto:'', netto:''});
+  nettoOffen.add(cfg.netto.refs.length-1);
   save(LS.cfg, cfg); renderNettoRefs();
 };
 $('nettoRefs').addEventListener('input', e=>{
   const f = e.target.dataset.nettof; if(!f) return;
   cfg.netto.refs[+e.target.dataset.i][f] = e.target.value;
+  if(f==='monat'){ const l = document.querySelector(`[data-nettolabel="${e.target.dataset.i}"]`);
+    if(l) l.textContent = e.target.value ? monthLabel(e.target.value) : ''; }
   save(LS.cfg, cfg); nettoInfoAktualisieren();
 });
 $('nettoRefs').addEventListener('change', e=>{
   if(!e.target.dataset.nettof) return;
   nettoInfoAktualisieren(); renderTagGeld();
 });
+$('nettoRefs').addEventListener('toggle', e=>{
+  const d = e.target.closest && e.target.closest('details.nettoref'); if(!d) return;
+  d.open ? nettoOffen.add(+d.dataset.i) : nettoOffen.delete(+d.dataset.i);
+}, true);
 $('nettoRefs').addEventListener('click', e=>{
   const b = e.target.closest('[data-nettodel]'); if(!b) return;
   cfg.netto.refs.splice(+b.dataset.nettodel, 1);
+  nettoOffen.clear();
   save(LS.cfg, cfg); renderNettoRefs(); renderTagGeld();
 });
 ['cfg_netto_grenz','cfg_netto_schnitt'].forEach(id=>{
@@ -3170,7 +3188,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.36.0';
+const APP_VERSION = '1.36.1';
 const APP_BUILD   = '03.10.2026';
 
 function showVersion(){
