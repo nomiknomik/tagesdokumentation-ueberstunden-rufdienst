@@ -66,3 +66,9 @@ kein +24h-Wrap), FRN-Verhalten. Alles andere in der PWA ist PWA-exklusiv.
 - Zeit-/Tagesrechnung über UTC-Tagesnummern (DST).
 - `clipboard.writeText` synchron am Anfang des Klick-Handlers (iOS-Geste).
 - Service Worker: `index.html` network-first, Rest cache-first.
+
+## Bekannte Abweichungen App ↔ TDA (für Gehaltsabgleich)
+- 09/2026, ein Wochenend-RBD: TDA hat alle Einsätze pauschal als 9005 „RB aktiv
+  ausz." (Präsenz/RBA) gebucht, die App führt 6 davon als telefonisch (RBT).
+  Bewusst so belassen. Zeiten und Dauer sind identisch, Summen sollten gleich
+  sein; bei Abweichung im Gehalt zuerst hier prüfen.
