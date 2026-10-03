@@ -141,6 +141,7 @@
       </tr>
       <!--ROWS-->
     </table>
+    <button type="button" id="moreRowsBtn" style="background:#999; padding:4px 10px; font-size:11px; border-radius:3px; margin:-4px 0 10px;">+ 8 weitere Einsätze (Fortsetzungsblatt)</button>
     <table class="grid">
       <tr>
         <td class="label" style="width:25%">Summe Inanspruchnahme (Std.):</td>
@@ -176,7 +177,7 @@
   <div class="footer">
     <button id="downloadBtn">PDF ausfüllen &amp; herunterladen</button>
     <p><small>Erzeugt das offizielle Formular als ausgefüllte PDF-Datei (Original-Layout unverändert).</small></p>
-    <p><small style="color:#999;">v1.8</small></p>
+    <p><small style="color:#999;">v1.9</small></p>
   </div>
 </div>
 
@@ -227,12 +228,14 @@ document.getElementById('funktion').addEventListener('change', (e) => {
   saveFormToCookie();
 });
 
-// Rufdienst-Zeilen dynamisch erzeugen (1-8)
+// Rufdienst-Zeilen dynamisch erzeugen: 8 je Formularblatt, weitere Blätter auf Knopfdruck
+const ZEILEN = 8, MAX_ZEILEN = 24;
 const tbody = document.getElementById('rufdienst-table');
 const artOptions = ["", "telefonisch (RBT)", "Präsenz im Haus (RBA)", "Operation / Eingriff", "Sonstiges"];
 const grundOptions = ["", "Notfall / Notoperation", "OP-Verlängerung", "Aufnahme / Ambulanz", "Konsil / Anforderung anderer Abteilung", "Personalausfall / Unterbesetzung", "Übergabe / Nachbereitung / Dokumentation", "Patienten-/Angehörigengespräch", "Angeordnete Zusatzaufgabe", "Sonstiges (bitte erläutern)"];
-for (let i = 1; i <= 8; i++) {
+for (let i = 1; i <= MAX_ZEILEN; i++) {
   const tr = document.createElement('tr');
+  if (i > ZEILEN) tr.style.display = 'none';
   tr.innerHTML = `
     <td class="row-nr">${i}</td>
     <td><input type="text" class="time-input rd-beginn" inputmode="numeric" placeholder="hh:mm" maxlength="5" id="rufdienst_${i}_beginn" data-i="${i}"></td>
@@ -308,7 +311,7 @@ function recalcRow(i){
 
 function recalcSumme(){
   let summe = 0, anzahl = 0;
-  for (let i=1;i<=8;i++){
+  for (let i=1;i<=MAX_ZEILEN;i++){
     const v = document.getElementById(`rufdienst_${i}_dauer`).value;
     if (v){ summe += parseFloat(v); anzahl++; }
   }
@@ -407,7 +410,19 @@ function applyUrlParams(){
 applyUrlParams();
 
 recalcDuty();
-for (let i=1;i<=8;i++){ recalcRow(i); }
+for (let i=1;i<=MAX_ZEILEN;i++){ recalcRow(i); }
+function zeileBelegt(i){
+  return ["beginn","ende","art","grund_anlass","fallnr"].some(c => document.getElementById(`rufdienst_${i}_${c}`).value);
+}
+function zeigeBlaetter(n){
+  tbody.querySelectorAll('tr').forEach((tr, j) => { if (j) tr.style.display = j <= n*ZEILEN ? '' : 'none'; });
+  document.getElementById('moreRowsBtn').style.display = n*ZEILEN >= MAX_ZEILEN ? 'none' : '';
+}
+let letzteBelegt = 0;
+for (let i=1;i<=MAX_ZEILEN;i++){ if (zeileBelegt(i)) letzteBelegt = i; }
+let sichtbareBlaetter = Math.max(1, Math.ceil(letzteBelegt / ZEILEN));
+zeigeBlaetter(sichtbareBlaetter);
+document.getElementById('moreRowsBtn').addEventListener('click', () => zeigeBlaetter(++sichtbareBlaetter));
 document.querySelector('.block').addEventListener('input', saveFormToCookie);
 document.querySelector('.block').addEventListener('change', saveFormToCookie);
 
@@ -419,7 +434,7 @@ const RESET_IDS = [
   "summe_inanspruchnahme","anzahl_einsaetze",
   "ueberstunden_gesamt","ruhezeit_eingehalten","gewuenschter_ausgleich","geplanter_ausgleichstag"
 ];
-for (let i=1;i<=8;i++){
+for (let i=1;i<=MAX_ZEILEN;i++){
   ["beginn","ende","dauer","art","grund_anlass","fallnr"].forEach(c=>RESET_IDS.push(`rufdienst_${i}_${c}`));
 }
 function resetBelowHeader(){
@@ -434,8 +449,9 @@ function resetBelowHeader(){
     else el.value = '';
   });
   recalcDuty();
-  for (let i=1;i<=8;i++){ recalcRow(i); }
+  for (let i=1;i<=MAX_ZEILEN;i++){ recalcRow(i); }
   recalcSumme();
+  sichtbareBlaetter = 1; zeigeBlaetter(1);
   const err = document.getElementById('erlaeuterung');
   if (err) err.dataset.autoGrund = '';
   saveFormToCookie();
@@ -455,49 +471,88 @@ document.getElementById('dienstart').addEventListener('change', (e) => {
 });
 
 
+/* Ein Formularblatt füllen. Mehr als 8 Einsätze: weitere Blätter desselben
+   Formulars, Kopf (inkl. Dienstart) gleich, Einsätze fortlaufend (Nr. 9, 10, ...),
+   Abschnitt 1 und 3 nur auf Blatt 1, Summe/Anzahl je Blatt. Gleich in der PWA. */
+async function fuelleBlatt(s, blaetter){
+  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+  const bytes = Uint8Array.from(atob(PDF_B64), c => c.charCodeAt(0));
+  const pdfDoc = await PDFDocument.load(bytes);
+  const form = pdfDoc.getForm();
+  const kopf = ["name_vorname","personalnummer","funktion","klinik_abteilung","datum","dienstart"];
+  const abschnitt13 = [
+    "dienstbeginn","plan_dienstende","tats_dienstende","ueberstunden_std","grund_ueberstunden",
+    "erlaeuterung","angeordnet_durch",
+    "ueberstunden_gesamt","ruhezeit_eingehalten","gewuenschter_ausgleich","geplanter_ausgleichstag"
+  ];
+  const vals = {};
+  const wert = id => {
+    const el = document.getElementById(id);
+    if (!el) return "";
+    let val = el.value || "";
+    if (el.type === 'date' && val) { const [y,m,d] = val.split('-'); val = `${d}.${m}.${y}`; }
+    return val;
+  };
+  kopf.forEach(id => vals[id] = wert(id));
+  if (!s) abschnitt13.forEach(id => vals[id] = wert(id));
+  let summe = 0, anzahl = 0;
+  for (let n=1;n<=ZEILEN;n++){
+    const i = s*ZEILEN + n;
+    ["beginn","ende","dauer","art","grund_anlass","fallnr"].forEach(c => vals[`rufdienst_${n}_${c}`] = wert(`rufdienst_${i}_${c}`));
+    const v = vals[`rufdienst_${n}_dauer`];
+    if (v){ summe += parseFloat(v); anzahl++; }
+  }
+  vals.summe_inanspruchnahme = anzahl ? fmt(summe) : "";
+  vals.anzahl_einsaetze = anzahl ? String(anzahl) : "";
+
+  Object.entries(vals).forEach(([id, val]) => {
+    try {
+      const field = form.getTextField(id);
+      field.setFontSize(id === 'klinik_abteilung' ? 6.5 : 8);
+      field.setText(val);
+    } catch(e) { /* Feld nicht gefunden - ignorieren */ }
+  });
+
+  form.updateFieldAppearances();
+
+  // Heutiges Datum links unten bei "Datum, Unterschrift Ärztin/Arzt" eintragen
+  const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const page0 = pdfDoc.getPage(0);
+  const today = new Date();
+  const todayStr = `${String(today.getDate()).padStart(2,'0')}.${String(today.getMonth()+1).padStart(2,'0')}.${today.getFullYear()}`;
+  page0.drawText(todayStr, { x: 40, y: 148, size: 9, font: helv, color: rgb(0,0,0) });
+
+  if (blaetter > 1) {
+    // "Blatt x von y" in die Kopfleiste von Abschnitt 2; ab Blatt 2 Zeilennummern fortlaufend
+    const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const H = page0.getHeight();
+    const t = `Blatt ${s+1} von ${blaetter}`;
+    page0.drawText(t, { x: 557 - bold.widthOfTextAtSize(t, 8), y: H - 290.5, size: 8, font: bold, color: rgb(.14,.23,.40) });
+    if (s) for (let i=0;i<ZEILEN;i++){
+      const top = 330.1 + i*19.3, nr = String(s*ZEILEN + i + 1);
+      page0.drawRectangle({ x: 41, y: H - top - 11.5, width: 28, height: 12.5, color: rgb(.949,.949,.949) });
+      page0.drawText(nr, { x: 55 - helv.widthOfTextAtSize(nr, 9.2)/2, y: H - top - 8, size: 9.2, font: helv, color: rgb(0,0,0) });
+    }
+    form.flatten();   // gleiche Feldnamen auf mehreren Blättern vertragen sich nicht
+  }
+  return pdfDoc;
+}
+
 document.getElementById('downloadBtn').addEventListener('click', async () => {
   try {
-    const { PDFDocument, StandardFonts, rgb } = PDFLib;
-    const bytes = Uint8Array.from(atob(PDF_B64), c => c.charCodeAt(0));
-    const pdfDoc = await PDFDocument.load(bytes);
-    const form = pdfDoc.getForm();
-
-    const fieldIds = [
-      "name_vorname","personalnummer","funktion","klinik_abteilung","datum","dienstart",
-      "dienstbeginn","plan_dienstende","tats_dienstende","ueberstunden_std","grund_ueberstunden",
-      "erlaeuterung","angeordnet_durch",
-      "summe_inanspruchnahme","anzahl_einsaetze",
-      "ueberstunden_gesamt","ruhezeit_eingehalten","gewuenschter_ausgleich","geplanter_ausgleichstag"
-    ];
-    for (let i=1;i<=8;i++){
-      ["beginn","ende","dauer","art","grund_anlass","fallnr"].forEach(c=>{
-        fieldIds.push(`rufdienst_${i}_${c}`);
-      });
-    }
-
-    fieldIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      let val = el.value || "";
-      if (el.type === 'date' && val) {
-        const [y,m,d] = val.split('-');
-        val = `${d}.${m}.${y}`;
+    let letzte = 0;
+    for (let i=1;i<=MAX_ZEILEN;i++){ if (zeileBelegt(i)) letzte = i; }
+    const blaetter = Math.max(1, Math.ceil(letzte / ZEILEN));
+    let pdfDoc;
+    if (blaetter === 1) pdfDoc = await fuelleBlatt(0, 1);
+    else {
+      pdfDoc = await PDFLib.PDFDocument.create();
+      for (let s=0;s<blaetter;s++){
+        const blatt = await fuelleBlatt(s, blaetter);
+        const [pg] = await pdfDoc.copyPages(blatt, [0]);
+        pdfDoc.addPage(pg);
       }
-      try {
-        const field = form.getTextField(id);
-        field.setFontSize(id === 'klinik_abteilung' ? 6.5 : 8);
-        field.setText(val);
-      } catch(e) { /* Feld nicht gefunden - ignorieren */ }
-    });
-
-    form.updateFieldAppearances();
-
-    // Heutiges Datum links unten bei "Datum, Unterschrift Ärztin/Arzt" eintragen
-    const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const page0 = pdfDoc.getPage(0);
-    const today = new Date();
-    const todayStr = `${String(today.getDate()).padStart(2,'0')}.${String(today.getMonth()+1).padStart(2,'0')}.${today.getFullYear()}`;
-    page0.drawText(todayStr, { x: 40, y: 148, size: 9, font: helv, color: rgb(0,0,0) });
+    }
 
     const outBytes = await pdfDoc.save();
     const blob = new Blob([outBytes], {type:'application/pdf'});

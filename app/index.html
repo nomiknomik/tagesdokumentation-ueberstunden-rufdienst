@@ -1174,7 +1174,6 @@ $('btnEinsatz').onclick = ()=>{
     d.einsaetze[i].ende = now();
     expanded.delete(i);
   }else{                                      // neuen Einsatz starten
-    if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
     d.einsaetze.push({beginn:now(), ende:'', art:'Präsenz im Haus (RBA)',
                       grund_anlass:'Notfall / Notoperation', fallnr:''});
     expanded.add(d.einsaetze.length-1);
@@ -1183,7 +1182,6 @@ $('btnEinsatz').onclick = ()=>{
 };
 $('btnTelefonat').onclick = ()=>{
   const d = day();
-  if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
   const ende = new Date();
   const beginn = new Date(ende.getTime() - 5*60000);
   const hhmm = dt => dt.toTimeString().slice(0,5);
@@ -1193,7 +1191,6 @@ $('btnTelefonat').onclick = ()=>{
 };
 $('btnEinsatzLeer').onclick = ()=>{
   const d = day();
-  if(d.einsaetze.length>=8){ alert('Das Formular hat nur 8 Zeilen.'); return; }
   d.einsaetze.push({beginn:'',ende:'',art:'',grund_anlass:'',fallnr:''});
   expanded.add(d.einsaetze.length-1);
   persist(); renderEinsaetze(); calc();
@@ -1914,14 +1911,37 @@ function pruefeTag(k){
       }
     }
   }
-  if(es.length > 8) w.push(`${es.length} Einsätze erfasst – das Formular hat nur 8 Zeilen, die übrigen fehlen im PDF.`);
   return w;
 }
 
-/* Ein Tagesblatt erzeugen; flatten = Felder festschreiben (fuer den Monats-Sammeldruck) */
+/* Ein Tagesblatt erzeugen; flatten = Felder festschreiben (fuer den Monats-Sammeldruck).
+   Mehr als 8 Einsaetze: weitere Blaetter desselben Formulars mit gleichem Kopf
+   (inkl. Dienstart) und Unterschriftsdatum, Einsaetze laufen weiter (Nr. 9, 10, ...).
+   Abschnitt 1 und 3 (Ueberstunden, Ausgleich) nur auf Blatt 1, Summe/Anzahl je Blatt.
+   Mehrere Blaetter werden festgeschrieben - gleiche Feldnamen vertragen sich nicht. */
+const ZEILEN = 8;
 async function buildTagesPdf(k, flatten){
+  const es = (days[k] || blank()).einsaetze || [];
+  const blaetter = Math.max(1, Math.ceil(es.length / ZEILEN));
+  if(blaetter === 1) return buildBlatt(k, 0, 1, flatten);
+  const out = await PDFLib.PDFDocument.create();
+  for(let s=0; s<blaetter; s++){
+    const doc = await buildBlatt(k, s, blaetter, true);
+    const [pg] = await out.copyPages(doc, [0]);
+    out.addPage(pg);
+  }
+  return out;
+}
+async function buildBlatt(k, s, blaetter, flatten){
   const d = days[k] || blank();
   const r = calcFor(k);
+  const teil = (d.einsaetze||[]).slice(s*ZEILEN, (s+1)*ZEILEN);
+  const dauern = r.dauern.slice(s*ZEILEN, (s+1)*ZEILEN);
+  let summe = 0, anzahl = 0;
+  teil.forEach(e=>{
+    const b=dec(e.beginn), en=dec(e.ende);
+    if(b!==null && en!==null){ let x=en-b; if(x<0)x+=24; summe+=x; anzahl++; }
+  });
   const pdfDoc = await PDFLib.PDFDocument.load(await loadTemplate());
   const form = pdfDoc.getForm();
   const [y,m,dd] = k.split('-');
@@ -1929,21 +1949,23 @@ async function buildTagesPdf(k, flatten){
     name_vorname: cfg.name, personalnummer: cfg.pnr, funktion: cfg.funktion,
     klinik_abteilung: cfg.klinik, datum: `${dd}.${m}.${y}`,
     dienstart: DUTY[d.dienstart] ? DUTY[d.dienstart].label : '',
+    summe_inanspruchnahme: anzahl ? fmt(summe) : '',
+    anzahl_einsaetze: String(anzahl || '')
+  };
+  if(s === 0) Object.assign(vals, {
     dienstbeginn: d.dienstbeginn, plan_dienstende: d.plan_dienstende,
     tats_dienstende: d.tats_dienstende, ueberstunden_std: fmt(r.ue),
     grund_ueberstunden: d.grund_ueberstunden, erlaeuterung: d.erlaeuterung,
     angeordnet_durch: d.angeordnet_durch,
-    summe_inanspruchnahme: r.anzahl ? fmt(r.summe) : '',
-    anzahl_einsaetze: String(r.anzahl || ''),
     ueberstunden_gesamt: r.ue ? fmt(r.ue) : '',
     ruhezeit_eingehalten: d.ruhezeit_eingehalten,
     gewuenschter_ausgleich: d.gewuenschter_ausgleich,
     geplanter_ausgleichstag: d.geplanter_ausgleichstag
-  };
-  (d.einsaetze||[]).slice(0,8).forEach((e,i)=>{
+  });
+  teil.forEach((e,i)=>{
     const n = i+1;
     vals[`rufdienst_${n}_beginn`]=e.beginn||''; vals[`rufdienst_${n}_ende`]=e.ende||'';
-    vals[`rufdienst_${n}_dauer`]=e.dauer||'';   vals[`rufdienst_${n}_art`]=e.art||'';
+    vals[`rufdienst_${n}_dauer`]=dauern[i]||''; vals[`rufdienst_${n}_art`]=e.art||'';
     vals[`rufdienst_${n}_grund_anlass`]=e.grund_anlass||''; vals[`rufdienst_${n}_fallnr`]=e.fallnr||'';
   });
   Object.entries(vals).forEach(([id,v])=>{
@@ -1956,12 +1978,29 @@ async function buildTagesPdf(k, flatten){
      gezeichnet, Position und Groesse wie im Desktop-Tool. Muss VOR dem
      Flatten passieren und wandert so auch in die Monats-Sammel-PDF. */
   const helv = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const page = pdfDoc.getPage(0);
   const heute = new Date();
   const heuteStr = `${pad(heute.getDate())}.${pad(heute.getMonth()+1)}.${heute.getFullYear()}`;
-  pdfDoc.getPage(0).drawText(heuteStr, {x:40, y:148, size:9, font:helv, color:PDFLib.rgb(0,0,0)});
+  page.drawText(heuteStr, {x:40, y:148, size:9, font:helv, color:PDFLib.rgb(0,0,0)});
+  if(blaetter > 1) blattKennung(page, s, blaetter, helv,
+    await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold), PDFLib.rgb);
 
   if(flatten) form.flatten();
   return pdfDoc;
+}
+/* "Blatt x von y" in die Kopfleiste von Abschnitt 2; ab Blatt 2 die gedruckten
+   Zeilennummern 1-8 ueberdecken und fortlaufend nummerieren.
+   Koordinaten aus page.get_drawings()/get_text() (PyMuPDF) - gleich im Desktop-Tool. */
+function blattKennung(page, s, blaetter, reg, bold, rgb){
+  const H = page.getHeight();
+  const t = `Blatt ${s+1} von ${blaetter}`;
+  page.drawText(t, {x:557-bold.widthOfTextAtSize(t,8), y:H-290.5, size:8, font:bold, color:rgb(.14,.23,.40)});
+  if(!s) return;
+  for(let i=0; i<ZEILEN; i++){
+    const top = 330.1 + i*19.3, nr = String(s*ZEILEN+i+1);
+    page.drawRectangle({x:41, y:H-top-11.5, width:28, height:12.5, color:rgb(.949,.949,.949)});
+    page.drawText(nr, {x:55-reg.widthOfTextAtSize(nr,9.2)/2, y:H-top-8, size:9.2, font:reg, color:rgb(0,0,0)});
+  }
 }
 
 /* Empfaenger in die Zwischenablage, damit er in WeTransfer nur eingesetzt werden muss.
@@ -3131,7 +3170,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.35.0';
+const APP_VERSION = '1.36.0';
 const APP_BUILD   = '03.10.2026';
 
 function showVersion(){
