@@ -45,6 +45,9 @@ header{background:var(--color-background);color:var(--color-text);
 h1{margin:0;font-size:20px;line-height:24px;font-weight:700}
 header .hd{display:flex;align-items:flex-start;gap:12px}
 header .hdtxt{flex:1;min-width:0}
+header .hdundo{display:flex;gap:6px;flex:0 0 auto}
+header .hdundo .iconbtn{width:38px;height:38px}
+.iconbtn:disabled{opacity:.35;pointer-events:none}
 .iconbtn{flex:0 0 auto;width:var(--touch-target);height:var(--touch-target);border:1.5px solid var(--color-border);
   border-radius:999px;background:var(--color-card);color:var(--color-primary);
   display:flex;align-items:center;justify-content:center;transition:transform .15s ease}
@@ -297,6 +300,10 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 <header>
   <div class="hd">
     <div class="hdtxt"><h1>Tagesdokumentation – Überstunden &amp; Rufdienst</h1><span class="vchip" id="appVersion">v–</span></div>
+    <div class="hdundo">
+      <button class="iconbtn" id="undoBtn" aria-label="Rückgängig" disabled><span data-icon="undo"></span></button>
+      <button class="iconbtn" id="redoBtn" aria-label="Wiederholen" disabled><span data-icon="redo"></span></button>
+    </div>
     <button class="iconbtn" id="pdfBtn" title="PDF erzeugen" aria-label="PDF erzeugen"><span data-icon="fileText"></span></button>
   </div>
 </header>
@@ -549,6 +556,8 @@ const ICONS = {
   alertTriangle:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
   timer:'<line x1="10" y1="2" x2="14" y2="2"></line><line x1="12" y1="14" x2="15" y2="11"></line><circle cx="12" cy="14" r="8"></circle>',
   logOut:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>',
+  undo:'<path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path>',
+  redo:'<path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path>',
   plus:'<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
   users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
   archive:'<polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>',
@@ -700,7 +709,52 @@ const echteTage = () => {
   for(const k in days) if(hasContent(k)) out[k] = days[k];
   return out;
 };
-const persist = () => save(LS.days, echteTage());
+const persist = () => { save(LS.days, echteTage()); histNote(); };
+
+/* ---------- Rueckgaengig / Wiederholen ----------
+   Snapshots von Tagen, Diensttausch und Einspringtagen (nicht Plan/Einstellungen).
+   Nur im Arbeitsspeicher; Tippen wird zu einem Schritt zusammengefasst. Die
+   Schrittzahl richtet sich nach der Datengroesse: 10, bei grossen Bestaenden bis 5. */
+const HIST = {stack:[], pos:-1, timer:null, max:10, ignore:false};
+const histSnap = () => JSON.stringify({days: echteTage(), swap, extras});
+function histNote(){
+  if(HIST.ignore) return;
+  clearTimeout(HIST.timer);
+  HIST.timer = setTimeout(histFlush, 700);
+}
+function histFlush(){
+  if(!HIST.timer) return;
+  clearTimeout(HIST.timer); HIST.timer = null;
+  const snap = histSnap();
+  if(HIST.stack[HIST.pos] === snap) return;
+  HIST.stack.length = HIST.pos + 1;            // Wiederholen-Zweig verwerfen
+  HIST.stack.push(snap);
+  HIST.max = Math.max(5, Math.min(10, Math.floor(2e6 / Math.max(1, snap.length))));
+  while(HIST.stack.length > HIST.max + 1) HIST.stack.shift();
+  HIST.pos = HIST.stack.length - 1;
+  histButtons();
+}
+function histButtons(){
+  const u = $('undoBtn'), r = $('redoBtn'); if(!u) return;
+  u.disabled = HIST.pos <= 0 && !HIST.timer;
+  r.disabled = HIST.pos >= HIST.stack.length - 1;
+  u.title = 'Rückgängig' + (HIST.pos > 0 ? ` (${HIST.pos})` : '');
+  r.title = 'Wiederholen' + (!r.disabled ? ` (${HIST.stack.length-1-HIST.pos})` : '');
+}
+function histGo(delta){
+  histFlush();
+  const p = HIST.pos + delta;
+  if(p < 0 || p >= HIST.stack.length) return;
+  const st = JSON.parse(HIST.stack[p]);
+  HIST.pos = p; HIST.ignore = true;
+  days = st.days; swap = st.swap; extras = st.extras;
+  save(LS.days, days); save(LS.swap, swap); save(LS.extra, extras);
+  expanded = new Set(); lastRenderedDay = null;
+  renderDay(); renderPlanList(); renderTeamList(); renderHistory();
+  if($('geld').classList.contains('on')) renderGeldMonat();
+  HIST.ignore = false; histButtons();
+  toast(delta < 0 ? 'Rückgängig gemacht' : 'Wiederholt');
+}
 
 /* ---------- Rechnen (identisch zum Desktop-Tool) ---------- */
 const dec = t => { if(!t) return null; const [h,m]=t.split(':').map(Number); return h+m/60; };
@@ -1363,7 +1417,7 @@ function setSwap(k, name){
   const orig = ((plan[k] && plan[k].oa) || '').trim();
   if(name.trim() === orig) delete swap[k];   // entspricht wieder dem Excel-Plan
   else swap[k] = name;
-  save(LS.swap, swap);
+  save(LS.swap, swap); histNote();
   const d = days[k];                          // Tagesbogen nachziehen, solange dort nichts von Hand gesetzt ist
   if(d && !d.dienstart_manuell){
     const c = derive(k).code;
@@ -1379,7 +1433,7 @@ $('teamList').addEventListener('click', e=>{
   const me = e.target.closest('[data-teamme]');
   if(me){ setSwap(me.dataset.teamme, (cfg.nachname||'').trim()); return; }
   const rs = e.target.closest('[data-teamreset]');
-  if(rs){ delete swap[rs.dataset.teamreset]; save(LS.swap, swap); teamOpen = null; renderTeamList(); renderPlanList(); renderDay(); return; }
+  if(rs){ delete swap[rs.dataset.teamreset]; save(LS.swap, swap); histNote(); teamOpen = null; renderTeamList(); renderPlanList(); renderDay(); return; }
   if(e.target.closest('[data-teamclose]')){ teamOpen = null; renderTeamList(); return; }
   const row = e.target.closest('[data-team]');
   if(row){ teamOpen = teamOpen === row.dataset.team ? null : row.dataset.team; renderTeamList(); }
@@ -2702,7 +2756,7 @@ $('gmEinspringen').addEventListener('change', e=>{
   if(n) (extras[geldMonat] ||= {})[252] = n;
   else if(extras[geldMonat]) delete extras[geldMonat][252];
   if(extras[geldMonat] && !Object.keys(extras[geldMonat]).length) delete extras[geldMonat];
-  save(LS.extra, extras);
+  save(LS.extra, extras); histNote();
   renderGeldMonat();
 });
 $('gmCopy').onclick = async ()=>{
@@ -2766,7 +2820,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.31.0';
+const APP_VERSION = '1.32.0';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
@@ -2777,6 +2831,9 @@ function showVersion(){
 
 /* Der PDF-Knopf im Header gehoert zum Tagesbogen - auf den anderen Tabs
    gibt es nichts zu drucken. */
+$('undoBtn').onclick = ()=>histGo(-1);
+$('redoBtn').onclick = ()=>histGo(1);
+HIST.timer = 1; histFlush();     // Ausgangszustand als erster Schritt
 function zeigePdfKnopf(an){ $('pdfBtn').style.display = an ? 'flex' : 'none'; }
 
 function syncHeaderPad(){
