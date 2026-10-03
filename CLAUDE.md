@@ -71,6 +71,7 @@ kein +24h-Wrap), FRN-Verhalten. Alles andere in der PWA ist PWA-exklusiv.
   (`tagesdoku_sync`) nur über `saveSync()`, nie im Backup. Online-Datei im
   privaten Repo, AES-GCM/PBKDF2, Abgleich über Datei-SHA; bei Konflikt ganz
   oder gar nicht, der Verlierer bleibt als Geräte-Kopie „-vorher“ (IndexedDB).
+  Kopf-Symbol `#syncBtn` über `syncStatus()`; `save()` lädt nach 20 s Ruhe hoch.
 
 ## Bekannte Abweichungen App ↔ TDA (für Gehaltsabgleich)
 - 09/2026, ein Wochenend-RBD: TDA hat alle Einsätze pauschal als 9005 „RB aktiv
