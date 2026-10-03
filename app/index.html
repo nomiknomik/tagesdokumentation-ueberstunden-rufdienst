@@ -240,6 +240,9 @@ select{color-scheme:light}
 .nettoref .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:10px}
 .nettoref .grid2 .field label{margin-bottom:4px;font-size:12px}
 .nettoref input{min-width:0;width:100%;box-sizing:border-box}
+/* iOS: Monatsfeld ignoriert width ohne appearance:none und ragt sonst rechts heraus */
+.nettoref input[type=month]{-webkit-appearance:none;appearance:none;display:block;max-width:100%}
+.nettoref input[type=month]::-webkit-date-and-time-value{text-align:left}
 .nettoref .del{margin-bottom:12px}
 
 .tag{font-size:12px;font-weight:600;padding:4px 8px;border-radius:999px;background:rgba(43,36,32,.06);color:var(--color-text-secondary);white-space:nowrap}
@@ -3188,7 +3191,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.36.1';
+const APP_VERSION = '1.36.2';
 const APP_BUILD   = '03.10.2026';
 
 function showVersion(){
