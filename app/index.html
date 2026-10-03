@@ -85,6 +85,7 @@ section{display:none} section.on{display:block}
   display:flex;align-items:center;gap:14px;padding:0 20px;transition:transform .15s ease}
 .stamp:active{transform:scale(.98)}
 .stamp .ic{width:24px;height:24px}
+.stamp small.leer{display:none}
 .stamp .stxt{text-align:left;flex:1}
 .stamp small{display:block;font-weight:400;font-size:13px;line-height:18px;opacity:.85;margin-top:2px}
 .stamp.start{background:linear-gradient(135deg,#1a9a52,var(--color-success));box-shadow:0 10px 24px rgba(21,143,71,.26)}
@@ -108,8 +109,7 @@ section{display:none} section.on{display:block}
 .weekstrip{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;
   overscroll-behavior-x:contain;margin-bottom:var(--spacing-section)}
 .weekstrip::-webkit-scrollbar{display:none}
-.weekstrip .wk{flex:0 0 100%;display:grid;grid-template-columns:repeat(7,1fr);gap:4px;scroll-snap-align:start;scroll-snap-stop:always}
-.weekstrip button{border:1px solid transparent;background:var(--color-card);border-radius:12px;padding:6px 0 5px;
+.weekstrip button{flex:0 0 calc((100% - 24px)/7);margin-right:4px;scroll-snap-align:start;border:1px solid transparent;background:var(--color-card);border-radius:12px;padding:6px 0 5px;
   display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--color-text-secondary);font-size:11px;line-height:14px}
 .weekstrip .num{font-size:15px;line-height:18px;font-weight:600;color:var(--color-text)}
 .weekstrip button.duty{border-color:var(--color-primary-light)}
@@ -169,6 +169,7 @@ select{color-scheme:light}
 .cal button.mine .d,.cal button.mine .nm{color:#fff}
 .cal button.swapped{border-color:var(--color-warning);border-width:2px}
 .cal button.on{outline:2px solid var(--color-primary);outline-offset:1px}
+.cal button.today{border:2px solid var(--color-danger)}
 .cal button.today .d{font-weight:800;color:var(--color-text)}
 .cal button.today.mine .d{color:#fff}
 .callegend{display:flex;flex-wrap:wrap;gap:10px;padding:0 14px 12px;font-size:11px;line-height:15px;
@@ -344,7 +345,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <h2><span data-icon="clock"></span>Kommen/Gehen</h2>
     <button class="stamp" id="btnGehen">
       <span data-icon="logOut"></span>
-      <span class="stxt">Gehen<small id="lblGehen">–</small></span>
+      <span class="stxt">Gehen<small id="lblGehen" class="leer"></small></span>
     </button>
     <div class="row"><label>Dienstart</label><select id="dienstartSel"></select></div>
     <div class="hint" id="dienstartHint" style="display:none"></div>
@@ -525,8 +526,8 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 
 <nav>
   <button data-tab="tag" class="on"><span data-icon="clock"></span>Tag</button>
-  <button data-tab="geld"><span data-icon="euro"></span>Gehalt</button>
   <button data-tab="plan"><span data-icon="calendar"></span>Dienstplan</button>
+  <button data-tab="geld"><span data-icon="euro"></span>Gehalt</button>
   <button data-tab="cfg"><span data-icon="settings"></span>Einstellungen</button>
 </nav>
 
@@ -745,7 +746,12 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   zeigePdfKnopf(b.dataset.tab === 'tag');
   $('actionbar').style.display = b.dataset.tab==='tag' ? 'block' : 'none';
   syncHeaderPad();
-  if(b.dataset.tab==='plan'){ renderPlanList(); renderTeamList(); renderHistory(); }
+  if(b.dataset.tab==='plan'){
+    openGroups = {};                       // Standard: alles zu, nur der Kalender (laufender Monat) offen
+    renderPlanList(); renderTeamList(); renderHistory();
+    const c = $('teamList').closest('.card');
+    if(c) window.scrollTo(0, c.getBoundingClientRect().top + window.scrollY - document.querySelector('header').offsetHeight - 8);
+  }
   if(b.dataset.tab==='geld'){ geldMonat = cur.slice(0,7); renderGeldMonat(); }
 });
 
@@ -771,45 +777,45 @@ function renderDayContext(){
     (rel ? ` · ${rel}` : '') + (isHoliday(cur) ? ' · Feiertag' : '');
 
   const d0 = new Date(cur+'T12:00:00');
-  stripMo = new Date(d0); stripMo.setDate(d0.getDate() - ((d0.getDay()+6)%7));   // Montag der Woche
+  /* Streifen nur neu ausrichten, wenn der Tag nicht schon sichtbar ist */
+  const sichtbar = stripMo && cur >= iso(stripMo) && cur < iso(new Date(stripMo.getFullYear(), stripMo.getMonth(), stripMo.getDate()+7, 12));
+  if(!sichtbar){ stripMo = new Date(d0); stripMo.setDate(d0.getDate() - ((d0.getDay()+6)%7)); }   // Montag der Woche
   renderWeekStrip();
   $('heuteBtn').style.display = cur===heute ? 'none' : 'block';   // nur noetig, wenn man woanders steht
 }
-/* Wochenstreifen: Vorwoche | angezeigte Woche | Folgewoche nebeneinander,
-   per Wischen blaetterbar (scroll-snap). Nach dem Einrasten wird neu um die
-   erreichte Woche herum aufgebaut; der gewaehlte Tag aendert sich erst beim Tippen. */
+/* Wochenstreifen: 7 Tage sichtbar, 14 davor und 14 danach. Wischen rastet
+   tageweise ein; danach wird um den erreichten Tag herum neu aufgebaut.
+   Der gewaehlte Tag aendert sich erst beim Tippen. stripMo = erster sichtbarer Tag. */
 let stripMo = null;
+const STRIP_VOR = 14;
 function renderWeekStrip(){
   let html = '';
-  for(let w=-1; w<=1; w++){
-    html += '<div class="wk">';
-    for(let i=0;i<7;i++){
-      const t = new Date(stripMo); t.setDate(stripMo.getDate()+w*7+i);
-      const k = iso(t);
-      const code = derive(k).code;
-      const dienst = code && code!=='frei' && code!=='amb2' && code!=='amb4' && code!=='abwesend';
-      const cls = [k===cur?'on':'', hasContent(k)?'done':'', dienst?'duty':'', istRot(k)?'we':''].filter(Boolean).join(' ');
-      html += `<button class="${cls}" data-day="${k}"><span>${WDAY_KURZ[(i+1)%7]}</span><span class="num">${k.slice(8)}</span><span class="mark"></span></button>`;
-    }
-    html += '</div>';
+  for(let i=-STRIP_VOR; i<STRIP_VOR+21; i++){
+    const t = new Date(stripMo.getFullYear(), stripMo.getMonth(), stripMo.getDate()+i, 12);
+    const k = iso(t);
+    const code = derive(k).code;
+    const dienst = code && code!=='frei' && code!=='amb2' && code!=='amb4' && code!=='abwesend';
+    const cls = [k===cur?'on':'', hasContent(k)?'done':'', dienst?'duty':'', istRot(k)?'we':''].filter(Boolean).join(' ');
+    html += `<button class="${cls}" data-day="${k}"><span>${WDAY_KURZ[t.getDay()]}</span><span class="num">${k.slice(8)}</span><span class="mark"></span></button>`;
   }
   const ws = $('weekStrip');
   ws.innerHTML = html;
-  ws.scrollLeft = ws.clientWidth;
+  ws.scrollLeft = STRIP_VOR * stripSchritt();
 }
+const stripSchritt = ()=>{ const b = $('weekStrip').firstElementChild; return b ? b.getBoundingClientRect().width + 4 : 0; };
 (()=>{
   const ws = $('weekStrip');
   let t = null;
   const eingerastet = ()=>{
-    const w = ws.clientWidth; if(!w) return;
-    const seite = Math.round(ws.scrollLeft / w);
-    if(seite===1) return;
-    stripMo.setDate(stripMo.getDate() + (seite-1)*7);
+    const w = stripSchritt(); if(!w) return;
+    const tage = Math.round(ws.scrollLeft / w) - STRIP_VOR;
+    if(!tage) return;
+    stripMo.setDate(stripMo.getDate() + tage);
     renderWeekStrip();
   };
-  ws.addEventListener('scroll', ()=>{ clearTimeout(t); t = setTimeout(eingerastet, 120); }, {passive:true});
-  // Tab war beim Rendern versteckt (Breite 0) -> beim Sichtbarwerden mittig stellen
-  new ResizeObserver(()=>{ if(stripMo) ws.scrollLeft = ws.clientWidth; }).observe(ws);
+  ws.addEventListener('scroll', ()=>{ clearTimeout(t); t = setTimeout(eingerastet, 150); }, {passive:true});
+  // Tab war beim Rendern versteckt (Breite 0) -> beim Sichtbarwerden ausrichten
+  new ResizeObserver(()=>{ if(stripMo) ws.scrollLeft = STRIP_VOR * stripSchritt(); }).observe(ws);
 })();
 $('weekStrip').addEventListener('click', e=>{
   const b = e.target.closest('[data-day]'); if(!b) return;
@@ -978,14 +984,14 @@ function renderDay(){
   $('frn').checked = !!d.frn;
   $('frnKommentar').value = d.frn_kommentar || '';
   $('frnKommentarRow').style.display = d.frn ? 'block' : 'none';
-  $('lblGehen').textContent  = d.tats_dienstende || '–';
+  $('lblGehen').textContent  = d.tats_dienstende || ''; $('lblGehen').classList.toggle('leer', !d.tats_dienstende);
   renderDayContext(); renderDuty(); renderEinsaetze(); renderRuhezeitStatus(); calc(); persist();
 }
 
 /* Feld-Bindings */
 FIELDS.forEach(f => $(f).oninput = $(f).onchange = e => {
   day()[f] = e.target.value;
-  if(f==='tats_dienstende') $('lblGehen').textContent = e.target.value || '–';
+  if(f==='tats_dienstende') $('lblGehen').textContent = e.target.value || ''; $('lblGehen').classList.toggle('leer', !e.target.value);
   if(f==='ruhezeit_eingehalten') renderRuhezeitStatus();
   if(f==='grund_ueberstunden') syncGrundSonstiges();
   if(f==='erlaeuterung') $('grundSonstiges').value = e.target.value;
@@ -1233,10 +1239,10 @@ function monthLabel(mk){
   const name = MONTHS[+m-1];
   return `${name[0].toUpperCase()+name.slice(1)} ${y}`;
 }
-/* Aufgeklappte Monate merken: Gruppen starten zugeklappt und behalten ihren
-   Zustand ueber Re-Renders und App-Starts hinweg. */
-const OPEN_KEY = 'tagesdoku_open_groups';
-const openGroups = load(OPEN_KEY, {});
+/* Je Liste ist hoechstens ein Monat offen (Akkordeon); der Zustand gilt nur
+   bis zum naechsten Oeffnen des Reiters. Standard: nur der Kalender
+   „wer hat Dienst“ zeigt den laufenden Monat, alles andere ist zu. */
+let openGroups = {};
 function renderGroupedList(containerId, keys, rowFn, emptyMsg, footerFn, bodyFn){
   const el = $(containerId);
   if(!keys.length){ el.innerHTML = `<div class="li">${emptyMsg}</div>`; return; }
@@ -1245,8 +1251,9 @@ function renderGroupedList(containerId, keys, rowFn, emptyMsg, footerFn, bodyFn)
   const monthKeys = Object.keys(groups).sort().reverse();
   /* Voreinstellung: der laufende Monat ist offen, die uebrigen zu. Sobald der
      Nutzer selbst einmal auf-/zugeklappt hat, gilt nur noch sein Zustand. */
-  const gemerkt = openGroups[containerId];
-  const openSet = new Set(gemerkt || [iso(new Date()).slice(0,7)]);
+  const gemerkt = openGroups[containerId]
+    || (containerId==='teamList' ? [iso(new Date()).slice(0,7)] : []);
+  const openSet = new Set(gemerkt);
   el.innerHTML = monthKeys.map(mk=>`
     <details class="monthgroup" data-month="${mk}"${openSet.has(mk)?' open':''}>
       <summary><span>${monthLabel(mk)}<span class="cnt">(${groups[mk].length})</span></span>${icon('chevronRight')}</summary>
@@ -1255,10 +1262,12 @@ function renderGroupedList(containerId, keys, rowFn, emptyMsg, footerFn, bodyFn)
     </details>`).join('');
   el.querySelectorAll('details.monthgroup').forEach(d=>{
     d.addEventListener('toggle', ()=>{
-      const cur = new Set(openGroups[containerId] || []);
-      d.open ? cur.add(d.dataset.month) : cur.delete(d.dataset.month);
-      openGroups[containerId] = [...cur];
-      save(OPEN_KEY, openGroups);
+      if(d.open){
+        el.querySelectorAll('details.monthgroup[open]').forEach(o=>{ if(o!==d) o.open = false; });
+        openGroups[containerId] = [d.dataset.month];
+      } else if((openGroups[containerId]||[])[0] === d.dataset.month){
+        openGroups[containerId] = [];
+      }
     });
   });
 }
@@ -2757,7 +2766,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.30.0';
+const APP_VERSION = '1.31.0';
 const APP_BUILD   = '23.09.2026';
 
 function showVersion(){
