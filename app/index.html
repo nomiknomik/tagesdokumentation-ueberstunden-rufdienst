@@ -201,6 +201,8 @@ select{color-scheme:light}
 .note{background:rgba(180,83,9,.10);border-left:3px solid var(--color-warning);color:var(--color-warning);
   padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:10px}
 .ok{color:var(--color-success);font-size:13px}
+/* Token: Textfeld mit Punkten statt type=password (sonst haelt iOS es fuer Passwort-Bestaetigung) */
+.maskiert{-webkit-text-security:disc;text-security:disc}
 
 .status{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;padding:10px 12px;border-radius:var(--radius-input);margin-top:8px}
 .status.good{background:rgba(21,143,71,.10);color:var(--color-success)}
@@ -504,9 +506,9 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="save"></span>Daten</h2>
     <div class="field"><label><b>Online-Backup &amp; Sync (privates GitHub-Repo, verschlüsselt)</b></label></div>
-    <div class="row"><label>Repo (Besitzer/Name)</label><input id="sync_repo" placeholder="mustermann/tagesdoku-backup" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-    <div class="row"><label>Token</label><input id="sync_token" type="password" placeholder="github_pat_…" autocomplete="off"></div>
-    <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" placeholder="auf allen Geräten gleich" autocomplete="new-password"></div>
+    <div class="row"><label>Repo (Besitzer/Name)</label><input id="sync_repo" name="username" autocomplete="username" placeholder="mustermann/tagesdoku-backup" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <div class="row"><label>Token</label><input id="sync_token" type="text" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
+    <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" name="password" placeholder="auf allen Geräten gleich" autocomplete="current-password"></div>
     <div class="row2">
       <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
       <button class="btn outline" id="syncNow" style="font-size:14px;min-height:44px">Jetzt abgleichen</button>
@@ -3082,7 +3084,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.34.0';
+const APP_VERSION = '1.34.1';
 const APP_BUILD   = '03.10.2026';
 
 function showVersion(){
