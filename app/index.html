@@ -2033,6 +2033,16 @@ function toast(txt){
 async function teilePdf(bytes, fname, titel){
   const blob = new Blob([bytes],{type:'application/pdf'});
   const file = new File([blob], fname, {type:'application/pdf'});
+  /* Desktop (Edge/Windows): Teilen-Dialog bietet weder Drucken noch PDF-Reader –
+     dort im PDF-Viewer des Browsers in neuem Tab öffnen, Drucken/Speichern von da */
+  const mobil = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+  if(!mobil){
+    const url = URL.createObjectURL(blob);
+    if(window.open(url, '_blank')){ toast('PDF in neuem Tab geöffnet – dort drucken oder speichern'); return; }
+    const a = document.createElement('a'); a.href = url; a.download = fname; a.click();
+    return;
+  }
   if(navigator.canShare && navigator.canShare({files:[file]})){
     await navigator.share({files:[file]});   // ohne title: iOS reicht ihn sonst als extra .txt an die Ziel-App weiter
   }else{
@@ -3191,7 +3201,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.36.2';
+const APP_VERSION = '1.36.3';
 const APP_BUILD   = '03.10.2026';
 
 function showVersion(){
