@@ -1450,13 +1450,65 @@ async function gh(method, body){
   return res.status===409 || res.status===422 ? {konflikt:true} : res.json();
 }
 const utf8b64 = s => b64(new TextEncoder().encode(s));
+/* --- Was hat sich wirklich geaendert? ---
+   save() setzt LS_DIRTY schon bei jedem Schreiben (auch beim Start, ohne echte
+   Aenderung). Massgeblich ist daher der Vergleich mit dem zuletzt abgeglichenen
+   Stand ("Basis"): Pruefsumme in sync.hash, voller Stand in IndexedDB fuer den
+   Abgleich Tag fuer Tag. */
+const BEREICHE = ['cfg','plan','days','swap','extras'];
+const kanon = v => v === undefined ? '~' : v === null || typeof v !== 'object' ? JSON.stringify(v)
+  : Array.isArray(v) ? '[' + v.map(kanon).join(',') + ']'
+  : '{' + Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => JSON.stringify(k) + ':' + kanon(v[k])).join(',') + '}';
+const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, d[b] || {}]))));
+const pruefsumme = d => { const t = kanon(kern(d)); let h = 0x811c9dc5;
+  for(let i = 0; i < t.length; i++){ h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + t.length; };
+function lokalGeaendert(){
+  if(!localStorage.getItem(LS_DIRTY)) return false;
+  if(sync.hash && pruefsumme(backupDaten()) === sync.hash){ localStorage.removeItem(LS_DIRTY); return false; }
+  return true;
+}
+async function basisMerken(d){
+  sync.hash = pruefsumme(d); saveSync();
+  localStorage.removeItem(LS_DIRTY);
+  try{ await kvSet('basis', kern(d)); }catch(e){}
+}
+/* Drei-Wege-Abgleich je Eintrag (ein Tag, ein Plantag, eine Einstellung):
+   nur hier geaendert -> hier, nur online geaendert -> online, beide -> Konflikt.
+   Ohne Basis (erste Verbindung) ist jeder Unterschied ein Konflikt. */
+function zusammenfuehren(basis, lok, onl){
+  const erg = kern(lok), konflikte = []; let vonOnline = 0, vonHier = 0;
+  for(const b of BEREICHE){
+    const L = lok[b] || {}, R = onl[b] || {}, B = basis ? (basis[b] || {}) : null;
+    for(const k of new Set([...Object.keys(L), ...Object.keys(R), ...Object.keys(B || {})])){
+      const l = kanon(L[k]), o = kanon(R[k]);
+      if(l === o) continue;
+      if(B && l === kanon(B[k])){ vonOnline++; if(R[k] === undefined) delete erg[b][k]; else erg[b][k] = R[k]; }
+      else if(B && o === kanon(B[k])) vonHier++;
+      else konflikte.push({b, k, l: L[k], o: R[k]});
+    }
+  }
+  return {erg, konflikte, vonOnline, vonHier};
+}
+function konfliktText(konflikte){
+  const dm = k => k.slice(8,10) + '.' + k.slice(5,7) + '.';
+  const tag = d => !d ? 'fehlt' : [d.dienstbeginn && d.tats_dienstende ? d.dienstbeginn + '–' + d.tats_dienstende
+      : d.tats_dienstende ? 'Ende ' + d.tats_dienstende : '', d.einsaetze && d.einsaetze.length ? d.einsaetze.length + ' Eins.' : '',
+      d.frn ? 'FRN' : ''].filter(Boolean).join(', ') || 'Angaben';
+  const namen = {plan:'Dienstplan', swap:'Diensttausch', extras:'Einspringtage', cfg:'Einstellung'};
+  const zeilen = konflikte.slice(0, 8).map(c => c.b === 'days'
+    ? `• ${dm(c.k)}  hier: ${tag(c.l)}  |  online: ${tag(c.o)}`
+    : `• ${namen[c.b]} ${/^\d{4}-\d\d-\d\d$/.test(c.k) ? dm(c.k) : c.k}`);
+  if(konflikte.length > 8) zeilen.push(`… und ${konflikte.length - 8} weitere`);
+  return zeilen.join('\n');
+}
 async function hochladen(){
-  const datei = await verschluesseln(backupDaten());
+  const stand = JSON.parse(JSON.stringify(backupDaten()));   // fester Stand: verschluesselt = gemerkt
+  const datei = await verschluesseln(stand);
   const r = await gh('PUT', {message:`Backup ${datei.meta.erstellt} (${datei.meta.geraet}, v${APP_VERSION})`,
                              content: utf8b64(JSON.stringify(datei,null,1)), ...(sync.sha ? {sha:sync.sha} : {})});
   if(r.konflikt) return false;   // jemand anderes war schneller -> neu abgleichen
   sync.sha = r.content.sha; sync.zuletzt = datei.meta.erstellt; saveSync();
-  localStorage.removeItem(LS_DIRTY);
+  await basisMerken(stand);
   return true;
 }
 let syncLaeuft = false, syncFehler = '';
@@ -1464,7 +1516,7 @@ let syncLaeuft = false, syncFehler = '';
    oben, drehende Pfeile = laeuft, rotes Dreieck = Fehler, graue Wolke = aus */
 function syncStatus(){
   const b = $('syncBtn'); if(!b) return;
-  const dirty = !!localStorage.getItem(LS_DIRTY);
+  const dirty = syncAktiv() && !syncLaeuft && lokalGeaendert();
   const [st, ic, txt] =
       !syncAktiv() ? ['off','cloudOff','Online-Backup nicht eingerichtet']
     : syncLaeuft   ? ['busy','refresh','Wird gesichert …']
@@ -1490,7 +1542,7 @@ async function abgleichen(manuell){
   try{
     for(let versuch = 0; versuch < 2; versuch++){
       const remote = await gh('GET');
-      const dirty = !!localStorage.getItem(LS_DIRTY);
+      const dirty = lokalGeaendert();
       if(!remote){                                   // noch nie gesichert
         sync.sha = null;
         if(echteTageAnzahl() && !(await hochladen())) continue;
@@ -1503,19 +1555,28 @@ async function abgleichen(manuell){
       }
       // Online liegt ein Stand von einem anderen Geraet
       const data = await entschluesseln(datei);
-      const {nPlan, nDays, herkunft} = backupInfo(data);
       const ersteVerbindung = !sync.sha;
-      if(!dirty && !ersteVerbindung || !echteTageAnzahl()
-         || confirm(`${ersteVerbindung ? 'Online-Backup gefunden' : 'Auf beiden Geräten wurde etwas geändert'}.${herkunft}\nDienstplan: ${nPlan} Tage, erfasste Tage: ${nDays}\n\nOK = Online-Stand übernehmen (lokaler Stand bleibt als Geräte-Kopie)\nAbbrechen = diesen Stand hochladen und online überschreiben`)){
-        sync.sha = remote.sha; saveSync();
-        uebernehmeBackup(data);
-        localStorage.removeItem(LS_DIRTY);
-        sync.zuletzt = data.meta.erstellt; saveSync();
-        msg.innerHTML = `<span class="ok">Stand von ${data.meta.geraet||'anderem Gerät'} übernommen (${new Date(data.meta.erstellt).toLocaleString('de-DE')}).</span>`;
+      const wer = `${data.meta.geraet||'anderem Gerät'} (${new Date(data.meta.erstellt).toLocaleString('de-DE')})`;
+      if(!dirty && !ersteVerbindung || !echteTageAnzahl()){   // hier nichts geaendert: einfach uebernehmen
+        sync.sha = remote.sha; sync.zuletzt = data.meta.erstellt; saveSync();
+        uebernehmeBackup(data); await basisMerken(backupDaten());   // lokaler Stand nach Uebernahme (inkl. Vorbelegungen)
+        msg.innerHTML = `<span class="ok">Stand von ${wer} übernommen.</span>`;
         syncLaeuft = false; syncFehler = ''; syncStatus(); return;
       }
-      sync.sha = remote.sha;
-      if(await hochladen()) break;
+      let basis = null;
+      if(!ersteVerbindung){ try{ basis = await kvGet('basis'); }catch(e){} }
+      const z = zusammenfuehren(basis, kern(backupDaten()), data);
+      if(z.konflikte.length){
+        const onlineGewinnt = confirm(`${ersteVerbindung || !basis ? 'Dieses Gerät und das Online-Backup unterscheiden sich' : 'Auf beiden Geräten wurden dieselben Einträge geändert'}:\n\n${konfliktText(z.konflikte)}\n\n`
+          + `Online = ${wer}.${z.vonOnline + z.vonHier ? `\nÜbrige Änderungen (${z.vonHier} von hier, ${z.vonOnline} von online) werden zusammengeführt.` : ''}\n\n`
+          + `OK = für diese Einträge den Online-Stand nehmen\nAbbrechen = für diese Einträge den Stand dieses Geräts behalten`);
+        if(onlineGewinnt) z.konflikte.forEach(c => { if(c.o === undefined) delete z.erg[c.b][c.k]; else z.erg[c.b][c.k] = c.o; });
+      }
+      sync.sha = remote.sha; saveSync();
+      if(z.vonOnline || z.konflikte.length) uebernehmeBackup(z.erg);
+      if(!(await hochladen())) continue;
+      msg.innerHTML = `<span class="ok">Zusammengeführt mit ${wer}: ${z.vonHier} Einträge von hier, ${z.vonOnline} von online${z.konflikte.length ? `, ${z.konflikte.length} nach Rückfrage` : ''}.</span>`;
+      syncLaeuft = false; syncFehler = ''; syncStatus(); return;
     }
     msg.innerHTML = `<span class="ok">Online gesichert: ${sync.zuletzt ? new Date(sync.zuletzt).toLocaleString('de-DE') : '–'}.</span>`;
     syncFehler = '';
@@ -1550,7 +1611,7 @@ addEventListener('offline', syncStatus);
 /* Ausloeser: Start, Rueckkehr in die App, Verlassen der App */
 function autoSichern(){
   lokaleKopie();
-  if(localStorage.getItem(LS_DIRTY)) ordnerSichern(false);
+  if(localStorage.getItem(LS_DIRTY)) ordnerSichern(false);   // vor lokalGeaendert(), das den Merker loeschen kann
   abgleichen(false);
 }
 document.addEventListener('visibilitychange', ()=> autoSichern());
@@ -3201,8 +3262,8 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.36.3';
-const APP_BUILD   = '03.10.2026';
+const APP_VERSION = '1.37.0';
+const APP_BUILD   = '06.10.2026';
 
 function showVersion(){
   $('appVersion').textContent = 'v' + APP_VERSION;

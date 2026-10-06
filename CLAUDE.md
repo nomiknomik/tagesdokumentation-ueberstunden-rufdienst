@@ -69,8 +69,11 @@ kein +24h-Wrap), FRN-Verhalten. Alles andere in der PWA ist PWA-exklusiv.
   nie über den SW.
 - Backup/Sync: `save()` setzt `tagesdoku_dirty`; Sync-Zugangsdaten
   (`tagesdoku_sync`) nur über `saveSync()`, nie im Backup. Online-Datei im
-  privaten Repo, AES-GCM/PBKDF2, Abgleich über Datei-SHA; bei Konflikt ganz
-  oder gar nicht, der Verlierer bleibt als Geräte-Kopie „-vorher“ (IndexedDB).
+  privaten Repo, AES-GCM/PBKDF2, Abgleich über Datei-SHA. „Lokal geändert“
+  heißt Prüfsumme ≠ `sync.hash` (Dirty-Flag allein ist nur ein Vorfilter).
+  Haben beide Seiten geändert: Drei-Wege-Abgleich je Eintrag gegen die Basis
+  (IndexedDB `kv/basis`), Rückfrage nur bei echten Kollisionen; vor jeder
+  Übernahme bleibt eine Geräte-Kopie „-vorher“.
   Kopf-Symbol `#syncBtn` über `syncStatus()`; `save()` lädt nach 20 s Ruhe hoch.
 
 ## Bekannte Abweichungen App ↔ TDA (für Gehaltsabgleich)
