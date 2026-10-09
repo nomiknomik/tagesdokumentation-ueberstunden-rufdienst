@@ -1168,11 +1168,11 @@ $('einsaetze').addEventListener('change', e=>{
 });
 $('einsaetze').addEventListener('click', e=>{
   const delBtn = e.target.closest('[data-del]');
-  if(delBtn){ day().einsaetze.splice(+delBtn.dataset.del,1); persist(); renderEinsaetze(); calc(); return; }
+  if(delBtn){ day().einsaetze.splice(+delBtn.dataset.del,1); expanded = new Set(); persist(); renderEinsaetze(); calc(); return; }
   const collapseBtn = e.target.closest('[data-collapse]');
   if(collapseBtn){ expanded.delete(+collapseBtn.dataset.collapse); renderEinsaetze(); return; }
   const row = e.target.closest('[data-expand]');
-  if(row){ expanded.add(+row.dataset.expand); renderEinsaetze(); }
+  if(row){ expanded = new Set([+row.dataset.expand]); renderEinsaetze(); }   // immer nur einer offen
 });
 
 const now = () => new Date().toTimeString().slice(0,5);
@@ -1186,7 +1186,7 @@ $('btnEinsatz').onclick = ()=>{
   }else{                                      // neuen Einsatz starten
     d.einsaetze.push({beginn:now(), ende:'', art:'Präsenz im Haus (RBA)',
                       grund_anlass:'Notfall / Notoperation', fallnr:''});
-    expanded.add(d.einsaetze.length-1);
+    expanded = new Set([d.einsaetze.length-1]);
   }
   calc(); persist(); renderEinsaetze();
 };
@@ -1202,7 +1202,7 @@ $('btnTelefonat').onclick = ()=>{
 $('btnEinsatzLeer').onclick = ()=>{
   const d = day();
   d.einsaetze.push({beginn:'',ende:'',art:'',grund_anlass:'',fallnr:''});
-  expanded.add(d.einsaetze.length-1);
+  expanded = new Set([d.einsaetze.length-1]);
   persist(); renderEinsaetze(); calc();
 };
 $('resetTag').onclick = ()=>{
@@ -3262,7 +3262,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.37.0';
+const APP_VERSION = '1.37.1';
 const APP_BUILD   = '06.10.2026';
 
 function showVersion(){
