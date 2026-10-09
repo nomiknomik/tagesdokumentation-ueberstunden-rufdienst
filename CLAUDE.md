@@ -57,8 +57,9 @@ kein +24h-Wrap), FRN-Verhalten. Alles andere in der PWA ist PWA-exklusiv.
 - Überstundenkonto: pauschal 30 min Pause ab 6 h von Ist UND Soll – ändern
   nur, wenn LA 731 danach gleich bleibt.
 - Ab 09/2026 werden Überstunden an Rufdienst-Beginntagen zum 734-Satz
-  ausgezahlt (`ueAuszahlStd()`, Posten „ÜA“, außerhalb gehalt.js); 731 bleibt,
-  `kontoFuer()` zieht sie vom Konto ab.
+  ausgezahlt (`ueAuszahlStd()`, Posten „ÜA“, außerhalb gehalt.js); 731 bleibt.
+  Auf dem Konto bleiben sie, bis die TDA die Auszahlung bucht (`kontoFuer()`
+  zeigt sie nur als „davon zur Auszahlung vorgesehen“; TDA 09/2026 bestätigt).
 - Abwesenheit hängt nur an der Dienstart (`ABWESENHEIT`, `URLAUB` über
   `istUrlaubstag()`), nie an der FRN-Checkbox; ein Tag zählt nie doppelt.
 - LA 031 Aufschlag Urlaub (`urlaubsaufschlag()`): variable Bezüge der

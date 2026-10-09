@@ -1641,14 +1641,20 @@ $('xlsFile').onchange = async e => {
     const hdr = rows.findIndex(r => String(r[0]).trim().toLowerCase()==='datum');
     if(hdr<0) throw new Error('Kopfzeile "Datum" nicht gefunden.');
 
-    let n=0, mismatch=0;
+    /* Der Plan kann in den Folgemonat weiterlaufen (Dezember-Plan bis zur
+       ersten Januarwoche): faellt die Tageszahl, beginnt der naechste Monat. */
+    let n=0, mismatch=0, vorTag=0, mon=monat, jhr=jahr;
+    const monate = new Set();
     for(const r of rows.slice(hdr+1)){
       const raw = r[0]; if(raw==='' || raw===undefined) continue;
       let tag = null;
       if(typeof raw === 'number'){ const p = XLSX.SSF.parse_date_code(raw); if(p) tag = p.d; }
       else { const m = String(raw).match(/(\d{1,2})/); if(m) tag = +m[1]; }
       if(!tag) continue;
-      const key = `${jahr}-${pad(monat+1)}-${pad(tag)}`;
+      if(tag < vorTag){ if(++mon > 11){ mon = 0; jhr++; } }
+      vorTag = tag;
+      const key = `${jhr}-${pad(mon+1)}-${pad(tag)}`;
+      monate.add(`${MONTHS[mon][0].toUpperCase()+MONTHS[mon].slice(1)} ${jhr}`);
       plan[key] = {wd:String(r[1]||''), oa:String(r[2]||''), urlaub:String(r[3]||'')};
       const soll = WDAY[new Date(key+'T12:00:00').getDay()];
       if(r[1] && String(r[1]).trim() && String(r[1]).trim()!==soll) mismatch++;
@@ -1656,7 +1662,7 @@ $('xlsFile').onchange = async e => {
     }
     save(LS.plan, plan);
     const st = planStats();
-    msg.innerHTML = `<div class="ok">${MONTHS[monat][0].toUpperCase()+MONTHS[monat].slice(1)} ${jahr}: ${n} Tage übernommen. Insgesamt gespeichert: ${st.days} Tage in ${st.months} Monaten.</div>` +
+    msg.innerHTML = `<div class="ok">${[...monate].join(' + ')}: ${n} Tage übernommen. Insgesamt gespeichert: ${st.days} Tage in ${st.months} Monaten.</div>` +
       (mismatch ? `<div class="note">${icon('alertTriangle')} Bei ${mismatch} Zeilen passt der Wochentag in Spalte B nicht zum errechneten Datum. Bitte Monat/Jahr in der Kopfzeile prüfen.</div>` : '');
     renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDay();
   }catch(err){ msg.innerHTML = `<div class="note">Import fehlgeschlagen: ${err.message}</div>`; }
@@ -2699,7 +2705,7 @@ const LA_INFO = {
   796:{kurz:'Rufdienst Werktag'},  797:{kurz:'Rufdienst Wo-Ende'},
   252:{kurz:'Einspringen'},
   '031':{kurz:'Urlaubsaufschlag', unsicher:'031 Urlaubsaufschlag: Schätzung mit rund ±1 % – das Referenzfenster ist belegt, der Divisor (13 Wochen × 5,5 Tage) ruht erst auf zwei Abrechnungen.'},
-  'ÜA':{kurz:'Überstunden ausgezahlt', unsicher:'Ab September 2026 angenommen: Überstunden an Tagen mit Rufdienst-Beginn werden zum Aktivzeit-Satz (wie 734) ausgezahlt und verlassen das Überstundenkonto; der 15-%-Zuschlag (731) bleibt. Lohnart-Nummer und Satz sind noch nicht gegen eine Abrechnung geprüft.'}
+  'ÜA':{kurz:'Überstunden ausgezahlt', unsicher:'Ab September 2026 angenommen: Überstunden an Tagen mit Rufdienst-Beginn werden zum Aktivzeit-Satz (wie 734) ausgezahlt; der 15-%-Zuschlag (731) bleibt. Auf dem Überstundenkonto bleiben sie, bis die Auszahlung gebucht ist. Lohnart-Nummer und Satz sind noch nicht gegen eine Abrechnung geprüft.'}
 };
 /* Anzeigereihenfolge: die dicken Posten zuerst */
 
@@ -2927,7 +2933,7 @@ function gehaltTag(k){
 
 /* Ueberstunden-Auszahlung (ab Leistungsmonat September 2026): Ueberstunden
    eines Tages, an dem ein Rufdienst BEGINNT, werden zum Aktivzeit-Satz (734)
-   ausgezahlt und verlassen das Ueberstundenkonto. Der 15-%-Zuschlag (731)
+   ausgezahlt (vom Konto erst, wenn die TDA die Auszahlung bucht). Der 15-%-Zuschlag (731)
    und alle Zeitzuschlaege bleiben unveraendert. Tageswert = dieselbe
    Ueberstundenrechnung wie im Formular (calcFor), nur positive Werte.
    Bewusst ausserhalb des Rechenkerns (gehalt.js), der nur als Ganzes
@@ -3086,10 +3092,11 @@ function kontoFuer(ym){
   let m = plusMonate(c.abMonat, 1);
   for(let i = 0; m <= ym && i < 120; i++){
     const k = GEHALT.ueberstundenkonto(gehaltEintraege(m), m, saldoGesamt);
-    /* ausgezahlte Ueberstunden (Rufdienst-Tage ab 09/2026) verlassen das Konto */
-    k.ausgezahlt = auszahlStdMonat(m);
-    k.saldo = round2(k.saldo - k.ausgezahlt);
-    k.saldoGesamt = round2(k.saldoGesamt - k.ausgezahlt);
+    /* Ueberstunden an Rufdienst-Tagen (ab 09/2026) sind zur Auszahlung
+       vorgesehen, bleiben aber auf dem Konto, bis die Auszahlung gebucht ist -
+       so fuehrt es die TDA (09/2026: Konto 108,92 h inklusive dieser Stunden).
+       Sinkt der Stand in der TDA nach der Auszahlung, traegt man ihn neu ein. */
+    k.zurAuszahlung = auszahlStdMonat(m);
     saldoGesamt = k.saldoGesamt;
     letzte = Object.assign({monat:m}, k);
     m = plusMonate(m, 1);
@@ -3136,9 +3143,9 @@ function renderKonto(ym){
   $('kontoInhalt').innerHTML = `<table class="patab">
     <tr><td>Soll (${(GEHALT.monatssoll(ym)/8).toLocaleString('de-DE')} Arbeitstage × 8,00 h)</td><td class="r">${k.soll.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
     <tr><td>Ist (geleistet und angerechnet)</td><td class="r">${k.ist.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
-    ${k.ausgezahlt ? `<tr><td>Ausgezahlt (Überstunden an Rufdienst-Tagen)</td><td class="r">−${k.ausgezahlt.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>` : ''}
     <tr><td>Saldo des Monats</td><td class="r">${std(k.saldo)}</td></tr>
     <tr class="sum"><td>Saldo gesamt</td><td class="r">${std(k.saldoGesamt)}</td></tr>
+    ${k.zurAuszahlung ? `<tr><td>davon zur Auszahlung vorgesehen (Überstunden an Rufdienst-Tagen dieses Monats)</td><td class="r">${k.zurAuszahlung.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>` : ''}
     </table>`;
   const a = k.abdeckung;
   const warnung = a.fehlend
@@ -3149,7 +3156,8 @@ function renderKonto(ym){
     + `Fortgeschrieben seit ${monatName(c.abMonat)}. `
     + `Urlaub kommt aus dem Dienstplan; Fortbildung und Krankheit trägst du als Dienstart des Tages ein – `
     + `sie zählen dann als erfüllte Arbeitszeit. `
-    + `Weicht der Stand von der Dienstübersicht ab, trag ihn hier einfach neu ein.`;
+    + `Überstunden an Rufdienst-Tagen bleiben auf dem Konto, bis die Auszahlung gebucht ist. `
+    + `Weicht der Stand von der Dienstübersicht ab (z. B. nach einer Auszahlung), trag ihn hier einfach neu ein.`;
 }
 
 function renderGeldMonat(){
@@ -3320,7 +3328,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.38.0';
+const APP_VERSION = '1.38.1';
 const APP_BUILD   = '06.10.2026';
 
 function showVersion(){
