@@ -61,6 +61,12 @@ kein +24h-Wrap), FRN-Verhalten. Alles andere in der PWA ist PWA-exklusiv.
   `kontoFuer()` zieht sie vom Konto ab.
 - Abwesenheit hängt nur an der Dienstart (`ABWESENHEIT`, `URLAUB` über
   `istUrlaubstag()`), nie an der FRN-Checkbox; ein Tag zählt nie doppelt.
+- LA 031 Aufschlag Urlaub (`urlaubsaufschlag()`): variable Bezüge der
+  Leistungsmonate **V−5…V−3** geteilt durch **71,5** (13 Wochen × 5,5 Tage),
+  mal Urlaubstage. Genauigkeit rund ±1 %, ruht auf zwei Abrechnungen – Posten
+  und Tagesnotiz bleiben mit `*` als Schätzung markiert. Fehlen die drei
+  Vormonate in der Erfassung, gehen sie mit 0 € ein; dafür steht die
+  ⚠️-Warnung in `#gmWarn`, die nicht entfernt werden darf.
 - `hasContent()` entscheidet, was als erfasst gilt; `persist()` und Export
   speichern nur solche Tage (`echteTage()`).
 - Zeit-/Tagesrechnung über UTC-Tagesnummern (DST).

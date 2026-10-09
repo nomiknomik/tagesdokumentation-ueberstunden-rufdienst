@@ -2698,6 +2698,7 @@ const LA_INFO = {
   790:{kurz:'Nacht'},  791:{kurz:'Samstag'},
   796:{kurz:'Rufdienst Werktag'},  797:{kurz:'Rufdienst Wo-Ende'},
   252:{kurz:'Einspringen'},
+  '031':{kurz:'Urlaubsaufschlag', unsicher:'031 Urlaubsaufschlag: Schätzung mit rund ±1 % – das Referenzfenster ist belegt, der Divisor (13 Wochen × 5,5 Tage) ruht erst auf zwei Abrechnungen.'},
   'ÜA':{kurz:'Überstunden ausgezahlt', unsicher:'Ab September 2026 angenommen: Überstunden an Tagen mit Rufdienst-Beginn werden zum Aktivzeit-Satz (wie 734) ausgezahlt und verlassen das Überstundenkonto; der 15-%-Zuschlag (731) bleibt. Lohnart-Nummer und Satz sind noch nicht gegen eine Abrechnung geprüft.'}
 };
 /* Anzeigereihenfolge: die dicken Posten zuerst */
@@ -2827,6 +2828,46 @@ function gehaltEintraege(ym){
   return out;
 }
 
+/* ---------- LA 031 Urlaubsaufschlag ----------
+   Tagesdurchschnitt der variablen Bezuege nach Paragraph 21 TVoeD.
+
+   Referenzfenster: die drei Leistungsmonate V-5 bis V-3, also genau die,
+   deren variable Teile wegen der Zwei-Monats-Verzoegerung in den drei
+   Lohnlaeufen VOR dem Urlaubsmonat auf dem Zettel standen. Gegen vier
+   Fensterdefinitionen getestet, diese gewinnt klar (Delta 0,69 gegenueber
+   3,54 und 5,09) - siehe FORMELN.md im Analyse-Repo.
+
+   Divisor 71,5 = 13 Wochen x 5,5 Tage. Paragraph 21 nennt 1/65 bei
+   Verteilung auf fuenf Tage und "bei einer anderen Verteilung entsprechend";
+   die Rufdienste an Wochenenden heben den Schnitt auf rund 5,5 Tage.
+
+   GENAUIGKEIT rund 1 Prozent, und das ist eine ehrliche Obergrenze: die
+   Formel ruht auf zwei Abrechnungen. Ein fester Divisor 71,5 trifft Mai auf
+   0,06 Prozent und April auf 1,02; "Wochen im Fenster x 5,5" trifft April auf
+   0,07 und Mai auf 1,17. Welche Variante stimmt, entscheidet erst ein
+   dritter Urlaubsmonat. Deshalb ist der Posten als unsicher gekennzeichnet. */
+const URLAUB_DIVISOR = 71.5;
+const aufzaehlung = xs => xs.length < 2 ? (xs[0] || '')
+  : xs.slice(0,-1).join(', ') + ' und ' + xs[xs.length-1];
+
+function urlaubsFenster(ym){ return [5,4,3].map(n => plusMonate(ym, -n)); }
+
+/* Variable Bezuege eines Monats - schlank, ohne die Tagesliste von monatsDaten */
+function variableSumme(ym){
+  const a = gehaltEintraege(ym);
+  return GEHALT.berechneEuro(GEHALT.berechneMengen(a, ym), ym, extraFuer(ym)).summe;
+}
+
+function urlaubsaufschlag(ym, tage){
+  if(!tage) return null;
+  const fenster = urlaubsFenster(ym).map(m => ({monat:m, summe: variableSumme(m)}));
+  const summe = fenster.reduce((s,f) => s + f.summe, 0);
+  const leer = fenster.filter(f => f.summe <= 0).map(f => f.monat);
+  return {betrag: Math.round(summe / URLAUB_DIVISOR * tage * 100) / 100,
+          proTag: Math.round(summe / URLAUB_DIVISOR * 100) / 100,
+          tage, fenster, summe, leer};
+}
+
 /* Manuelle Posten je Monat (derzeit nur LA 252 Einspringpauschale) */
 const extraFuer = ym => ({252: (extras[ym] && extras[ym][252]) || 0});
 
@@ -2858,7 +2899,9 @@ function monatsDaten(ym){
     const k = nrIso(tagNr(`${ym}-01`) + n);
     if(istUrlaubstag(k)) urlaub.push(k);
   }
-  return {mengen, posten: postenSortiert(posten), summe, grund: grundFuer(ym), tage, urlaub};
+  const au = urlaubsaufschlag(ym, urlaub.length);
+  return {mengen, posten: postenSortiert(posten), summe, grund: grundFuer(ym),
+          tage, urlaub, aufschlag: au};
 }
 
 /* Was traegt EIN Tag zum Monat bei? Als Differenz "Monat mit" minus
@@ -2987,7 +3030,13 @@ function renderTagGeld(){
   const noten = [];
   if(summe > 0) noten.push(`Zuschläge und Rufdienste werden zwei Monate später abgerechnet `
     + `(Netto mit ${Math.round(nf.grenz)} % Grenzfaktor geschätzt).`);
-  if(istUrlaubstag(cur)) noten.push('Urlaubstag: der Urlaubsaufschlag (LA 031) ist noch nicht entschlüsselt und fehlt hier.');
+  if(istUrlaubstag(cur)){
+    const au = urlaubsaufschlag(cur.slice(0,7), 1);
+    noten.push(au && au.summe > 0
+      ? `Urlaubstag: dazu kommt der Aufschlag Urlaub mit rund ${eur(au.proTag)}`
+        + `<span class="warn"> *</span> – geschätzt, siehe Gehalt-Tab.`
+      : 'Urlaubstag: für den Aufschlag Urlaub fehlen die Vormonate – siehe Gehalt-Tab.');
+  }
   if(ausgleich.length) noten.push('Ausgleich: an diesem Tag weniger als geplant gearbeitet. Das verrechnet '
     + 'sich mit Überstunden derselben oder der Vorwoche (§ 7 Abs. 7 TVöD) – abgezogen wird nichts.');
   [...new Set(posten.map(pz => pz.unsicher).filter(Boolean))]
@@ -3105,7 +3154,7 @@ function renderKonto(ym){
 
 function renderGeldMonat(){
   $('geldMonat').value = geldMonat;
-  const {posten, summe, grund, tage, urlaub} = monatsDaten(geldMonat);
+  const {posten, summe, grund, tage, urlaub, aufschlag} = monatsDaten(geldMonat);
   const nf = nettoFaktoren();
   const gesamt = summe + grund;
 
@@ -3129,6 +3178,9 @@ function renderGeldMonat(){
     <tr><th>LA</th><th>Lohnart</th><th class="r">Menge</th><th class="r">Betrag</th></tr>
     <tr class="sub"><td class="la">050</td><td>Grundvergütung</td><td class="r">1 Monat</td><td class="r">${eur(grund)}</td></tr>
     ${zeilen || '<tr><td colspan="4" style="color:var(--color-text-muted);padding:10px 0">Für diesen Monat ist sonst nichts erfasst.</td></tr>'}
+    ${aufschlag ? `<tr class="sub"><td class="la">031<span class="u"> *</span></td>`
+      + `<td>Aufschlag Urlaub</td><td class="r">${menge2(aufschlag.tage,'Tage')}</td>`
+      + `<td class="r">${eur(aufschlag.betrag)}</td></tr>` : ''}
     <tr class="sum"><td></td><td>Brutto gesamt</td><td></td><td class="r">${eur(gesamt)}</td></tr>
     </table>`;
 
@@ -3136,9 +3188,15 @@ function renderGeldMonat(){
   renderKonto(geldMonat);
 
   const warn = [...new Set(posten.map(pz => pz.unsicher).filter(Boolean))].map(t => '* ' + t);
-  if(urlaub.length) warn.push(`In diesem Monat ${urlaub.length===1?'liegt 1 Urlaubstag':'liegen '+urlaub.length+' Urlaubstage'}. `
-    + `Der Urlaubsaufschlag (LA 031) ist noch nicht entschlüsselt und fehlt in dieser Prognose – `
-    + `auf der echten Abrechnung kommt dafür noch ein Betrag dazu.`);
+  if(aufschlag){
+    const f = aufschlag.fenster.map(x => monatName(x.monat).replace(/ \d{4}$/,'')).join(', ');
+    warn.push(`* 031 rechnet mit den variablen Bezügen aus ${f} (${eur(aufschlag.summe)}) `
+      + `geteilt durch 71,5 – das sind ${eur(aufschlag.proTag)} je Urlaubstag.`);
+    if(aufschlag.leer.length) warn.push(`<span class="warn">⚠️ Für `
+      + `${aufzaehlung(aufschlag.leer.map(monatName))} ist nichts erfasst. `
+      + `Diese Monate gehen mit 0 € in den Durchschnitt ein, der Urlaubsaufschlag `
+      + `ist dadurch deutlich zu niedrig.</span>`);
+  }
   $('gmWarn').innerHTML = warn.join('<br>');
 
   $('gmTage').innerHTML = tage.length ? tage.map(t => {
@@ -3262,7 +3320,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.37.1';
+const APP_VERSION = '1.38.0';
 const APP_BUILD   = '06.10.2026';
 
 function showVersion(){
