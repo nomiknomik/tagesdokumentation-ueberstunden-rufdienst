@@ -33,8 +33,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
 
 ## Geteilte Logik (in BEIDEN Tools pflegen)
 Dienstart-Labels und -Zeiten (`DIENSTART_OPTIONS` im Desktop-Tool, `DUTY` in
-der PWA), Überstundenrechnung (Ist-Ende − Plan-Ende + Soll-Beginn − Beginn,
-kein +24h-Wrap), FRN-Verhalten. Alles andere in der PWA ist PWA-exklusiv.
+der PWA), Überstundenrechnung (Ist-Ende − Plan-Ende + Soll-Beginn − Beginn;
+Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in der PWA ist PWA-exklusiv.
 
 ## PDF-Fallen
 - `/DA` als Hex-String schreiben: pypdf escaped sonst `/` als `\057`, pdf-lib

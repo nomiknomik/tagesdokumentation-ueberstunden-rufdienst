@@ -384,10 +384,6 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <div class="field"><label>Ist-Ende</label><input type="time" id="tats_dienstende"></div>
       <div class="field"><label>Überstunden</label><input id="ueberstunden_std" readonly></div>
       <div class="field full"><label>Grund der Überstunden</label><select id="grund_ueberstunden"></select></div>
-      <div class="field full" id="grundSonstigesRow" style="display:none">
-        <label>Begründung (Pflicht)</label>
-        <input id="grundSonstiges" placeholder="z.B. Nachbereitung einer Notoperation">
-      </div>
     </div>
     <div class="chk"><input type="checkbox" id="frn"><label style="flex:1">FRN – frei nach Dienst</label></div>
     <div class="field full" id="frnKommentarRow" style="display:none">
@@ -652,7 +648,7 @@ const ART_OPTS  = ['','telefonisch (RBT)','Präsenz im Haus (RBA)','Operation / 
 const GRUND_OPTS = ['','Notfall / Notoperation','OP-Verlängerung','Aufnahme / Ambulanz',
   'Konsil / Anforderung anderer Abteilung','Personalausfall / Unterbesetzung',
   'Übergabe / Nachbereitung / Dokumentation','Patienten-/Angehörigengespräch',
-  'Angeordnete Zusatzaufgabe','Sonstiges (bitte erläutern)'];
+  'Angeordnete Zusatzaufgabe','Sonstiges'];
 /* Werte aus aelteren App-Versionen auf den Desktop-Wortlaut heben */
 const ART_LEGACY = {'telefonisch':'telefonisch (RBT)','Präsenz im Haus':'Präsenz im Haus (RBA)','Operation':'Operation / Eingriff'};
 const migrateArt = a => ART_LEGACY[a] || a || '';
@@ -827,11 +823,15 @@ function calc(){
 /* Werte eines beliebigen Tages – ohne DOM, damit auch der Monats-Export rechnen kann */
 function calcFor(k){
   const d = days[k] || blank();
-  const p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
+  let p = dec(d.plan_dienstende), t = dec(d.tats_dienstende);
+  const b = dec(d.dienstbeginn), s = dec(DUTY[d.dienstart] && DUTY[d.dienstart].start);
+  /* Ende vor dem Beginn = Ende am Folgetag (11:00 bis 00:30) - wie dauerStd()
+     im Gehalts-Adapter, sonst stuende hier ein negativer Wert. */
+  const ref = b ?? s;
+  if(ref!==null){ if(p!==null && p<ref) p+=24; if(t!==null && t<ref) t+=24; }
   let ue = (p!==null && t!==null) ? t-p : null;
   /* Frueher gekommen (bzw. spaeter): Abweichung vom Soll-Beginn der Dienstart
      zaehlt mit - dieselbe Spanne rechnet auch der Gehalts-Adapter. */
-  const b = dec(d.dienstbeginn), s = dec(DUTY[d.dienstart] && DUTY[d.dienstart].start);
   if(b!==null && s!==null && b!==s) ue = (ue ?? 0) + (s-b);
   if(ue!==null) ue = Math.round(ue*60)/60;
   let summe=0, anzahl=0;
@@ -1084,9 +1084,9 @@ function renderDay(){
   }else{
     hint.style.display = 'none';
   }
+  if(d.grund_ueberstunden === 'Sonstiges (bitte erläutern)') d.grund_ueberstunden = 'Sonstiges'; // alter Wortlaut
   $('grund_ueberstunden').innerHTML = optsWith(GRUND_OPTS, d.grund_ueberstunden || '');
   FIELDS.forEach(f => $(f).value = d[f] || '');
-  syncGrundSonstiges();
   $('frn').checked = !!d.frn;
   $('frnKommentar').value = d.frn_kommentar || '';
   $('frnKommentarRow').style.display = d.frn ? 'block' : 'none';
@@ -1099,28 +1099,8 @@ FIELDS.forEach(f => $(f).oninput = $(f).onchange = e => {
   day()[f] = e.target.value;
   if(f==='tats_dienstende') $('lblGehen').textContent = e.target.value || ''; $('lblGehen').classList.toggle('leer', !e.target.value);
   if(f==='ruhezeit_eingehalten') renderRuhezeitStatus();
-  if(f==='grund_ueberstunden') syncGrundSonstiges();
-  if(f==='erlaeuterung') $('grundSonstiges').value = e.target.value;
   calc(); persist();
 });
-/* "Sonstiges (bitte erläutern)" verlangt eine Begründung. Das Formular hat
-   dafuer nur die Erläuterung - im Desktop-Tool steht sie direkt unter dem
-   Grund, in dieser App weiter unten in der Zusammenfassung. Deshalb hier ein
-   zweites Eingabefeld auf DASSELBE Feld d.erlaeuterung; beide Ansichten
-   werden synchron gehalten. */
-const GRUND_SONSTIGES = 'Sonstiges (bitte erläutern)';
-function syncGrundSonstiges(){
-  const d = day();
-  const an = d.grund_ueberstunden === GRUND_SONSTIGES;
-  $('grundSonstigesRow').style.display = an ? 'block' : 'none';
-  if(an) $('grundSonstiges').value = d.erlaeuterung || '';
-}
-$('grundSonstiges').oninput = e => {
-  day().erlaeuterung = e.target.value;
-  $('erlaeuterung').value = e.target.value;
-  persist();
-};
-
 function syncFrnText(){
   const d = day();
   let txt = (d.erlaeuterung||'').replace(/FRN – frei nach Dienst(: [^–]*)?/,'').replace(/\s*–\s*–\s*/g,' – ').replace(/^\s*–\s*|\s*–\s*$/g,'').trim();
@@ -1130,7 +1110,6 @@ function syncFrnText(){
   }
   d.erlaeuterung = txt;
   $('erlaeuterung').value = txt;
-  $('grundSonstiges').value = txt;
 }
 $('frn').onchange = e => {
   const d = day(); d.frn = e.target.checked;
@@ -1963,8 +1942,6 @@ function pruefeTag(k){
   const d = days[k]; if(!d) return [];
   const w = [];
   if(d.frn && !(d.frn_kommentar||'').trim()) w.push('FRN ist angehakt, aber ohne Kommentar.');
-  if(d.grund_ueberstunden === GRUND_SONSTIGES && !(d.erlaeuterung||'').trim())
-    w.push('Grund „Sonstiges" gewählt, aber keine Begründung eingetragen.');
   const es = d.einsaetze || [];
   es.forEach((e,i)=>{
     const n = i+1;
@@ -3328,7 +3305,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.38.1';
+const APP_VERSION = '1.38.2';
 const APP_BUILD   = '06.10.2026';
 
 function showVersion(){

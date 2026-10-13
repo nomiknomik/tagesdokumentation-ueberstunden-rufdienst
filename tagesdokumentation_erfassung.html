@@ -114,7 +114,7 @@
             <option>Übergabe / Nachbereitung / Dokumentation</option>
             <option>Patienten-/Angehörigengespräch</option>
             <option>Angeordnete Zusatzaufgabe</option>
-            <option>Sonstiges (bitte erläutern)</option>
+            <option>Sonstiges</option>
           </select>
         </td>
       </tr>
@@ -177,7 +177,7 @@
   <div class="footer">
     <button id="downloadBtn">PDF ausfüllen &amp; herunterladen</button>
     <p><small>Erzeugt das offizielle Formular als ausgefüllte PDF-Datei (Original-Layout unverändert).</small></p>
-    <p><small style="color:#999;">v1.9</small></p>
+    <p><small style="color:#999;">v1.10</small></p>
   </div>
 </div>
 
@@ -232,7 +232,7 @@ document.getElementById('funktion').addEventListener('change', (e) => {
 const ZEILEN = 8, MAX_ZEILEN = 24;
 const tbody = document.getElementById('rufdienst-table');
 const artOptions = ["", "telefonisch (RBT)", "Präsenz im Haus (RBA)", "Operation / Eingriff", "Sonstiges"];
-const grundOptions = ["", "Notfall / Notoperation", "OP-Verlängerung", "Aufnahme / Ambulanz", "Konsil / Anforderung anderer Abteilung", "Personalausfall / Unterbesetzung", "Übergabe / Nachbereitung / Dokumentation", "Patienten-/Angehörigengespräch", "Angeordnete Zusatzaufgabe", "Sonstiges (bitte erläutern)"];
+const grundOptions = ["", "Notfall / Notoperation", "OP-Verlängerung", "Aufnahme / Ambulanz", "Konsil / Anforderung anderer Abteilung", "Personalausfall / Unterbesetzung", "Übergabe / Nachbereitung / Dokumentation", "Patienten-/Angehörigengespräch", "Angeordnete Zusatzaufgabe", "Sonstiges"];
 for (let i = 1; i <= MAX_ZEILEN; i++) {
   const tr = document.createElement('tr');
   if (i > ZEILEN) tr.style.display = 'none';
@@ -280,15 +280,21 @@ function attachTimeAutoJump(el){
 document.querySelectorAll('.time-input').forEach(attachTimeAutoJump);
 
 function recalcDuty(){
-  const plan = timeToDec(document.getElementById('plan_dienstende').value);
-  const tats = timeToDec(document.getElementById('tats_dienstende').value);
+  let plan = timeToDec(document.getElementById('plan_dienstende').value);
+  let tats = timeToDec(document.getElementById('tats_dienstende').value);
+  const beginn = timeToDec(document.getElementById('dienstbeginn').value);
+  const soll = timeToDec(document.getElementById('dienstart').selectedOptions[0]?.dataset.start || '');
+  // Ende vor dem Beginn = Ende am Folgetag (z.B. 11:00 bis 00:30)
+  const ref = beginn ?? soll;
+  if (ref !== null && !isNaN(ref)){
+    if (plan !== null && plan < ref) plan += 24;
+    if (tats !== null && tats < ref) tats += 24;
+  }
   let diff = null;
   if (plan !== null && tats !== null){
     diff = tats - plan;
   }
   // Früher gekommen (bzw. später): Abweichung vom Soll-Beginn der Dienstart zählt mit
-  const beginn = timeToDec(document.getElementById('dienstbeginn').value);
-  const soll = timeToDec(document.getElementById('dienstart').selectedOptions[0]?.dataset.start || '');
   if (beginn !== null && soll !== null && !isNaN(beginn) && beginn !== soll){
     diff = (diff ?? 0) + (soll - beginn);
   }
@@ -384,7 +390,7 @@ function loadFormFromCookie(){
       else if (el.multiple && Array.isArray(data[id])) {
         Array.from(el.options).forEach(o => { o.selected = data[id].includes(o.value); });
       }
-      else { el.value = data[id]; }
+      else { el.value = data[id] === 'Sonstiges (bitte erläutern)' ? 'Sonstiges' : data[id]; }
     });
     renderDienstartOptions(document.getElementById('funktion').value, data['dienstart']);
   } catch(e){ console.warn('Cookie-Daten konnten nicht geladen werden', e); }
