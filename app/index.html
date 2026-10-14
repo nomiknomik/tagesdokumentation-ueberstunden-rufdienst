@@ -591,6 +591,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div id="qrForm">
       <div class="row"><label>Repo (Besitzer/Name)</label><input id="qr_repo" placeholder="mustermann/tagesdoku-team" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
       <div class="row"><label>Token</label><input id="qr_token" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
+      <div class="row"><label>Gist-Token (optional)</label><input id="qr_gist" placeholder="github_pat_… mit „Gists: Read and write“" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <div class="row"><label>PIN für den Code</label><input id="qr_pin" placeholder="beliebig, z. B. 4711" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <button class="btn" id="qrMake" style="font-size:14px;min-height:44px">QR-Code erzeugen</button>
       <button class="btn outline" id="qrMail" style="font-size:14px;min-height:44px;margin-top:8px">Link erzeugen und per E-Mail senden</button>
@@ -599,7 +600,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
         <button class="btn outline" id="qrForget" style="font-size:14px;min-height:44px">Hier vergessen</button>
       </div>
       <div class="hint" id="qrMsg"></div>
-      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. QR-Code und Link öffnen sich nur mit der PIN – die mündlich oder auf anderem Weg mitteilen – und gelten 24 Stunden. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
+      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. QR-Code und Link öffnen sich nur mit der PIN – die mündlich oder auf anderem Weg mitteilen – und gelten 24 Stunden. Mit Gist-Token liegt die verschlüsselte Einladung als geheimer Gist online, der Code enthält nur dessen Kennung; abgelaufene Gists löscht diese App beim Öffnen. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
     </div>
     <div id="qrOut" style="display:none;text-align:center">
       <div class="hint" id="qrPinZeige" style="margin-top:0"></div>
@@ -1773,15 +1774,34 @@ async function zugangEntschluesseln(code, pin){
   return z;
 }
 function zugangLesen(txt){
+  const mg = String(txt||'').match(/einladung=([0-9a-f]{20,40})/);
+  if(mg) return {gist: mg[1]};
   const m2 = String(txt||'').match(/zugang2=([\w-]+)/);
   if(m2) return {code: m2[1]};
   return /zugang=[\w-]+/.test(String(txt||'')) ? {alt:true} : null;   // unverschluesselt vor 1.51: ohne PIN und Ablauf, gesperrt
 }
 let pinCode = '';
+/* Einladung als geheimer Gist: verschluesselten Code laden; geloescht = abgelaufen */
+async function gistEinladung(id){
+  const r = await fetch('https://api.github.com/gists/' + id, {cache:'no-store', headers:{Accept:'application/vnd.github+json'}});
+  if(r.status === 404) throw new Error('weg');
+  if(!r.ok) throw new Error('GitHub antwortet mit ' + r.status + '.');
+  const f = Object.values((await r.json()).files || {})[0];
+  const code = f && String(f.content || '').trim();
+  if(!/^[\w-]+$/.test(code || '')) throw new Error('Einladung beschädigt.');
+  return code;
+}
+let pinGist = '';
 function zugangUebernehmen(z, kopieZeigen){
+  if(z.gist){
+    gistEinladung(z.gist).then(code => { zugangUebernehmen({code}, kopieZeigen); pinGist = z.gist; },
+      e => setTimeout(()=> toast(e.message === 'weg' ? 'Diese Einladung ist abgelaufen oder gelöscht – bitte einen neuen Code anfordern.'
+                                                    : 'Einladung nicht geladen: ' + e.message)));
+    return;
+  }
   if(z.alt){ setTimeout(()=> toast('Dieser alte Zugangs-Code gilt nicht mehr – bitte einen neuen anfordern.')); return; }   // auch beim Start (toast erst danach bereit)
   if(z.code){   // verschluesselt: erst PIN abfragen
-    pinCode = z.code; $('qrPinIn').value = ''; $('qrPinMsg').textContent = '';
+    pinCode = z.code; pinGist = ''; $('qrPinIn').value = ''; $('qrPinMsg').textContent = '';
     $('qrPinKopie').style.display = kopieZeigen ? 'block' : 'none';
     qrZeigen('qrPin'); setTimeout(()=> $('qrPinIn').focus(), 50);
     return;
@@ -1823,7 +1843,7 @@ $('qrPinOk').onclick = async ()=>{
 };
 $('qrPinIn').onkeydown = e=>{ if(e.key === 'Enter') $('qrPinOk').click(); };
 $('qrPinCopy').onclick = ()=>{
-  navigator.clipboard.writeText('zugang2=' + pinCode).then(()=> toast('Code kopiert.'), ()=> toast('Kopieren nicht möglich.'));
+  navigator.clipboard.writeText(pinGist ? 'einladung=' + pinGist : 'zugang2=' + pinCode).then(()=> toast('Code kopiert.'), ()=> toast('Kopieren nicht möglich.'));
 };
 let qrLib = null, zugangLink = '';
 /* Link statt QR: per Mail/Nachricht an den PC schicken und dort im Browser oeffnen */
@@ -1843,7 +1863,7 @@ function qrZeigen(teil){
 $('zugangTeilen').onclick = ()=>{
   const t = load(LS_TEILEN, {});
   $('qr_repo').value = t.repo || TEAM_REPO; $('qr_token').value = t.token || '';
-  $('qrMsg').textContent = ''; $('qr_pin').value = t.pin || '';
+  $('qrMsg').textContent = ''; $('qr_pin').value = t.pin || ''; $('qr_gist').value = t.gist || '';
   qrZeigen('qrForm');
 };
 /* Formular pruefen, verschluesselten Link bauen (zugangLink); gibt die PIN zurueck */
@@ -1854,8 +1874,18 @@ async function zugangLinkBauen(){
   if(!token){ toast('Token fehlt.'); return null; }
   const pin = $('qr_pin').value.trim();
   if(!pin){ toast('PIN festlegen.'); return null; }
-  localStorage.setItem(LS_TEILEN, JSON.stringify({repo, token, pin}));   // PIN merken, nur Admin-Geraet
-  zugangLink = location.origin + location.pathname + '#zugang2=' + await zugangKodieren(repo, token, pin);
+  const gist = $('qr_gist').value.trim();
+  localStorage.setItem(LS_TEILEN, JSON.stringify({repo, token, pin, ...(gist && {gist})}));   // PIN merken, nur Admin-Geraet
+  const code = await zugangKodieren(repo, token, pin);
+  if(!gist){ zugangLink = location.origin + location.pathname + '#zugang2=' + code; return pin; }
+  /* Geheimer Gist mit dem verschluesselten Code; der Link traegt nur die Gist-Kennung */
+  const r = await fetch('https://api.github.com/gists', {method:'POST', cache:'no-store',
+    headers:{Authorization:'Bearer ' + gist, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'},
+    body: JSON.stringify({public:false, description:GIST_BESCHR, files:{'einladung.txt':{content: code}}})});
+  if(!r.ok){ toast(r.status === 401 ? 'Gist-Token ungültig oder abgelaufen.'
+                 : r.status === 403 || r.status === 404 ? 'Gist-Token darf keine Gists anlegen („Gists: Read and write“).'
+                 : 'Gist nicht angelegt (' + r.status + ').'); return null; }
+  zugangLink = location.origin + location.pathname + '#einladung=' + (await r.json()).id;
   return pin;
 }
 /* Mail ohne PIN: die geht auf anderem Weg */
@@ -1927,9 +1957,22 @@ $('zugangScannen').onclick = async ()=>{
   }
 };
 $('qrForget').onclick = ()=>{
-  localStorage.removeItem(LS_TEILEN); $('qr_token').value = ''; $('qr_pin').value = '';
-  $('qrMsg').innerHTML = '<span class="ok">Token und PIN von diesem Gerät gelöscht.</span>';
+  localStorage.removeItem(LS_TEILEN); $('qr_token').value = ''; $('qr_pin').value = ''; $('qr_gist').value = '';
+  $('qrMsg').innerHTML = '<span class="ok">Token, Gist-Token und PIN von diesem Gerät gelöscht.</span>';
 };
+/* Admin-Geraet: abgelaufene Einladungs-Gists (aelter als 24 h) beim Start loeschen */
+const GIST_BESCHR = 'tagesdoku-einladung';
+async function gistsAufraeumen(){
+  const g = load(LS_TEILEN, {}).gist; if(!g || !navigator.onLine) return;
+  const kopf = {Authorization:'Bearer ' + g, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'};
+  try{
+    const r = await fetch('https://api.github.com/gists?per_page=100', {cache:'no-store', headers:kopf}); if(!r.ok) return;
+    for(const x of await r.json())
+      if(x.description === GIST_BESCHR && Date.now() - Date.parse(x.created_at) > ZUGANG_GUELTIG)
+        await fetch('https://api.github.com/gists/' + x.id, {method:'DELETE', headers:kopf});
+  }catch(e){}
+}
+setTimeout(gistsAufraeumen, 3000);
 /* Prueft Lesen UND Schreiben: legt eine kleine Testdatei an und loescht sie
    gleich wieder (zwei Commits im Team-Repo, sonst keine Spuren). */
 $('qrTest').onclick = async ()=>{
@@ -1957,7 +2000,7 @@ $('qrCopy').onclick = ()=>{
 };
 /* Code oder Link ins Repo-Feld eingefuegt */
 $('sync_repo').addEventListener('input', e=>{ const z = zugangLesen(e.target.value);
-  if(z){ if(z.code) e.target.value = sync.repo || ''; zugangUebernehmen(z); } });
+  if(z){ if(!z.r) e.target.value = sync.repo || ''; zugangUebernehmen(z); } });
 /* Aufruf ueber den QR-Link */
 {
   const z = zugangLesen(location.hash);
@@ -1966,7 +2009,7 @@ $('sync_repo').addEventListener('input', e=>{ const z = zugangLesen(e.target.val
     history.replaceState(null, '', location.pathname + location.search);
     const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
     zugangUebernehmen(z, !standalone);
-    if(!standalone && !z.code){ $('qrEmpfRepo').textContent = z.r; qrZeigen('qrEmpfang'); }
+    if(!standalone && z.r){ $('qrEmpfRepo').textContent = z.r; qrZeigen('qrEmpfang'); }
   }
 }
 /* --- Erster Start: online (Zugang) oder offline? Nur dieses Geraet, nicht im Backup. --- */
@@ -3847,7 +3890,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.59';
+const APP_VERSION = '1.60';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
@@ -3858,7 +3901,7 @@ function showVersion(){
    gibt es nichts zu drucken. */
 $('undoBtn').onclick = ()=>histGo(-1);
 $('redoBtn').onclick = ()=>histGo(1);
-HIST.timer = 1; histFlush();     // Ausgangszustand als erster Schritt
+HIST.timer = -1; histFlush();   // -1: clearTimeout trifft keinen echten Timer (1 loeschte den ersten)     // Ausgangszustand als erster Schritt
 function zeigePdfKnopf(an){ $('pdfBtn').style.display = an ? 'flex' : 'none'; }
 
 function syncHeaderPad(){

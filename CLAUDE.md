@@ -106,6 +106,11 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   nie im Code, Öffnen nur mit PIN-Eingabe. Gültig 24 h (`ZUGANG_GUELTIG`,
   `bis` im verschlüsselten Inhalt); Codes ohne `bis` und alte unverschlüsselte
   `#zugang=`-Links sind gesperrt. Reine App-Prüfung, der Token selbst bleibt gültig.
+  Mit Gist-Token (nur Admin, `tagesdoku_teilen.gist`) liegt der verschlüsselte
+  Code als geheimer Gist (`GIST_BESCHR`), der Link trägt nur `#einladung=<id>`;
+  `gistsAufraeumen()` löscht beim Start Gists älter als 24 h.
+- Timer-ID 1 ist frei: `HIST.timer = -1` beim Start (mit 1 löschte
+  `clearTimeout` den ersten echten Timer).
   Per QR/Link eingerichtet (`sync.qr`) = Nutzer: Repo, Token und „Zugang
   weitergeben“ ausgeblendet (`zugangAnsicht()`), nur Personalnummer
   (`sync.kennung`, füllt leere Kopfdaten-`cfg.pnr`) + Passwort. Von Hand
