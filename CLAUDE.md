@@ -100,9 +100,11 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   `tagesdoku_<PBKDF2(Personalnr.\nPasswort)>.json` (`dateiErmitteln()`, `sync.datei`),
   keine Namen im Repo; alte `tagesdoku_backup[_<name>].json`, die eigene
   Vorgängerdatei (`sync.altDatei`) und das 1.51-Schema (nur Passwort) werden per
-  Passwort-Probe gefunden und umbenannt – fremde Hash-Dateien nie proben. Neues Backup erst ab
-  10 Zeichen Passwort. Zugangs-Link/QR (`#zugang2=`) ist mit PIN verschlüsselt
-  (AES-GCM, PBKDF2 600k), alte `#zugang=`-Links werden noch gelesen.
+  Passwort-Probe gefunden und umbenannt – fremde Hash-Dateien nie proben.
+  Passwort und PIN ohne Mindestlänge (Wunsch). Zugangs-Link (`#zugang2=`) ist
+  mit PIN verschlüsselt (AES-GCM, PBKDF2 600k); der QR-Code trägt die PIN als
+  `&pin=` mit (Scannen ohne Eingabe), Link/Mail ohne PIN. Alte
+  `#zugang=`-Links werden noch gelesen.
   Per QR/Link eingerichtet (`sync.qr`) = Nutzer: Repo, Token und „Zugang
   weitergeben“ ausgeblendet (`zugangAnsicht()`), nur Personalnummer
   (`sync.kennung`, füllt leere Kopfdaten-`cfg.pnr`) + Passwort. Von Hand

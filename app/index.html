@@ -538,7 +538,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="row" id="syncRepoZeile"><label>Repo (Besitzer/Name)</label><input id="sync_repo" name="username" autocomplete="username" placeholder="mustermann/tagesdoku-backup" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     <div class="row" id="syncTokenZeile"><label>Token</label><input id="sync_token" type="text" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
     <div class="row"><label>Personalnummer</label><input id="sync_pnr" inputmode="numeric" placeholder="wie in den Kopfdaten – steht nicht im Repo" autocomplete="off" autocorrect="off" spellcheck="false"></div>
-    <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" name="password" placeholder="eigenes, mind. 10 Zeichen, auf allen Geräten gleich" autocomplete="current-password"></div>
+    <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" name="password" placeholder="eigenes, auf allen Geräten gleich" autocomplete="current-password"></div>
     <div class="row2">
       <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
       <button class="btn outline" id="syncNow" style="font-size:14px;min-height:44px">Jetzt abgleichen</button>
@@ -591,7 +591,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div id="qrForm">
       <div class="row"><label>Repo (Besitzer/Name)</label><input id="qr_repo" placeholder="mustermann/tagesdoku-team" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
       <div class="row"><label>Token</label><input id="qr_token" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
-      <div class="row"><label>PIN für den Code</label><input id="qr_pin" placeholder="mind. 6 Zeichen, besser 8 mit Buchstaben" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
+      <div class="row"><label>PIN für den Code</label><input id="qr_pin" placeholder="beliebig, z. B. 4711" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <button class="btn" id="qrMake" style="font-size:14px;min-height:44px">QR-Code erzeugen</button>
       <button class="btn outline" id="qrMail" style="font-size:14px;min-height:44px;margin-top:8px">Link erzeugen und per E-Mail senden</button>
       <div class="row2" style="margin-top:8px">
@@ -599,7 +599,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
         <button class="btn outline" id="qrForget" style="font-size:14px;min-height:44px">Hier vergessen</button>
       </div>
       <div class="hint" id="qrMsg"></div>
-      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. Die PIN mündlich oder auf einem anderen Weg als den Link mitteilen. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
+      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. Der QR-Code enthält die PIN – nur persönlich zeigen. Beim Link (Mail) fehlt sie, dann die PIN auf anderem Weg mitteilen. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
     </div>
     <div id="qrOut" style="display:none;text-align:center">
       <div class="hint" id="qrPinZeige" style="margin-top:0"></div>
@@ -1577,7 +1577,7 @@ async function dateiErmitteln(){
         if(sync.sha === gefunden.sha) sync.sha = w.content.sha;
         try{ await gh('DELETE', {message:'Alte Backup-Datei entfernt', sha: gefunden.sha}, gefunden.name); }catch(e){}
       }
-    }else if(sync.pw.length < 10) throw new Error('Für ein neues Backup braucht das Passwort mindestens 10 Zeichen.');
+    }
   }
   sync.datei = neu; delete sync.altDatei; saveSync();
 }
@@ -1772,24 +1772,31 @@ async function zugangEntschluesseln(code, pin){
 }
 function zugangLesen(txt){
   const m2 = String(txt||'').match(/zugang2=([\w-]+)/);
-  if(m2) return {code: m2[1]};
+  if(m2){ const p = String(txt).match(/[#&?]pin=([^&\s]+)/);   // QR-Code traegt die PIN mit
+          let pin = ''; try{ pin = p ? decodeURIComponent(p[1]) : ''; }catch(e){}
+          return {code: m2[1], pin}; }
   const m = String(txt||'').match(/zugang=([\w-]+)/); if(!m) return null;
   try{ const z = JSON.parse(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')));
        return z && z.r && z.t ? z : null; }catch(e){ return null; }
 }
-let pinCode = '';
+let pinCode = '', pinMit = '';
 function zugangUebernehmen(z, kopieZeigen){
-  if(z.code){   // verschluesselt: erst PIN abfragen
-    pinCode = z.code; $('qrPinIn').value = ''; $('qrPinMsg').textContent = '';
+  if(z.code){   // verschluesselt: PIN aus dem QR-Code oder abfragen
+    pinCode = z.code; pinMit = z.pin || ''; $('qrPinIn').value = pinMit; $('qrPinMsg').textContent = '';
     $('qrPinKopie').style.display = kopieZeigen ? 'block' : 'none';
-    qrZeigen('qrPin'); setTimeout(()=> $('qrPinIn').focus(), 50);
+    if(pinMit && !kopieZeigen){
+      zugangEntschluesseln(z.code, pinMit).then(e => { $('qrBox').style.display = 'none'; zugangUebernehmen(e); },
+        ()=>{ $('qrPinIn').value = ''; qrZeigen('qrPin'); });
+      return;
+    }
+    qrZeigen('qrPin'); if(!pinMit) setTimeout(()=> $('qrPinIn').focus(), 50);
     return;
   }
   document.querySelector('nav button[data-tab=cfg]').click();
   karteAuf($('syncFelder')); $('syncFelder').open = true;
   $('sync_repo').value = z.r; $('sync_token').value = z.t;
   zugangQr = true; zugangAnsicht();
-  $('syncMsg').innerHTML = '<span class="ok">Zugang übernommen. Jetzt deine Personalnummer und ein eigenes Backup-Passwort (mind. 10 Zeichen) eintragen und „Verbinden“ tippen.</span>';
+  $('syncMsg').innerHTML = '<span class="ok">Zugang übernommen. Jetzt deine Personalnummer und ein eigenes Backup-Passwort eintragen und „Verbinden“ tippen.</span>';
   if(!$('sync_pnr').value) $('sync_pnr').value = cfg.pnr || '';
   setTimeout(()=> $('sync_pnr').scrollIntoView({block:'center', behavior:'smooth'}), 50);
 }
@@ -1819,7 +1826,7 @@ $('qrPinOk').onclick = async ()=>{
 };
 $('qrPinIn').onkeydown = e=>{ if(e.key === 'Enter') $('qrPinOk').click(); };
 $('qrPinCopy').onclick = ()=>{
-  navigator.clipboard.writeText('zugang2=' + pinCode).then(()=> toast('Code kopiert.'), ()=> toast('Kopieren nicht möglich.'));
+  navigator.clipboard.writeText('zugang2=' + pinCode + (pinMit ? '&pin=' + encodeURIComponent(pinMit) : '')).then(()=> toast('Code kopiert.'), ()=> toast('Kopieren nicht möglich.'));
 };
 let qrLib = null, zugangLink = '';
 /* Link statt QR: per Mail/Nachricht an den PC schicken und dort im Browser oeffnen */
@@ -1849,7 +1856,7 @@ async function zugangLinkBauen(){
   if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ toast('Repo bitte als „besitzer/name“ angeben.'); return null; }
   if(!token){ toast('Token fehlt.'); return null; }
   const pin = $('qr_pin').value.trim();
-  if(pin.length < 6){ toast('PIN mit mindestens 6 Zeichen festlegen.'); return null; }
+  if(!pin){ toast('PIN festlegen.'); return null; }
   localStorage.setItem(LS_TEILEN, JSON.stringify({repo, token}));
   zugangLink = location.origin + location.pathname + '#zugang2=' + await zugangKodieren(repo, token, pin);
   return pin;
@@ -1859,7 +1866,7 @@ $('qrMail').onclick = async ()=>{
   const pin = await zugangLinkBauen(); if(!pin) return;
   const text = 'Hallo,\n\nhier dein Zugang zur Zeiterfassungs-App (Online-Backup):\n\n' + zugangLink
     + '\n\nSo geht es:\n1. Link auf dem Handy oder PC öffnen.\n2. Die PIN eingeben – die bekommst du von mir getrennt von dieser Mail.\n'
-    + '3. Deine Personalnummer und ein eigenes Backup-Passwort (mind. 10 Zeichen) eintragen und „Verbinden“ tippen.\n'
+    + '3. Deine Personalnummer und ein eigenes Backup-Passwort eintragen und „Verbinden“ tippen.\n'
     + '   Das Passwort auf allen eigenen Geräten gleich wählen und gut merken – ohne es ist das Backup verloren.\n\n'
     + 'Ist die App schon auf dem Home-Bildschirm: Im Browser „Code kopieren“ tippen, in der App unter Einstellungen → Daten → Zugangsdaten ins Feld „Repo“ einfügen.\n\nBitte den Link nicht weiterleiten.';
   const mail = 'mailto:?subject=' + encodeURIComponent('Zugang Zeiterfassungs-App') + '&body=' + encodeURIComponent(text);
@@ -1871,8 +1878,8 @@ $('qrMake').onclick = async ()=>{
   try{
     const qrcode = await ladeQr();
     const qr = qrcode(0, 'M');
-    $('qrPinZeige').innerHTML = `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – getrennt vom Code mitteilen (mündlich, anderer Kanal).`;
-    qr.addData(zugangLink); qr.make();
+    $('qrPinZeige').innerHTML = `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – steckt im QR-Code (Scannen geht ohne Eingabe). Beim Link für den PC getrennt mitteilen.`;
+    qr.addData(zugangLink + '&pin=' + encodeURIComponent(pin)); qr.make();
     $('qrImg').innerHTML = qr.createSvgTag({cellSize:5, margin:2, scalable:true});
     const svg = $('qrImg').querySelector('svg'); svg.style.width = svg.style.height = 'min(70vw, 280px)';
     qrZeigen('qrOut');
@@ -3843,7 +3850,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.55';
+const APP_VERSION = '1.56';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
