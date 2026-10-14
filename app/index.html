@@ -501,13 +501,13 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <h2><span data-icon="search"></span>Erkennung im Dienstplan</h2>
     <div class="row"><label>Nachname (Spalte OÄ)</label><input id="cfg_nachname"></div>
     <div class="row"><label>Kürzel (Spalte Urlaub)</label><input id="cfg_kuerzel"></div>
-    <div class="hint">Steht der Nachname in der Spalte OÄ → Rufdienst. Steht das Kürzel in der Spalte Urlaub → abwesend. Sonst Regeldienst.</div>
+    <div class="hint">Steht der Nachname in der Spalte OÄ → Rufdienst. Steht Kürzel oder Nachname in der Spalte Urlaub → abwesend. Sonst Regeldienst. Teilzeit: steht das Kürzel in einem Monat in der Spalte Anwesenheit, sind nur diese Tage Arbeitstage.</div>
   </div>
   <div class="card">
     <h2><span data-icon="euro"></span>Gehalt (Tarif)</h2>
-    <div class="row"><label>Entgeltgruppe/Stufe</label><input id="cfg_stufe" placeholder="z.B. Ä3 Stufe 1"></div>
-    <div class="row"><label>Grundgehalt ab 06/2026</label><input id="cfg_grund" inputmode="decimal" placeholder="Monat brutto, €"></div>
-    <div class="row"><label>Grundgehalt bis 05/2026</label><input id="cfg_grund_alt" inputmode="decimal" placeholder="nur für alte Monate"></div>
+    <div class="hint" style="margin-top:0">Grundgehalt laut Abrechnung (LA 050, brutto). Bei einer Erhöhung eine Zeile mit dem ersten Monat des neuen Betrags hinzufügen. Der älteste Betrag gilt auch für frühere Monate.</div>
+    <div id="grundListe" style="margin-top:10px"></div>
+    <button class="btn outline" id="grundAdd" style="font-size:14px;min-height:44px">Gehaltsänderung hinzufügen</button>
     <div class="hint" id="grundInfo"></div>
   </div>
   <div class="card">
@@ -749,9 +749,8 @@ function derive(isoDate){
   const feiertag = isHoliday(isoDate);
   const res = r => { if(swapped){ r.swapped = true; r.info += ' · Dienst getauscht'; } return r; };
   if(!p) return {code:null, info:'Kein Plan für diesen Tag'};
-  const kz = (cfg.kuerzel||'').toLowerCase().trim();
   const nn = (cfg.nachname||'').toLowerCase().trim();
-  if(kz && String(p.urlaub||'').toLowerCase().split(/[,;]/).some(s=>s.trim()===kz))
+  if(meinEintrag(p.urlaub))
     return res({code:'abwesend', info:'Abwesend laut Spalte Urlaub'});
   const rufdienst = nn && String(p.oa||'').toLowerCase().includes(nn);
   if(rufdienst){
@@ -761,7 +760,21 @@ function derive(isoDate){
     return res({code:'ZD1', info:'Rufdienst Mo–Do'});
   }
   if(feiertag || dow===0 || dow===6) return res({code:'frei', info:'Kein Dienst eingetragen'});
+  /* Teilzeit: steht das eigene Kuerzel in diesem Monat irgendwo in der Spalte
+     Anwesenheit, sind nur die dort markierten Tage Arbeitstage. */
+  if(!meinEintrag(p.anw) && teilzeitMonat(isoDate.slice(0,7)))
+    return res({code:'frei', info:'Kein Arbeitstag laut Spalte Anwesenheit (Teilzeit)'});
   return res(dow===1 ? {code:'amb2', info:'Regeldienst Montag'} : {code:'amb4', info:'Regeldienst'});
+}
+/* Steht man selbst in einer Kuerzel-Spalte ("Ki, Kaus")? Kuerzel oder Nachname. */
+function meinEintrag(zelle){
+  const kz = (cfg.kuerzel||'').toLowerCase().trim(), nn = (cfg.nachname||'').toLowerCase().trim();
+  return String(zelle||'').toLowerCase().split(/[,;\/]/).map(t=>t.trim())
+    .some(t => t && (t===kz || t===nn));
+}
+function teilzeitMonat(mk){
+  for(let t=1; t<=31; t++){ const p = plan[`${mk}-${pad(t)}`]; if(p && meinEintrag(p.anw)) return true; }
+  return false;
 }
 /* wer laut Plan bzw. nach einem Tausch Dienst hat */
 const oaOf = k => (swap[k] !== undefined ? swap[k] : (plan[k] ? plan[k].oa : '')) || '';
@@ -1368,6 +1381,10 @@ async function lokaleKopie(zusatz = ''){
   }catch(e){ /* privater Modus o. ae.: dann eben ohne Kopie */ }
 }
 const echteTageAnzahl = ()=> Object.keys(echteTage()).length + Object.keys(plan).length;
+/* Schon von Hand eingerichtet? Dann lohnt die erste Online-Sicherung auch ohne
+   erfasste Tage - die Einstellungen sollen auf das naechste Geraet kommen. */
+const einstellungenGesetzt = ()=> ['name','pnr','nachname','kuerzel'].some(k => String(cfg[k]||'').trim())
+  || !!(cfg.gehalt && (cfg.gehalt.verlauf || []).length) || !!(cfg.netto && (cfg.netto.refs || []).length);
 async function renderSnaps(){
   const sel = $('snapSel');
   try{
@@ -1580,7 +1597,7 @@ async function abgleichen(manuell){
       const dirty = lokalGeaendert();
       if(!remote){                                   // noch nie gesichert
         sync.sha = null;
-        if(echteTageAnzahl() && !(await hochladen())) continue;
+        if((echteTageAnzahl() || einstellungenGesetzt()) && !(await hochladen())) continue;
         break;
       }
       const datei = JSON.parse(new TextDecoder().decode(unb64(remote.content.replace(/\s/g,''))));
@@ -1819,6 +1836,15 @@ $('xlsFile').onchange = async e => {
 
     const hdr = rows.findIndex(r => String(r[0]).trim().toLowerCase()==='datum');
     if(hdr<0) throw new Error('Kopfzeile "Datum" nicht gefunden.');
+    /* Spalten nach Ueberschrift, nicht nach Position: im Oktober-Plan fehlt
+       die Spalte Urlaub, dort steht die Anwesenheit an ihrer Stelle. */
+    const kopf = rows[hdr].map(c => String(c).trim().toLowerCase());
+    const spalte = (test, std) => { const i = kopf.findIndex(test); return i >= 0 ? i : std; };
+    const cWd  = spalte(h => h.startsWith('wochentag'), 1);
+    const cOa  = spalte(h => /\bo[äa]\b|oberarzt|chef/.test(h), 2);
+    const cUrl = spalte(h => h === 'urlaub', -1);
+    const cAnw = spalte(h => h.startsWith('anwesen'), -1);
+    const zelle = (r, i) => i >= 0 ? String(r[i] ?? '') : '';
 
     /* Der Plan kann in den Folgemonat weiterlaufen (Dezember-Plan bis zur
        ersten Januarwoche): faellt die Tageszahl, beginnt der naechste Monat. */
@@ -1834,9 +1860,9 @@ $('xlsFile').onchange = async e => {
       vorTag = tag;
       const key = `${jhr}-${pad(mon+1)}-${pad(tag)}`;
       monate.add(`${MONTHS[mon][0].toUpperCase()+MONTHS[mon].slice(1)} ${jhr}`);
-      plan[key] = {wd:String(r[1]||''), oa:String(r[2]||''), urlaub:String(r[3]||'')};
+      plan[key] = {wd:zelle(r,cWd), oa:zelle(r,cOa), urlaub:zelle(r,cUrl), anw:zelle(r,cAnw)};
       const soll = WDAY[new Date(key+'T12:00:00').getDay()];
-      if(r[1] && String(r[1]).trim() && String(r[1]).trim()!==soll) mismatch++;
+      if(plan[key].wd.trim() && plan[key].wd.trim()!==soll) mismatch++;
       n++;
     }
     save(LS.plan, plan);
@@ -2876,20 +2902,37 @@ const ABWESENHEIT = {FRN:'957', FB:'707', KRANK:'715'};
 const gehaltNum = v => { v = String(v ?? '').trim().replace(/\s|€/g,'');
   if(v.includes(',')) v = v.replace(/\./g,'').replace(',','.');
   const x = parseFloat(v); return isFinite(x) && x > 0 ? x : 0; };
+/* cfg.gehalt.verlauf = [{ab:'2026-06', grund:'…'}, …]: ein Betrag gilt ab
+   seinem Monat bis zur naechsten Zeile, der aelteste auch rueckwirkend.
+   Bis App 1.47 gab es nur grund (ab 06/2026) und grundAlt (davor). */
+function gehaltMigrieren(){
+  const g = cfg.gehalt; if(!g) return;
+  if(!Array.isArray(g.verlauf)){
+    g.verlauf = [];
+    if(gehaltNum(g.grundAlt)) g.verlauf.push({ab:'2026-01', grund:g.grundAlt});
+    if(gehaltNum(g.grund))    g.verlauf.push({ab:'2026-06', grund:g.grund});
+  }
+  delete g.grund; delete g.grundAlt; delete g.stufe;
+}
+const grundVerlauf = () => ((cfg.gehalt && cfg.gehalt.verlauf) || [])
+  .filter(e => /^\d{4}-\d{2}$/.test(e.ab || '') && gehaltNum(e.grund)).sort((a,b) => a.ab.localeCompare(b.ab));
 const grundFuer = ym => {
-  const g = cfg.gehalt || {};
-  const neu = gehaltNum(g.grund), alt = gehaltNum(g.grundAlt) || neu;
-  return ym < '2026-06' ? alt : neu;
+  const v = grundVerlauf(); if(!v.length) return 0;
+  let g = v[0]; v.forEach(e => { if(e.ab <= ym) g = e; });
+  return gehaltNum(g.grund);
 };
 const STD_TEILER = 173.92;
-function gehaltSaetzeSetzen(){
-  [['2026-05', GEHALT.SAETZE_BIS_MAI_2026], ['2026-06', GEHALT.SAETZE_AB_JUNI_2026]].forEach(([ym, s])=>{
-    s._std ??= s[734];                       // Standardwert aus gehalt.js merken
-    const grund = grundFuer(ym);
-    const std = grund ? Math.round(grund / STD_TEILER * 100) / 100 : s._std;
-    s[734] = std; s[796] = Math.round(std * 200) / 100; s[797] = Math.round(std * 400) / 100;
-  });
+/* Setzt 734/796/797 im Satzobjekt des Monats aus dessen Grundgehalt. Die
+   Saetze haengen am Monat, deshalb vor jeder Euro-Rechnung neu setzen. */
+function gehaltSaetzeSetzen(ym){
+  const s = ym < '2026-06' ? GEHALT.SAETZE_BIS_MAI_2026 : GEHALT.SAETZE_AB_JUNI_2026;
+  s._std ??= s[734];                         // Standardwert aus gehalt.js merken
+  const grund = grundFuer(ym);
+  const std = grund ? Math.round(grund / STD_TEILER * 100) / 100 : s._std;
+  s[734] = std; s[796] = Math.round(std * 200) / 100; s[797] = Math.round(std * 400) / 100;
+  return s;
 }
+const euroFuer = (mengen, ym, extra) => { gehaltSaetzeSetzen(ym); return GEHALT.berechneEuro(mengen, ym, extra); };
 
 /* Anzeigenamen fuer die Kompaktleiste + Verlaesslichkeit je Lohnart
    (Einstufung aus INTEGRATION.md, Abschnitt "Wie sicher ist was"). */
@@ -3059,7 +3102,7 @@ function urlaubsFenster(ym){ return [5,4,3].map(n => plusMonate(ym, -n)); }
 /* Variable Bezuege eines Monats - schlank, ohne die Tagesliste von monatsDaten */
 function variableSumme(ym){
   const a = gehaltEintraege(ym);
-  return GEHALT.berechneEuro(GEHALT.berechneMengen(a, ym), ym, extraFuer(ym)).summe;
+  return euroFuer(GEHALT.berechneMengen(a, ym), ym, extraFuer(ym)).summe;
 }
 
 function urlaubsaufschlag(ym, tage){
@@ -3087,7 +3130,7 @@ function postenSortiert(posten){
 function monatsDaten(ym){
   const alle = gehaltEintraege(ym);
   const mengen = GEHALT.berechneMengen(alle, ym);
-  const r0 = GEHALT.berechneEuro(mengen, ym, extraFuer(ym));
+  const r0 = euroFuer(mengen, ym, extraFuer(ym));
   const {posten, summe} = mitAuszahlung(r0, ym, auszahlStdMonat(ym));
   const tage = [];
   const kandidaten = [...new Set(alle.map(e => e._appTag))].filter(k => k.startsWith(ym)).sort();
@@ -3119,7 +3162,7 @@ function tagesAnteil(alle, mengenMit, ym, k){
     const v = round2(mengenMit[la] - ohne[la]);
     if(Math.abs(v) > 0.004) diff[la] = v;
   });
-  const r = GEHALT.berechneEuro(diff, ym, {});
+  const r = euroFuer(diff, ym, {});
   return {posten: postenSortiert(r.posten), summe: r.summe};
 }
 
@@ -3151,7 +3194,7 @@ function auszahlStdMonat(ym){
 }
 function mitAuszahlung(r, ym, std){
   if(!(std > 0)) return r;
-  const satz = (ym < '2026-06' ? GEHALT.SAETZE_BIS_MAI_2026 : GEHALT.SAETZE_AB_JUNI_2026)[734];
+  const satz = gehaltSaetzeSetzen(ym)[734];
   const betrag = round2(std * satz);
   const pz = {la:'ÜA', ord:733, bezeichnung:'Überstunden-Auszahlung',
               menge:std, satz, betrag, einheit:'Std.'};
@@ -3529,22 +3572,39 @@ $('nettoRefs').addEventListener('click', e=>{
 
 /* Gehalt (Tarif): pro Geraet in cfg, landet mit im Backup */
 function grundInfoAktualisieren(){
-  const g = grundFuer('2026-06');
+  const ym = iso(new Date()).slice(0,7), g = grundFuer(ym);
   $('grundInfo').innerHTML = g
-    ? `Stundenentgelt ${eur(GEHALT.SAETZE_AB_JUNI_2026[734])} (Grundgehalt ÷ 173,92) – für Rufdienst-Einsätze (734) und die Pauschalen 796/797.`
+    ? `Aktuell (${monthLabel(ym)}): ${eur(g)}, Stundenentgelt ${eur(gehaltSaetzeSetzen(ym)[734])} (Grundgehalt ÷ 173,92) – für Rufdienst-Einsätze (734) und die Pauschalen 796/797.`
     : 'Grundgehalt laut Gehaltsabrechnung (LA 050) eintragen. Ohne Wert fehlt die Grundvergütung und die Rufdienst-Sätze sind nur Beispielwerte.';
 }
-[['cfg_stufe','stufe'],['cfg_grund','grund'],['cfg_grund_alt','grundAlt']].forEach(([id,key])=>{
-  $(id).value = (cfg.gehalt && cfg.gehalt[key]) || '';
-  $(id).addEventListener('change', e=>{
-    cfg.gehalt ||= {}; cfg.gehalt[key] = e.target.value.trim(); save(LS.cfg, cfg);
-    gehaltSaetzeSetzen(); grundInfoAktualisieren(); renderTagGeld();
-  });
+function renderGrundListe(){
+  const v = (cfg.gehalt && cfg.gehalt.verlauf) || [];
+  $('grundListe').innerHTML = v.map((e,i)=>`
+    <div class="grid2" style="align-items:end">
+      <div class="field"><label>ab Monat</label><input type="month" data-grundf="ab" data-i="${i}" value="${e.ab||''}"></div>
+      <div class="field"><label>Grundgehalt €</label><input inputmode="decimal" data-grundf="grund" data-i="${i}" value="${e.grund||''}"></div>
+    </div>
+    <button class="del" data-grunddel="${i}" style="margin-bottom:10px">${icon('square')}Löschen</button>`).join('');
+  grundInfoAktualisieren();
+}
+function grundGeaendert(){ save(LS.cfg, cfg); grundInfoAktualisieren(); renderTagGeld(); }
+$('grundListe').addEventListener('change', e=>{
+  const f = e.target.dataset.grundf; if(!f) return;
+  cfg.gehalt.verlauf[+e.target.dataset.i][f] = e.target.value.trim(); grundGeaendert();
 });
-gehaltSaetzeSetzen(); grundInfoAktualisieren();
+$('grundListe').addEventListener('click', e=>{
+  const b = e.target.closest('[data-grunddel]'); if(!b) return;
+  cfg.gehalt.verlauf.splice(+b.dataset.grunddel, 1); grundGeaendert(); renderGrundListe();
+});
+$('grundAdd').onclick = ()=>{
+  cfg.gehalt ||= {}; cfg.gehalt.verlauf ||= [];
+  cfg.gehalt.verlauf.push({ab: iso(new Date()).slice(0,7), grund:''});
+  save(LS.cfg, cfg); renderGrundListe();
+};
+gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.47';
+const APP_VERSION = '1.48';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
@@ -3592,8 +3652,7 @@ showVersion();
   if(leer.length){ leer.forEach(k => delete days[k]); persist(); }
 }
 function fuelleNettoFelder(){
-  [['cfg_stufe','stufe'],['cfg_grund','grund'],['cfg_grund_alt','grundAlt']].forEach(([id,key])=> $(id).value = (cfg.gehalt && cfg.gehalt[key]) || '');
-  gehaltSaetzeSetzen(); grundInfoAktualisieren();
+  gehaltMigrieren(); renderGrundListe();
   $('cfg_netto_grenz').value   = (cfg.netto && cfg.netto.grenz)   || '';
   $('cfg_netto_schnitt').value = (cfg.netto && cfg.netto.schnitt) || '';
   renderNettoRefs();
