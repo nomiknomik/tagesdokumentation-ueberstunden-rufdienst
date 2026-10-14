@@ -74,6 +74,12 @@ section{display:none} section.on{display:block}
   display:flex;align-items:center;gap:8px}
 .ic{width:18px;height:18px;flex:0 0 auto;display:inline-block}
 .card h2 .ic{width:18px;height:18px;color:var(--color-primary-light)}
+/* Einstellungen: Karten als Akkordeon, immer hoechstens eine offen */
+#cfg > .card > h2{cursor:pointer;margin:0;user-select:none}
+#cfg > .card > h2 .auf{margin-left:auto;width:16px;height:16px;color:var(--color-text-muted);transition:transform .15s ease}
+#cfg > .card.offen > h2{margin-bottom:var(--spacing-section)}
+#cfg > .card.offen > h2 .auf{transform:rotate(90deg)}
+#cfg > .card:not(.offen) > :not(h2){display:none !important}
 
 .datebar{display:flex;align-items:center;gap:8px;margin-bottom:var(--spacing-section);
   background:var(--color-card);border:1px solid var(--color-border);border-radius:var(--radius-button);padding:6px}
@@ -1682,7 +1688,7 @@ function zugangLesen(txt){
 }
 function zugangUebernehmen(z){
   document.querySelector('nav button[data-tab=cfg]').click();
-  $('syncFelder').open = true;
+  karteAuf($('syncFelder')); $('syncFelder').open = true;
   $('sync_repo').value = z.r; $('sync_token').value = z.t;
   $('syncMsg').innerHTML = '<span class="ok">Zugang übernommen. Jetzt eigenen Namen und eigenes Backup-Passwort eintragen und „Verbinden“ tippen.</span>';
   setTimeout(()=> $('sync_name').scrollIntoView({block:'center', behavior:'smooth'}), 50);
@@ -1827,9 +1833,22 @@ function modusSetzen(m){
 }
 const zuDenZugangsdaten = ()=>{
   document.querySelector('nav button[data-tab=cfg]').click();
-  $('syncFelder').open = true;
+  karteAuf($('syncFelder')); $('syncFelder').open = true;
   setTimeout(()=>{ $('syncFelder').scrollIntoView({block:'start', behavior:'smooth'}); $('sync_repo').focus(); }, 50);
 };
+/* Einstellungs-Karten auf-/zuklappen; oeffnet eine, schliessen die anderen */
+function karteAuf(el){
+  const k = el && el.closest('#cfg > .card');
+  document.querySelectorAll('#cfg > .card').forEach(c => c.classList.toggle('offen', c === k));
+}
+document.querySelectorAll('#cfg > .card > h2').forEach(h=>{
+  h.insertAdjacentHTML('beforeend', icon('chevronRight').replace('class="ic"', 'class="ic auf"'));
+  h.setAttribute('role', 'button'); h.tabIndex = 0;
+  const umschalten = ()=>{ const k = h.parentElement; karteAuf(k.classList.contains('offen') ? null : k);
+    if(k.classList.contains('offen')) k.scrollIntoView({block:'nearest', behavior:'smooth'}); };
+  h.onclick = umschalten;
+  h.onkeydown = e=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); umschalten(); } };
+});
 $('startManuell').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('online'); zuDenZugangsdaten(); };
 $('startQr').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('online'); $('zugangScannen').click(); };
 $('startOffline').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('offline'); };
@@ -1849,7 +1868,7 @@ $('syncBtn').onclick = ()=>{
   if(syncAktiv() && !syncFehler){ abgleichen(true); return; }
   // nicht eingerichtet oder Fehler: zu den Einstellungen, dort steht die Meldung
   document.querySelector('nav button[data-tab=cfg]').click();
-  $('syncFelder').open = true;
+  karteAuf($('syncFelder')); $('syncFelder').open = true;
   setTimeout(()=> $('syncMsg').scrollIntoView({block:'center', behavior:'smooth'}), 50);
 };
 addEventListener('online',  ()=>{ syncStatus(); abgleichen(false); });
@@ -3675,7 +3694,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.49';
+const APP_VERSION = '1.50';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){

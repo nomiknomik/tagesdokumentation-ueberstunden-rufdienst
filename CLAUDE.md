@@ -83,6 +83,9 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
 - Erster Start: `#startBox` fragt QR / Zugangsdaten / offline, Wahl in
   `tagesdoku_modus` (nur Gerät, nicht im Backup), änderbar über `#syncModus`.
   Bestehende Installationen mit Daten werden nicht gefragt.
+- Einstellungs-Karten (`#cfg > .card`) sind ein Akkordeon (`karteAuf()`,
+  Klasse `offen`), Start alle zu. Wer per Code in die Einstellungen springt,
+  muss die Zielkarte mit `karteAuf(el)` öffnen.
 - Erste Online-Sicherung auch ohne Tage, sobald Einstellungen gesetzt sind
   (`einstellungenGesetzt()`).
 - `hasContent()` entscheidet, was als erfasst gilt; `persist()` und Export
