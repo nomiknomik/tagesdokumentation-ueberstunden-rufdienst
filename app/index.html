@@ -532,12 +532,12 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <select id="syncModus"><option value="online">Online (Sync)</option><option value="offline">Nur offline</option></select></div>
     <div id="syncOnline">
     <details class="monthgroup" id="syncFelder">
-      <summary><span>Zugangsdaten<span class="cnt" id="syncFelderCnt">Repo, Token, Name, Passwort</span></span><span data-icon="chevronRight"></span></summary>
+      <summary><span>Zugangsdaten<span class="cnt" id="syncFelderCnt">Repo, Token, Personalnr., Passwort</span></span><span data-icon="chevronRight"></span></summary>
       <div style="padding:0 14px 12px">
-    <div class="hint" id="syncQrInfo" style="display:none;margin-top:0">Zugang über QR-Code eingerichtet. Du trägst nur deinen Namen und dein eigenes Backup-Passwort ein.</div>
+    <div class="hint" id="syncQrInfo" style="display:none;margin-top:0">Zugang über QR-Code eingerichtet. Du trägst nur deine Personalnummer und dein eigenes Backup-Passwort ein.</div>
     <div class="row" id="syncRepoZeile"><label>Repo (Besitzer/Name)</label><input id="sync_repo" name="username" autocomplete="username" placeholder="mustermann/tagesdoku-backup" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     <div class="row" id="syncTokenZeile"><label>Token</label><input id="sync_token" type="text" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
-    <div class="row"><label>Dein Name</label><input id="sync_name" placeholder="z. B. Mustermann – steht nicht im Repo" autocapitalize="words" autocorrect="off" spellcheck="false"></div>
+    <div class="row"><label>Personalnummer</label><input id="sync_pnr" inputmode="numeric" placeholder="wie in den Kopfdaten – steht nicht im Repo" autocomplete="off" autocorrect="off" spellcheck="false"></div>
     <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" name="password" placeholder="eigenes, mind. 10 Zeichen, auf allen Geräten gleich" autocomplete="current-password"></div>
     <div class="row2">
       <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
@@ -550,7 +550,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="hint" id="syncMsg"></div>
     </div>
     <div class="hint" id="syncOfflineHint" style="display:none">Daten bleiben nur auf diesem Gerät. Für Sync mit Rechner oder Handy oben „Online“ wählen.</div>
-    <div class="hint" id="syncOnlineHint">Sichert automatisch beim Öffnen und Verlassen der App, sobald sich etwas geändert hat. Ein anderes Gerät mit denselben Angaben übernimmt den Stand. Jede Person trägt ihren Namen und ein eigenes Passwort ein – daraus entsteht der Dateiname, der Name selbst steht nirgends im Repo. Die Daten werden vor dem Hochladen mit dem Passwort verschlüsselt (AES-256), GitHub sieht nur unlesbaren Text. <b>Ohne das Passwort ist das Backup verloren.</b><span id="syncTokenHint"> Token: GitHub → Settings → Developer settings → Fine-grained tokens, nur dieses Repo, Berechtigung „Contents: Read and write“.</span></div>
+    <div class="hint" id="syncOnlineHint">Sichert automatisch beim Öffnen und Verlassen der App, sobald sich etwas geändert hat. Ein anderes Gerät mit denselben Angaben übernimmt den Stand. Jede Person trägt ihre Personalnummer und ein eigenes Passwort ein – daraus entsteht der Dateiname, die Nummer selbst steht nirgends im Repo. Die Daten werden vor dem Hochladen mit dem Passwort verschlüsselt (AES-256), GitHub sieht nur unlesbaren Text. <b>Ohne das Passwort ist das Backup verloren.</b><span id="syncTokenHint"> Token: GitHub → Settings → Developer settings → Fine-grained tokens, nur dieses Repo, Berechtigung „Contents: Read and write“.</span></div>
 
     <div class="field" style="margin-top:14px"><label><b>Automatische Kopien auf diesem Gerät</b></label></div>
     <div class="row2"><select id="snapSel"></select>
@@ -623,7 +623,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div id="qrEmpfang" style="display:none">
       <div class="hint" style="margin-top:0">Zugang erkannt für <b id="qrEmpfRepo"></b>.</div>
       <button class="btn" id="qrCopy" style="font-size:14px;min-height:44px">Code kopieren</button>
-      <div class="hint">Die App auf dem Home-Bildschirm hat einen eigenen Speicher. Dort Einstellungen → Daten → Zugangsdaten → „QR-Code scannen“ – oder den kopierten Code ins Feld „Repo“ einfügen. Danach Namen und eigenes Passwort eintragen und „Verbinden“ tippen.</div>
+      <div class="hint">Die App auf dem Home-Bildschirm hat einen eigenen Speicher. Dort Einstellungen → Daten → Zugangsdaten → „QR-Code scannen“ – oder den kopierten Code ins Feld „Repo“ einfügen. Danach Personalnummer und eigenes Passwort eintragen und „Verbinden“ tippen.</div>
     </div>
     <button class="btn ghost" id="qrClose" style="margin-top:8px">Schließen</button>
   </div>
@@ -1480,7 +1480,7 @@ let sync = load(LS_SYNC, {});
 const saveSync = ()=> localStorage.setItem(LS_SYNC, JSON.stringify(sync));   // nicht save(): kein Dirty-Flag
 const syncAktiv = ()=> !!(sync.repo && sync.token && sync.pw);
 /* Mehrere Personen im selben Repo: der Dateiname kommt aus dem Passwort
-   (PBKDF2, so teuer wie der Schluessel), Namen stehen nirgends im Repo.
+   (PBKDF2, so teuer wie der Schluessel), Namen/Nummern stehen nirgends im Repo.
    sync.datei wird in dateiErmitteln() gesetzt. */
 const syncDatei = ()=> sync.datei;
 const b64 = buf => {   // in Stuecken: String.fromCharCode(...grosses Array) sprengt den Stack
@@ -1498,8 +1498,8 @@ async function schluessel(pw, salt){
   return schluesselCache[id] = crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:PBKDF2_ITER, hash:'SHA-256'},
     basis, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
 }
-/* Name (normalisiert) + Passwort: zwei Personen mit gleichem Passwort bekommen
-   verschiedene Dateien. Ohne Name nur das Passwort (Format von 1.51). */
+/* Kennung (Personalnummer; 1.52: Name) + Passwort: zwei Personen mit gleichem
+   Passwort bekommen verschiedene Dateien. Ohne Kennung nur das Passwort (1.51). */
 const nameNorm = n => String(n||'').trim().toLowerCase().normalize('NFC').replace(/\s+/g,' ');
 async function dateiHash(pw, name){
   const basis = await crypto.subtle.importKey('raw', new TextEncoder().encode(name ? name + '\n' + pw : pw), 'PBKDF2', false, ['deriveBits']);
@@ -1552,7 +1552,7 @@ async function gh(method, body, pfad = syncDatei()){
    Passwort entschluesseln laesst, und umbenannt. */
 async function dateiErmitteln(){
   if(sync.datei) return;
-  const neu = 'tagesdoku_' + await dateiHash(sync.pw, nameNorm(sync.name)) + '.json';
+  const neu = 'tagesdoku_' + await dateiHash(sync.pw, sync.kennung !== undefined ? sync.kennung : nameNorm(sync.name)) + '.json';
   if(!(await gh('GET', null, neu))){
     const liste = await gh('GET', null, '');
     /* Kandidaten: die bisherige Datei dieses Geraets (Name geaendert), das
@@ -1718,21 +1718,22 @@ async function abgleichen(manuell){
   }
   syncLaeuft = false; syncStatus();
 }
-$('sync_repo').value = sync.repo || ''; $('sync_token').value = sync.token || ''; $('sync_pw').value = sync.pw || ''; $('sync_name').value = sync.name || '';
+$('sync_repo').value = sync.repo || ''; $('sync_token').value = sync.token || ''; $('sync_pw').value = sync.pw || ''; $('sync_pnr').value = sync.kennung || cfg.pnr || '';
 if(syncAktiv() && sync.zuletzt) $('syncMsg').innerHTML = `<span class="ok">Online gesichert: ${new Date(sync.zuletzt).toLocaleString('de-DE')}.</span>`;
 $('syncSave').onclick = ()=>{
   const repo = $('sync_repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$|\/$/g,'');
-  const token = $('sync_token').value.trim(), pw = $('sync_pw').value, name = $('sync_name').value.trim().replace(/\s+/g,' ');
+  const token = $('sync_token').value.trim(), pw = $('sync_pw').value, pnr = $('sync_pnr').value.replace(/\s+/g,'');
   if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ $('syncMsg').innerHTML = '<span class="note">Repo bitte als „besitzer/name“ angeben.</span>'; return; }
   if(!token){ $('syncMsg').innerHTML = '<span class="note">Kein Zugang – QR-Code scannen oder den Link öffnen.</span>'; return; }
   const qr = zugangQr || !!sync.qr;
-  if(qr && !name){ $('syncMsg').innerHTML = '<span class="note">Bitte deinen Namen eintragen.</span>'; return; }
+  if(qr && !pnr){ $('syncMsg').innerHTML = '<span class="note">Bitte deine Personalnummer eintragen.</span>'; return; }
   if(!pw){ $('syncMsg').innerHTML = '<span class="note">Backup-Passwort eintragen.</span>'; return; }
   // Neues Ziel oder Passwort: Abgleich beginnt von vorn (sha vergessen -> Rueckfrage statt stillem Ueberschreiben)
-  if(repo !== sync.repo || pw !== sync.pw || nameNorm(name) !== nameNorm(sync.name))
-    sync = {repo, token, pw, ...(name && {name}), ...(qr && {qr}),
+  if(pnr && !String(cfg.pnr||'').trim()){ cfg.pnr = pnr; $('cfg_pnr').value = pnr; save(LS.cfg, cfg); }   // neues Geraet: Kopfdaten vorbelegen
+  if(repo !== sync.repo || pw !== sync.pw || pnr !== (sync.kennung !== undefined ? sync.kennung : ''))
+    sync = {repo, token, pw, ...(pnr && {kennung: pnr}), ...(qr && {qr}),
             ...(repo === sync.repo && pw === sync.pw && sync.datei && {altDatei: sync.datei})};
-  else Object.assign(sync, {token, name}, qr && {qr});
+  else Object.assign(sync, {token}, qr && {qr});
   zugangQr = false; zugangAnsicht();
   saveSync();
   abgleichen(true);
@@ -1787,8 +1788,9 @@ function zugangUebernehmen(z, kopieZeigen){
   karteAuf($('syncFelder')); $('syncFelder').open = true;
   $('sync_repo').value = z.r; $('sync_token').value = z.t;
   zugangQr = true; zugangAnsicht();
-  $('syncMsg').innerHTML = '<span class="ok">Zugang übernommen. Jetzt deinen Namen und ein eigenes Backup-Passwort (mind. 10 Zeichen) eintragen und „Verbinden“ tippen.</span>';
-  setTimeout(()=> $('sync_name').scrollIntoView({block:'center', behavior:'smooth'}), 50);
+  $('syncMsg').innerHTML = '<span class="ok">Zugang übernommen. Jetzt deine Personalnummer und ein eigenes Backup-Passwort (mind. 10 Zeichen) eintragen und „Verbinden“ tippen.</span>';
+  if(!$('sync_pnr').value) $('sync_pnr').value = cfg.pnr || '';
+  setTimeout(()=> $('sync_pnr').scrollIntoView({block:'center', behavior:'smooth'}), 50);
 }
 /* Wer per QR/Link eingerichtet wurde, sieht Repo und Token nicht und kann den
    Zugang nicht weitergeben. Nur wer die Zugangsdaten von Hand eintraegt
@@ -1798,7 +1800,7 @@ function zugangAnsicht(){
   const qr = zugangQr || !!sync.qr;
   ['syncRepoZeile','syncTokenZeile','zugangTeilen','syncTokenHint'].forEach(id => $(id).style.display = qr ? 'none' : '');
   $('syncQrInfo').style.display = qr ? '' : 'none';
-  $('syncFelderCnt').textContent = qr ? 'Name, Passwort' : 'Repo, Token, Name, Passwort';
+  $('syncFelderCnt').textContent = qr ? 'Personalnr., Passwort' : 'Repo, Token, Personalnr., Passwort';
 }
 /* Vor 1.51: Team-Nutzer hatten einen Namen und keinen eigenen Weitergabe-Zugang */
 if(sync.repo && !sync.qr && sync.name && !localStorage.getItem(LS_TEILEN)){ sync.qr = true; saveSync(); }
@@ -1984,7 +1986,7 @@ $('syncModus').onchange = e=>{
       e.target.value = 'online'; return;
     }
     sync = {}; saveSync(); zugangQr = false; zugangAnsicht();
-    ['sync_repo','sync_token','sync_pw','sync_name'].forEach(id => $(id).value = '');
+    ['sync_repo','sync_token','sync_pw','sync_pnr'].forEach(id => $(id).value = '');
     $('syncMsg').textContent = ''; syncFehler = ''; syncStatus();
   }
   modusSetzen(e.target.value);
@@ -3820,7 +3822,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.52';
+const APP_VERSION = '1.53';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
