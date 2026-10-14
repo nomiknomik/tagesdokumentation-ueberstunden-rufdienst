@@ -1623,7 +1623,7 @@ $('syncSave').onclick = ()=>{
   const token = $('sync_token').value.trim(), pw = $('sync_pw').value;
   const name = $('sync_name').value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ß/g,'ss').replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');
   if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ $('syncMsg').innerHTML = '<span class="note">Repo bitte als „besitzer/name“ angeben.</span>'; return; }
-  if(!token || pw.length < 8){ $('syncMsg').innerHTML = '<span class="note">Token und ein Passwort mit mindestens 8 Zeichen eintragen.</span>'; return; }
+  if(!token || !pw){ $('syncMsg').innerHTML = '<span class="note">Token und Backup-Passwort eintragen.</span>'; return; }
   // Neues Ziel oder Passwort: Abgleich beginnt von vorn (sha vergessen -> Rueckfrage statt stillem Ueberschreiben)
   if(repo !== sync.repo || pw !== sync.pw || name !== (sync.name || '')) sync = {repo, token, pw, ...(name && {name})}; else sync.token = token;
   $('sync_name').value = name;
@@ -3496,7 +3496,7 @@ function grundInfoAktualisieren(){
 gehaltSaetzeSetzen(); grundInfoAktualisieren();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.45';
+const APP_VERSION = '1.46';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
