@@ -1655,7 +1655,7 @@ function qrZeigen(teil){
 }
 $('zugangTeilen').onclick = ()=>{
   const t = load(LS_TEILEN, {});
-  $('qr_repo').value = t.repo || ''; $('qr_token').value = t.token || '';
+  $('qr_repo').value = t.repo || 'nomiknomik/tagesdoku-team'; $('qr_token').value = t.token || '';
   qrZeigen('qrForm');
 };
 $('qrMake').onclick = async ()=>{
@@ -3458,7 +3458,7 @@ function grundInfoAktualisieren(){
 gehaltSaetzeSetzen(); grundInfoAktualisieren();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.42';
+const APP_VERSION = '1.43';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
