@@ -1802,8 +1802,11 @@ function zugangAnsicht(){
   $('syncQrInfo').style.display = qr ? '' : 'none';
   $('syncFelderCnt').textContent = qr ? 'Personalnr., Passwort' : 'Repo, Token, Personalnr., Passwort';
 }
-/* Vor 1.51: Team-Nutzer hatten einen Namen und keinen eigenen Weitergabe-Zugang */
-if(sync.repo && !sync.qr && sync.name && !localStorage.getItem(LS_TEILEN)){ sync.qr = true; saveSync(); }
+/* Vor 1.52 eingerichtet (QR ab 1.42): Team-Nutzer hatten einen Namen bzw. das
+   Team-Repo (1.51 hat den Namen geloescht) und nie selbst einen Code erzeugt. */
+const TEAM_REPO = 'nomiknomik/tagesdoku-team';
+if(sync.repo && !sync.qr && !localStorage.getItem(LS_TEILEN)
+   && (sync.name || sync.repo.toLowerCase() === TEAM_REPO)){ sync.qr = true; saveSync(); }
 zugangAnsicht();
 $('qrPinOk').onclick = async ()=>{
   const pin = $('qrPinIn').value.trim(); if(!pin) return;
@@ -1834,7 +1837,7 @@ function qrZeigen(teil){
 }
 $('zugangTeilen').onclick = ()=>{
   const t = load(LS_TEILEN, {});
-  $('qr_repo').value = t.repo || 'nomiknomik/tagesdoku-team'; $('qr_token').value = t.token || '';
+  $('qr_repo').value = t.repo || TEAM_REPO; $('qr_token').value = t.token || '';
   $('qrMsg').textContent = ''; $('qr_pin').value = '';
   qrZeigen('qrForm');
 };
@@ -3822,7 +3825,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.53';
+const APP_VERSION = '1.54';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
