@@ -533,6 +533,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
       <button class="btn outline" id="syncNow" style="font-size:14px;min-height:44px">Jetzt abgleichen</button>
     </div>
+    <button class="btn outline" id="zugangScannen" style="font-size:14px;min-height:44px;margin-top:8px">QR-Code scannen (Zugang übernehmen)</button>
     <button class="btn outline" id="zugangTeilen" style="font-size:14px;min-height:44px;margin-top:8px">Zugang per QR-Code weitergeben</button>
       </div>
     </details>
@@ -580,10 +581,14 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <button class="btn outline" id="qrLink" style="font-size:14px;min-height:44px;margin-top:8px">Link teilen (für PC ohne Kamera)</button>
       <div class="hint" style="text-align:left">Kollegin/Kollege scannt mit der iPhone-Kamera. Am PC: „Link teilen“, per Mail oder Nachricht schicken und dort im Browser öffnen. Ist die App dort schon auf dem Home-Bildschirm, öffnet sich Safari – dort „Code kopieren“ tippen und den Code in der App ins Feld „Repo“ einfügen.</div>
     </div>
+    <div id="qrScan" style="display:none;text-align:center">
+      <video id="qrVideo" playsinline muted style="width:100%;max-height:60vh;border-radius:12px;background:#000"></video>
+      <div class="hint" id="qrScanMsg">QR-Code der Kollegin/des Kollegen vor die Kamera halten.</div>
+    </div>
     <div id="qrEmpfang" style="display:none">
       <div class="hint" style="margin-top:0">Zugang erkannt für <b id="qrEmpfRepo"></b>.</div>
       <button class="btn" id="qrCopy" style="font-size:14px;min-height:44px">Code kopieren</button>
-      <div class="hint">Die App auf dem Home-Bildschirm hat einen eigenen Speicher. Dort Einstellungen → Daten → Zugangsdaten öffnen und den Code ins Feld „Repo“ einfügen. Danach eigenen Namen und eigenes Passwort eintragen und „Verbinden“ tippen.</div>
+      <div class="hint">Die App auf dem Home-Bildschirm hat einen eigenen Speicher. Dort Einstellungen → Daten → Zugangsdaten → „QR-Code scannen“ – oder den kopierten Code ins Feld „Repo“ einfügen. Danach eigenen Namen und eigenes Passwort eintragen und „Verbinden“ tippen.</div>
     </div>
     <button class="btn ghost" id="qrClose" style="margin-top:8px">Schließen</button>
   </div>
@@ -1661,7 +1666,7 @@ const ladeQr = ()=> qrLib ||= new Promise((ok, fail)=>{
   document.head.appendChild(sc);
 });
 function qrZeigen(teil){
-  ['qrForm','qrOut','qrEmpfang'].forEach(id => $(id).style.display = id===teil ? 'block' : 'none');
+  ['qrForm','qrOut','qrEmpfang','qrScan'].forEach(id => $(id).style.display = id===teil ? 'block' : 'none');
   $('qrBox').style.display = 'block';
 }
 $('zugangTeilen').onclick = ()=>{
@@ -1686,7 +1691,50 @@ $('qrMake').onclick = async ()=>{
     qrZeigen('qrOut');
   }catch(err){ toast(err.message); }
 };
-$('qrClose').onclick = ()=> $('qrBox').style.display = 'none';
+$('qrClose').onclick = ()=>{ scanStop(); $('qrBox').style.display = 'none'; };
+
+/* QR-Scanner in der App - noetig, weil die Kamera-App den Link in Safari
+   oeffnet und die Home-Bildschirm-App einen eigenen Speicher hat. */
+let jsqrLib = null, scanStrom = null;
+const ladeJsqr = ()=> jsqrLib ||= new Promise((ok, fail)=>{
+  const sc = document.createElement('script'); sc.src = 'jsQR.js';
+  sc.onload = ()=> ok(window.jsQR); sc.onerror = ()=>{ jsqrLib = null; fail(new Error('Scanner-Modul nicht geladen')); };
+  document.head.appendChild(sc);
+});
+function scanStop(){
+  if(scanStrom){ scanStrom.getTracks().forEach(t => t.stop()); scanStrom = null; }
+  $('qrVideo').srcObject = null;
+}
+$('zugangScannen').onclick = async ()=>{
+  qrZeigen('qrScan'); $('qrScanMsg').textContent = 'Kamera wird gestartet …';
+  try{
+    const [jsQR, strom] = await Promise.all([ladeJsqr(),
+      navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false})]);
+    scanStrom = strom;
+    const v = $('qrVideo'); v.srcObject = strom; await v.play();
+    $('qrScanMsg').textContent = 'QR-Code der Kollegin/des Kollegen vor die Kamera halten.';
+    const cv = document.createElement('canvas'), cx = cv.getContext('2d', {willReadFrequently:true});
+    const schritt = ()=>{
+      if(!scanStrom) return;
+      if(v.readyState >= 2 && v.videoWidth){
+        const f = Math.min(1, 640 / v.videoWidth);
+        cv.width = v.videoWidth * f; cv.height = v.videoHeight * f;
+        cx.drawImage(v, 0, 0, cv.width, cv.height);
+        const code = jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height, {inversionAttempts:'dontInvert'});
+        const z = code && zugangLesen(code.data);
+        if(z){ scanStop(); $('qrBox').style.display = 'none'; zugangUebernehmen(z); return; }
+        if(code) $('qrScanMsg').textContent = 'Das ist kein Zugangs-Code dieser App.';
+      }
+      requestAnimationFrame(schritt);
+    };
+    requestAnimationFrame(schritt);
+  }catch(err){
+    scanStop();
+    $('qrScanMsg').textContent = err.name === 'NotAllowedError'
+      ? 'Kamera-Zugriff abgelehnt. In den iPhone-Einstellungen erlauben oder den Code einfügen.'
+      : 'Kamera nicht verfügbar (' + err.message + ').';
+  }
+};
 $('qrForget').onclick = ()=>{
   localStorage.removeItem(LS_TEILEN); $('qr_token').value = '';
   $('qrMsg').innerHTML = '<span class="ok">Token von diesem Gerät gelöscht.</span>';
@@ -3496,7 +3544,7 @@ function grundInfoAktualisieren(){
 gehaltSaetzeSetzen(); grundInfoAktualisieren();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.46';
+const APP_VERSION = '1.47';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
