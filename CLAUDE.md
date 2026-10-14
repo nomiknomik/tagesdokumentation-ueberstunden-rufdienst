@@ -68,6 +68,9 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   und Tagesnotiz bleiben mit `*` als Schätzung markiert. Fehlen die drei
   Vormonate in der Erfassung, gehen sie mit 0 € ein; dafür steht die
   ⚠️-Warnung in `#gmWarn`, die nicht entfernt werden darf.
+- Grundgehalt nur aus den Einstellungen (`cfg.gehalt`, `grundFuer()`), nie im
+  Code. `gehaltSaetzeSetzen()` setzt daraus 734/796/797 (÷ 173,92) in die
+  `GEHALT.SAETZE_*`-Objekte; übrige Zuschläge bleiben tarifweit.
 - `hasContent()` entscheidet, was als erfasst gilt; `persist()` und Export
   speichern nur solche Tage (`echteTage()`).
 - Zeit-/Tagesrechnung über UTC-Tagesnummern (DST).

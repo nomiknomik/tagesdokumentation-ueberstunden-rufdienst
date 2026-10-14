@@ -504,6 +504,13 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="hint">Steht der Nachname in der Spalte OÄ → Rufdienst. Steht das Kürzel in der Spalte Urlaub → abwesend. Sonst Regeldienst.</div>
   </div>
   <div class="card">
+    <h2><span data-icon="euro"></span>Gehalt (Tarif)</h2>
+    <div class="row"><label>Entgeltgruppe/Stufe</label><input id="cfg_stufe" placeholder="z.B. Ä3 Stufe 1"></div>
+    <div class="row"><label>Grundgehalt ab 06/2026</label><input id="cfg_grund" inputmode="decimal" placeholder="Monat brutto, €"></div>
+    <div class="row"><label>Grundgehalt bis 05/2026</label><input id="cfg_grund_alt" inputmode="decimal" placeholder="nur für alte Monate"></div>
+    <div class="hint" id="grundInfo"></div>
+  </div>
+  <div class="card">
     <h2><span data-icon="euro"></span>Netto-Schätzung</h2>
     <div class="hint" style="margin-top:0">Trage aus alten Gehaltsabrechnungen Brutto und Netto ein – die App leitet daraus die Netto-Faktoren ab. Ab zwei Monaten wird zusätzlich der <b>Grenzfaktor</b> berechnet (was von einem zusätzlich verdienten Euro übrig bleibt); das ist der Wert, der für Zuschläge und Rufdienste zählt.</div>
     <div id="nettoRefs" style="margin-top:10px"></div>
@@ -2686,9 +2693,28 @@ const RUFDIENST_CODES = ['ZD1','ZD2','RBD','RBD2'];
 const ABWESENHEIT = {FRN:'957', FB:'707', KRANK:'715'};
 
 /* Grundverguetung (LA 050) - nicht Teil des Rechenkerns, weil sie nicht aus
-   den Zeiten folgt. Der Wechsel liegt beim Leistungsmonat Juni 2026. */
-const GRUNDVERGUETUNG = [{ab:'0000-01', betrag:9819.15}, {ab:'2026-06', betrag:10015.53}];
-const grundFuer = ym => GRUNDVERGUETUNG.filter(g => g.ab <= ym).pop().betrag;
+   den Zeiten folgt. Der Wechsel liegt beim Leistungsmonat Juni 2026.
+   Persoenlich: Grundgehalt (Einstellungen). Daraus folgt das Stundenentgelt
+   (Grundgehalt / 173,92 = 40 Std x 4,348 Wochen) fuer 734 sowie die
+   Rufdienst-Pauschalen 796 (200 %) und 797 (400 %). Die uebrigen Zuschlaege
+   haengen an einem tarifweiten Wert und bleiben wie in gehalt.js. */
+const gehaltNum = v => { v = String(v ?? '').trim().replace(/\s|€/g,'');
+  if(v.includes(',')) v = v.replace(/\./g,'').replace(',','.');
+  const x = parseFloat(v); return isFinite(x) && x > 0 ? x : 0; };
+const grundFuer = ym => {
+  const g = cfg.gehalt || {};
+  const neu = gehaltNum(g.grund), alt = gehaltNum(g.grundAlt) || neu;
+  return ym < '2026-06' ? alt : neu;
+};
+const STD_TEILER = 173.92;
+function gehaltSaetzeSetzen(){
+  [['2026-05', GEHALT.SAETZE_BIS_MAI_2026], ['2026-06', GEHALT.SAETZE_AB_JUNI_2026]].forEach(([ym, s])=>{
+    s._std ??= s[734];                       // Standardwert aus gehalt.js merken
+    const grund = grundFuer(ym);
+    const std = grund ? Math.round(grund / STD_TEILER * 100) / 100 : s._std;
+    s[734] = std; s[796] = Math.round(std * 200) / 100; s[797] = Math.round(std * 400) / 100;
+  });
+}
 
 /* Anzeigenamen fuer die Kompaktleiste + Verlaesslichkeit je Lohnart
    (Einstufung aus INTEGRATION.md, Abschnitt "Wie sicher ist was"). */
@@ -3202,6 +3228,8 @@ function renderGeldMonat(){
       + `Diese Monate gehen mit 0 € in den Durchschnitt ein, der Urlaubsaufschlag `
       + `ist dadurch deutlich zu niedrig.</span>`);
   }
+  if(!grundFuer(geldMonat)) warn.unshift('<span class="warn">⚠️ Kein Grundgehalt eingetragen (Einstellungen → Gehalt). '
+    + 'Grundvergütung fehlt, Rufdienst-Sätze sind nur Beispielwerte.</span>');
   $('gmWarn').innerHTML = warn.join('<br>');
 
   $('gmTage').innerHTML = tage.length ? tage.map(t => {
@@ -3324,8 +3352,24 @@ $('nettoRefs').addEventListener('click', e=>{
   });
 });
 
+/* Gehalt (Tarif): pro Geraet in cfg, landet mit im Backup */
+function grundInfoAktualisieren(){
+  const g = grundFuer('2026-06');
+  $('grundInfo').innerHTML = g
+    ? `Stundenentgelt ${eur(GEHALT.SAETZE_AB_JUNI_2026[734])} (Grundgehalt ÷ 173,92) – für Rufdienst-Einsätze (734) und die Pauschalen 796/797.`
+    : 'Grundgehalt laut Gehaltsabrechnung (LA 050) eintragen. Ohne Wert fehlt die Grundvergütung und die Rufdienst-Sätze sind nur Beispielwerte.';
+}
+[['cfg_stufe','stufe'],['cfg_grund','grund'],['cfg_grund_alt','grundAlt']].forEach(([id,key])=>{
+  $(id).value = (cfg.gehalt && cfg.gehalt[key]) || '';
+  $(id).addEventListener('change', e=>{
+    cfg.gehalt ||= {}; cfg.gehalt[key] = e.target.value.trim(); save(LS.cfg, cfg);
+    gehaltSaetzeSetzen(); grundInfoAktualisieren(); renderTagGeld();
+  });
+});
+gehaltSaetzeSetzen(); grundInfoAktualisieren();
+
 /* ---------- Start ---------- */
-const APP_VERSION = '1.40';
+const APP_VERSION = '1.41';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
@@ -3373,6 +3417,8 @@ showVersion();
   if(leer.length){ leer.forEach(k => delete days[k]); persist(); }
 }
 function fuelleNettoFelder(){
+  [['cfg_stufe','stufe'],['cfg_grund','grund'],['cfg_grund_alt','grundAlt']].forEach(([id,key])=> $(id).value = (cfg.gehalt && cfg.gehalt[key]) || '');
+  gehaltSaetzeSetzen(); grundInfoAktualisieren();
   $('cfg_netto_grenz').value   = (cfg.netto && cfg.netto.grenz)   || '';
   $('cfg_netto_schnitt').value = (cfg.netto && cfg.netto.schnitt) || '';
   renderNettoRefs();
