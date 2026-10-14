@@ -593,6 +593,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <div class="row"><label>Token</label><input id="qr_token" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <div class="row"><label>PIN für den Code</label><input id="qr_pin" placeholder="mind. 6 Zeichen, besser 8 mit Buchstaben" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <button class="btn" id="qrMake" style="font-size:14px;min-height:44px">QR-Code erzeugen</button>
+      <button class="btn outline" id="qrMail" style="font-size:14px;min-height:44px;margin-top:8px">Link erzeugen und per E-Mail senden</button>
       <div class="row2" style="margin-top:8px">
         <button class="btn outline" id="qrTest" style="font-size:14px;min-height:44px">Verbindung testen</button>
         <button class="btn outline" id="qrForget" style="font-size:14px;min-height:44px">Hier vergessen</button>
@@ -1841,18 +1842,35 @@ $('zugangTeilen').onclick = ()=>{
   $('qrMsg').textContent = ''; $('qr_pin').value = '';
   qrZeigen('qrForm');
 };
-$('qrMake').onclick = async ()=>{
+/* Formular pruefen, verschluesselten Link bauen (zugangLink); gibt die PIN zurueck */
+async function zugangLinkBauen(){
   const repo = $('qr_repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$|\/$/g,'');
   const token = $('qr_token').value.trim();
-  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ toast('Repo bitte als „besitzer/name“ angeben.'); return; }
-  if(!token){ toast('Token fehlt.'); return; }
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ toast('Repo bitte als „besitzer/name“ angeben.'); return null; }
+  if(!token){ toast('Token fehlt.'); return null; }
   const pin = $('qr_pin').value.trim();
-  if(pin.length < 6){ toast('PIN mit mindestens 6 Zeichen festlegen.'); return; }
+  if(pin.length < 6){ toast('PIN mit mindestens 6 Zeichen festlegen.'); return null; }
   localStorage.setItem(LS_TEILEN, JSON.stringify({repo, token}));
+  zugangLink = location.origin + location.pathname + '#zugang2=' + await zugangKodieren(repo, token, pin);
+  return pin;
+}
+/* Mail ohne PIN: die geht auf anderem Weg */
+$('qrMail').onclick = async ()=>{
+  const pin = await zugangLinkBauen(); if(!pin) return;
+  const text = 'Hallo,\n\nhier dein Zugang zur Zeiterfassungs-App (Online-Backup):\n\n' + zugangLink
+    + '\n\nSo geht es:\n1. Link auf dem Handy oder PC öffnen.\n2. Die PIN eingeben – die bekommst du von mir getrennt von dieser Mail.\n'
+    + '3. Deine Personalnummer und ein eigenes Backup-Passwort (mind. 10 Zeichen) eintragen und „Verbinden“ tippen.\n'
+    + '   Das Passwort auf allen eigenen Geräten gleich wählen und gut merken – ohne es ist das Backup verloren.\n\n'
+    + 'Ist die App schon auf dem Home-Bildschirm: Im Browser „Code kopieren“ tippen, in der App unter Einstellungen → Daten → Zugangsdaten ins Feld „Repo“ einfügen.\n\nBitte den Link nicht weiterleiten.';
+  const mail = 'mailto:?subject=' + encodeURIComponent('Zugang Zeiterfassungs-App') + '&body=' + encodeURIComponent(text);
+  $('qrMsg').innerHTML = `<span class="ok">Link erzeugt. Falls sich keine E-Mail öffnet: <a href="${mail}">E-Mail öffnen</a>. PIN <b>${pin.replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))}</b> getrennt mitteilen.</span>`;
+  location.href = mail;
+};
+$('qrMake').onclick = async ()=>{
+  const pin = await zugangLinkBauen(); if(!pin) return;
   try{
     const qrcode = await ladeQr();
     const qr = qrcode(0, 'M');
-    zugangLink = location.origin + location.pathname + '#zugang2=' + await zugangKodieren(repo, token, pin);
     $('qrPinZeige').innerHTML = `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – getrennt vom Code mitteilen (mündlich, anderer Kanal).`;
     qr.addData(zugangLink); qr.make();
     $('qrImg').innerHTML = qr.createSvgTag({cellSize:5, margin:2, scalable:true});
@@ -3825,7 +3843,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.54';
+const APP_VERSION = '1.55';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
