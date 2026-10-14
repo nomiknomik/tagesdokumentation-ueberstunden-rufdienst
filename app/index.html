@@ -64,7 +64,7 @@ header #syncBtn{width:32px;height:36px;border:0;background:transparent}
 @keyframes dreh{to{transform:rotate(360deg)}}
 .vchip{display:inline-block;margin:0 0 0 6px;vertical-align:2px;font-size:11px;line-height:14px;font-weight:600;letter-spacing:.02em;
   color:var(--color-text-muted);background:var(--color-card);border:1px solid var(--color-border);
-  border-radius:999px;padding:2px 8px}
+  border-radius:999px;padding:2px 8px;cursor:pointer;font-family:inherit}
 main{padding:0 var(--spacing-page) calc(96px + env(safe-area-inset-bottom));max-width:480px;margin:0 auto}
 section{display:none} section.on{display:block}
 
@@ -320,7 +320,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 <body>
 <header>
   <div class="hd">
-    <div class="hdtxt"><h1>Zeiterfassung</h1><span class="vchip" id="appVersion">v–</span></div>
+    <div class="hdtxt"><h1>Zeiterfassung</h1><button class="vchip" id="appVersion" title="Nach Update suchen">v–</button></div>
     <button class="iconbtn" id="syncBtn" data-st="off" aria-label="Online-Backup"><span data-icon="cloudOff"></span></button>
     <div class="hdundo">
       <button class="iconbtn" id="undoBtn" aria-label="Rückgängig" disabled><span data-icon="undo"></span></button>
@@ -504,17 +504,6 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="hint">Steht der Nachname in der Spalte OÄ → Rufdienst. Steht das Kürzel in der Spalte Urlaub → abwesend. Sonst Regeldienst.</div>
   </div>
   <div class="card">
-    <h2><span data-icon="clock"></span>Nächtliche Einsätze</h2>
-    <div class="row"><label>Ich trage sie ein am</label>
-      <select id="cfg_nachtbuchung">
-        <option value="kalendertag">Tag, an dem der Anruf kam</option>
-        <option value="dienstbeginn">Tag, an dem der Dienst begann</option>
-      </select></div>
-    <div class="hint">Nur für Einsätze vor 06:00 Uhr relevant. Die Abrechnung rechnet sie dem
-      Kalendertag zu, an dem sie stattfanden – die App muss dafür wissen, unter welchem Datum
-      du sie erfasst. Die Zeitstempel-Knöpfe schreiben immer den Tag des Anrufs.</div>
-  </div>
-  <div class="card">
     <h2><span data-icon="euro"></span>Netto-Schätzung</h2>
     <div class="hint" style="margin-top:0">Trage aus alten Gehaltsabrechnungen Brutto und Netto ein – die App leitet daraus die Netto-Faktoren ab. Ab zwei Monaten wird zusätzlich der <b>Grenzfaktor</b> berechnet (was von einem zusätzlich verdienten Euro übrig bleibt); das ist der Wert, der für Zuschläge und Rufdienste zählt.</div>
     <div id="nettoRefs" style="margin-top:10px"></div>
@@ -526,6 +515,9 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="save"></span>Daten</h2>
     <div class="field"><label><b>Online-Backup &amp; Sync (privates GitHub-Repo, verschlüsselt)</b></label></div>
+    <details class="monthgroup" id="syncFelder">
+      <summary><span>Zugangsdaten<span class="cnt">Repo, Token, Passwort</span></span><span data-icon="chevronRight"></span></summary>
+      <div style="padding:0 14px 12px">
     <div class="row"><label>Repo (Besitzer/Name)</label><input id="sync_repo" name="username" autocomplete="username" placeholder="mustermann/tagesdoku-backup" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     <div class="row"><label>Token</label><input id="sync_token" type="text" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
     <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" name="password" placeholder="auf allen Geräten gleich" autocomplete="current-password"></div>
@@ -533,13 +525,15 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
       <button class="btn outline" id="syncNow" style="font-size:14px;min-height:44px">Jetzt abgleichen</button>
     </div>
+      </div>
+    </details>
     <div class="hint" id="syncMsg"></div>
     <div class="hint">Sichert automatisch beim Öffnen und Verlassen der App, sobald sich etwas geändert hat. Ein anderes Gerät mit denselben drei Angaben übernimmt den Stand. Die Daten werden vor dem Hochladen mit dem Passwort verschlüsselt (AES-256), GitHub sieht nur unlesbaren Text. <b>Ohne das Passwort ist das Backup verloren.</b> Token: GitHub → Settings → Developer settings → Fine-grained tokens, nur dieses Repo, Berechtigung „Contents: Read and write“.</div>
 
     <div class="field" style="margin-top:14px"><label><b>Automatische Kopien auf diesem Gerät</b></label></div>
     <div class="row2"><select id="snapSel"></select>
       <button class="btn outline" id="snapLoad" style="font-size:14px;min-height:44px;flex:0 0 40%">Wiederherstellen</button></div>
-    <div class="hint">Eine Kopie pro Tag, die letzten 14 Tage; „(vorher)“ ist der Stand vor einer Übernahme vom anderen Gerät. Hilft bei versehentlichem Löschen, nicht bei Verlust des Geräts.</div>
+    <div class="hint">Eine Kopie pro Tag, die letzten 14 Tage; „(vorher)“ ist der Stand vor einer Übernahme vom anderen Gerät. Gespeichert im Browser-Speicher der App (IndexedDB) – keine Datei, in „Dateien“ nicht sichtbar. Wird mit der App bzw. den Website-Daten gelöscht. Hilft bei versehentlichem Löschen, nicht bei Verlust des Geräts.</div>
 
     <div id="dirBox" style="display:none">
       <div class="field" style="margin-top:14px"><label><b>Sicherungsordner auf diesem Computer</b></label></div>
@@ -554,13 +548,6 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="hint" id="importDataMsg"></div>
     <div class="hint">Die Arbeitsdaten liegen lokal auf dem Gerät (localStorage). Zur Startseite hinzufügen, damit iOS sie nicht nach 7 Tagen löscht.</div>
     <div class="hint" id="storageInfo"></div>
-  </div>
-  <div class="card">
-    <h2><span data-icon="info"></span>App-Version</h2>
-    <div class="row"><label>Version</label><input class="ro" id="verNum" readonly></div>
-    <div class="row"><label>Stand</label><input class="ro" id="verDate" readonly></div>
-    <button class="btn outline" id="checkUpdate">Nach Update suchen</button>
-    <div class="hint" id="updateInfo">Die Versionsnummer steht auch oben im Kopf der App. Stimmt sie nicht mit der erwarteten überein, hier auf „Nach Update suchen“ tippen.</div>
   </div>
 </section>
 </main>
@@ -678,7 +665,7 @@ const save = (k,v)=>{
   if(typeof syncNachAenderung === 'function') syncNachAenderung();
 };
 let cfg   = load(LS.cfg, {name:'',pnr:'',funktion:'Oberarzt',klinik:'Allgemein-, Viszeral- u. Gefäßchirurgie',nachname:'',kuerzel:''});
-cfg.nachtBuchung ||= 'kalendertag';
+cfg.nachtBuchung = 'dienstbeginn'; // fest: naechtliche Einsaetze stehen am Tag des Dienstbeginns
 cfg.empfaenger ??= '';   // leer = bewusst nichts kopieren
 let plan  = load(LS.plan, {});   // "2026-09-07" -> {wd, oa, urlaub}
 let days  = load(LS.days, {});   // "2026-09-07" -> Tagesdaten
@@ -1226,14 +1213,13 @@ $('datum').onchange = e => { if(e.target.value){ cur = e.target.value; renderDay
 
 /* ---------- Einstellungen ---------- */
 const CFGMAP = {cfg_name:'name', cfg_pnr:'pnr', cfg_funktion:'funktion', cfg_klinik:'klinik',
-                cfg_nachname:'nachname', cfg_kuerzel:'kuerzel', cfg_nachtbuchung:'nachtBuchung',
+                cfg_nachname:'nachname', cfg_kuerzel:'kuerzel',
                 cfg_empfaenger:'empfaenger'};
 Object.entries(CFGMAP).forEach(([id,key])=>{
   $(id).value = cfg[key] || '';
   $(id).oninput = $(id).onchange = e => {
     cfg[key] = e.target.value; save(LS.cfg,cfg);
     if(key==='funktion') renderDay();
-    else if(key==='nachtBuchung') renderTagGeld();
     else if(key==='empfaenger') {}
     else renderDuty();
   };
@@ -3333,13 +3319,11 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.38.3';
-const APP_BUILD   = '06.10.2026';
+const APP_VERSION = '1.39';
+const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
   $('appVersion').textContent = 'v' + APP_VERSION;
-  $('verNum').value  = 'v' + APP_VERSION;
-  $('verDate').value = APP_BUILD;
 }
 
 /* Der PDF-Knopf im Header gehoert zum Tagesbogen - auf den anderen Tabs
@@ -3390,8 +3374,9 @@ function fuelleNettoFelder(){
 fuelleNettoFelder();
 renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
 renderSnaps(); syncStatus(); autoSichern();
-$('checkUpdate').onclick = async ()=>{
-  const info = $('updateInfo');
+/* Update-Suche: Tipp auf die Versionsnummer im Kopf */
+$('appVersion').onclick = async ()=>{
+  const info = {set textContent(t){ toast(t); }};
   info.textContent = 'Suche nach Update …';
   try{
     const res = await fetch('index.html?cb=' + Date.now(), {cache:'no-store'});
