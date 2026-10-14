@@ -101,9 +101,9 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   keine Namen im Repo; alte `tagesdoku_backup[_<name>].json`, die eigene
   Vorgängerdatei (`sync.altDatei`) und das 1.51-Schema (nur Passwort) werden per
   Passwort-Probe gefunden und umbenannt – fremde Hash-Dateien nie proben.
-  Passwort und PIN ohne Mindestlänge (Wunsch). Zugangs-Link (`#zugang2=`) ist
-  mit PIN verschlüsselt (AES-GCM, PBKDF2 600k); der QR-Code trägt die PIN als
-  `&pin=` mit (Scannen ohne Eingabe), Link/Mail ohne PIN. Alte
+  Passwort und PIN ohne Mindestlänge (Wunsch). Zugangs-Link und QR-Code
+  (`#zugang2=`) sind mit PIN verschlüsselt (AES-GCM, PBKDF2 600k), die PIN steht
+  nie im Code, Öffnen nur mit PIN-Eingabe. Alte
   `#zugang=`-Links werden noch gelesen.
   Per QR/Link eingerichtet (`sync.qr`) = Nutzer: Repo, Token und „Zugang
   weitergeben“ ausgeblendet (`zugangAnsicht()`), nur Personalnummer

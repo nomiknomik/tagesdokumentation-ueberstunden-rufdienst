@@ -599,7 +599,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
         <button class="btn outline" id="qrForget" style="font-size:14px;min-height:44px">Hier vergessen</button>
       </div>
       <div class="hint" id="qrMsg"></div>
-      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. Der QR-Code enthält die PIN – nur persönlich zeigen. Beim Link (Mail) fehlt sie, dann die PIN auf anderem Weg mitteilen. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
+      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. QR-Code und Link öffnen sich nur mit der PIN – die mündlich oder auf anderem Weg mitteilen. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
     </div>
     <div id="qrOut" style="display:none;text-align:center">
       <div class="hint" id="qrPinZeige" style="margin-top:0"></div>
@@ -1772,24 +1772,17 @@ async function zugangEntschluesseln(code, pin){
 }
 function zugangLesen(txt){
   const m2 = String(txt||'').match(/zugang2=([\w-]+)/);
-  if(m2){ const p = String(txt).match(/[#&?]pin=([^&\s]+)/);   // QR-Code traegt die PIN mit
-          let pin = ''; try{ pin = p ? decodeURIComponent(p[1]) : ''; }catch(e){}
-          return {code: m2[1], pin}; }
+  if(m2) return {code: m2[1]};
   const m = String(txt||'').match(/zugang=([\w-]+)/); if(!m) return null;
   try{ const z = JSON.parse(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')));
        return z && z.r && z.t ? z : null; }catch(e){ return null; }
 }
-let pinCode = '', pinMit = '';
+let pinCode = '';
 function zugangUebernehmen(z, kopieZeigen){
-  if(z.code){   // verschluesselt: PIN aus dem QR-Code oder abfragen
-    pinCode = z.code; pinMit = z.pin || ''; $('qrPinIn').value = pinMit; $('qrPinMsg').textContent = '';
+  if(z.code){   // verschluesselt: erst PIN abfragen
+    pinCode = z.code; $('qrPinIn').value = ''; $('qrPinMsg').textContent = '';
     $('qrPinKopie').style.display = kopieZeigen ? 'block' : 'none';
-    if(pinMit && !kopieZeigen){
-      zugangEntschluesseln(z.code, pinMit).then(e => { $('qrBox').style.display = 'none'; zugangUebernehmen(e); },
-        ()=>{ $('qrPinIn').value = ''; qrZeigen('qrPin'); });
-      return;
-    }
-    qrZeigen('qrPin'); if(!pinMit) setTimeout(()=> $('qrPinIn').focus(), 50);
+    qrZeigen('qrPin'); setTimeout(()=> $('qrPinIn').focus(), 50);
     return;
   }
   document.querySelector('nav button[data-tab=cfg]').click();
@@ -1826,7 +1819,7 @@ $('qrPinOk').onclick = async ()=>{
 };
 $('qrPinIn').onkeydown = e=>{ if(e.key === 'Enter') $('qrPinOk').click(); };
 $('qrPinCopy').onclick = ()=>{
-  navigator.clipboard.writeText('zugang2=' + pinCode + (pinMit ? '&pin=' + encodeURIComponent(pinMit) : '')).then(()=> toast('Code kopiert.'), ()=> toast('Kopieren nicht möglich.'));
+  navigator.clipboard.writeText('zugang2=' + pinCode).then(()=> toast('Code kopiert.'), ()=> toast('Kopieren nicht möglich.'));
 };
 let qrLib = null, zugangLink = '';
 /* Link statt QR: per Mail/Nachricht an den PC schicken und dort im Browser oeffnen */
@@ -1878,8 +1871,8 @@ $('qrMake').onclick = async ()=>{
   try{
     const qrcode = await ladeQr();
     const qr = qrcode(0, 'M');
-    $('qrPinZeige').innerHTML = `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – steckt im QR-Code (Scannen geht ohne Eingabe). Beim Link für den PC getrennt mitteilen.`;
-    qr.addData(zugangLink + '&pin=' + encodeURIComponent(pin)); qr.make();
+    $('qrPinZeige').innerHTML = `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – nicht im Code, getrennt mitteilen (mündlich, anderer Kanal).`;
+    qr.addData(zugangLink); qr.make();
     $('qrImg').innerHTML = qr.createSvgTag({cellSize:5, margin:2, scalable:true});
     const svg = $('qrImg').querySelector('svg'); svg.style.width = svg.style.height = 'min(70vw, 280px)';
     qrZeigen('qrOut');
@@ -3850,7 +3843,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.56';
+const APP_VERSION = '1.57';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
