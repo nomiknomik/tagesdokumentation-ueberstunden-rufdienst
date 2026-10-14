@@ -97,11 +97,15 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
 - Backup/Sync: `save()` setzt `tagesdoku_dirty`; Sync-Zugangsdaten
   (`tagesdoku_sync`) nur über `saveSync()`, nie im Backup. Online-Datei im
   privaten Repo, AES-GCM/PBKDF2, Abgleich über Datei-SHA. Dateiname
-  `tagesdoku_<PBKDF2(Passwort)>.json` (`dateiErmitteln()`, `sync.datei`), keine
-  Namen im Repo; alte `tagesdoku_backup[_<name>].json` werden beim ersten
-  Abgleich per Passwort-Probe gefunden und umbenannt. Neues Backup erst ab
+  `tagesdoku_<PBKDF2(Name\nPasswort)>.json` (`dateiErmitteln()`, `sync.datei`),
+  keine Namen im Repo; alte `tagesdoku_backup[_<name>].json`, die eigene
+  Vorgängerdatei (`sync.altDatei`) und das 1.51-Schema (nur Passwort) werden per
+  Passwort-Probe gefunden und umbenannt – fremde Hash-Dateien nie proben. Neues Backup erst ab
   10 Zeichen Passwort. Zugangs-Link/QR (`#zugang2=`) ist mit PIN verschlüsselt
-  (AES-GCM, PBKDF2 600k), alte `#zugang=`-Links werden noch gelesen. „Lokal geändert“
+  (AES-GCM, PBKDF2 600k), alte `#zugang=`-Links werden noch gelesen.
+  Per QR/Link eingerichtet (`sync.qr`) = Nutzer: Repo, Token und „Zugang
+  weitergeben“ ausgeblendet (`zugangAnsicht()`), nur Name + Passwort. Von Hand
+  eingetragen = Admin. Nur Anzeige – der Token liegt technisch im Browser. „Lokal geändert“
   heißt Prüfsumme ≠ `sync.hash` (Dirty-Flag allein ist nur ein Vorfilter).
   Haben beide Seiten geändert: Drei-Wege-Abgleich je Eintrag gegen die Basis
   (IndexedDB `kv/basis`), Rückfrage nur bei echten Kollisionen; vor jeder
