@@ -103,8 +103,9 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   Passwort-Probe gefunden und umbenannt – fremde Hash-Dateien nie proben.
   Passwort und PIN ohne Mindestlänge (Wunsch). Zugangs-Link und QR-Code
   (`#zugang2=`) sind mit PIN verschlüsselt (AES-GCM, PBKDF2 600k), die PIN steht
-  nie im Code, Öffnen nur mit PIN-Eingabe. Alte
-  `#zugang=`-Links werden noch gelesen.
+  nie im Code, Öffnen nur mit PIN-Eingabe. Gültig 24 h (`ZUGANG_GUELTIG`,
+  `bis` im verschlüsselten Inhalt); Codes ohne `bis` und alte unverschlüsselte
+  `#zugang=`-Links sind gesperrt. Reine App-Prüfung, der Token selbst bleibt gültig.
   Per QR/Link eingerichtet (`sync.qr`) = Nutzer: Repo, Token und „Zugang
   weitergeben“ ausgeblendet (`zugangAnsicht()`), nur Personalnummer
   (`sync.kennung`, füllt leere Kopfdaten-`cfg.pnr`) + Passwort. Von Hand

@@ -599,7 +599,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
         <button class="btn outline" id="qrForget" style="font-size:14px;min-height:44px">Hier vergessen</button>
       </div>
       <div class="hint" id="qrMsg"></div>
-      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. QR-Code und Link öffnen sich nur mit der PIN – die mündlich oder auf anderem Weg mitteilen. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
+      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. QR-Code und Link öffnen sich nur mit der PIN – die mündlich oder auf anderem Weg mitteilen – und gelten 24 Stunden. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
     </div>
     <div id="qrOut" style="display:none;text-align:center">
       <div class="hint" id="qrPinZeige" style="margin-top:0"></div>
@@ -1748,6 +1748,7 @@ $('syncNow').onclick = ()=> abgleichen(true);
    Das Passwort ist bewusst NICHT im Code. */
 const LS_TEILEN = 'tagesdoku_teilen';   // nur Geraet, nicht im Backup
 const ZUGANG_ITER = 600000;
+const ZUGANG_GUELTIG = 24 * 3600 * 1000;   // Einladung gilt 24 h; Ablauf steckt verschluesselt (AES-GCM) im Code
 const b64url = buf => b64(buf).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const unb64url = s => unb64(s.replace(/-/g,'+').replace(/_/g,'/'));
 async function pinSchluessel(pin, salt){
@@ -1758,7 +1759,7 @@ async function pinSchluessel(pin, salt){
 async function zugangKodieren(r, t, pin){
   const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, await pinSchluessel(pin, salt),
-    new TextEncoder().encode(JSON.stringify({r, t}))));
+    new TextEncoder().encode(JSON.stringify({r, t, bis: Date.now() + ZUGANG_GUELTIG}))));
   const alles = new Uint8Array(28 + ct.length); alles.set(salt); alles.set(iv, 16); alles.set(ct, 28);
   return b64url(alles);
 }
@@ -1768,17 +1769,17 @@ async function zugangEntschluesseln(code, pin){
     await pinSchluessel(pin, u.subarray(0, 16)), u.subarray(28));
   const z = JSON.parse(new TextDecoder().decode(pt));
   if(!z || !z.r || !z.t) throw new Error('Code unvollständig.');
+  if(!z.bis || Date.now() > z.bis) throw new Error('abgelaufen');   // Codes vor 1.59 ohne Ablauf: gesperrt
   return z;
 }
 function zugangLesen(txt){
   const m2 = String(txt||'').match(/zugang2=([\w-]+)/);
   if(m2) return {code: m2[1]};
-  const m = String(txt||'').match(/zugang=([\w-]+)/); if(!m) return null;
-  try{ const z = JSON.parse(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')));
-       return z && z.r && z.t ? z : null; }catch(e){ return null; }
+  return /zugang=[\w-]+/.test(String(txt||'')) ? {alt:true} : null;   // unverschluesselt vor 1.51: ohne PIN und Ablauf, gesperrt
 }
 let pinCode = '';
 function zugangUebernehmen(z, kopieZeigen){
+  if(z.alt){ setTimeout(()=> toast('Dieser alte Zugangs-Code gilt nicht mehr – bitte einen neuen anfordern.')); return; }   // auch beim Start (toast erst danach bereit)
   if(z.code){   // verschluesselt: erst PIN abfragen
     pinCode = z.code; $('qrPinIn').value = ''; $('qrPinMsg').textContent = '';
     $('qrPinKopie').style.display = kopieZeigen ? 'block' : 'none';
@@ -1816,7 +1817,9 @@ $('qrPinOk').onclick = async ()=>{
   try{
     const z = await zugangEntschluesseln(pinCode, pin);
     $('qrBox').style.display = 'none'; zugangUebernehmen(z);
-  }catch(e){ $('qrPinMsg').innerHTML = '<span class="note">PIN falsch oder Code beschädigt.</span>'; }
+  }catch(e){ $('qrPinMsg').innerHTML = e.message === 'abgelaufen'
+    ? '<span class="note">Diese Einladung ist abgelaufen (gilt 24 Stunden). Bitte einen neuen Code anfordern.</span>'
+    : '<span class="note">PIN falsch oder Code beschädigt.</span>'; }
 };
 $('qrPinIn').onkeydown = e=>{ if(e.key === 'Enter') $('qrPinOk').click(); };
 $('qrPinCopy').onclick = ()=>{
@@ -1859,7 +1862,7 @@ async function zugangLinkBauen(){
 $('qrMail').onclick = async ()=>{
   const pin = await zugangLinkBauen(); if(!pin) return;
   const text = 'Hallo,\n\nhier dein Zugang zur Zeiterfassungs-App (Online-Backup):\n\n' + zugangLink
-    + '\n\nSo geht es:\n1. Link auf dem Handy oder PC öffnen.\n2. Die PIN eingeben – die bekommst du von mir getrennt von dieser Mail.\n'
+    + '\n\nSo geht es:\n1. Link auf dem Handy oder PC öffnen.\n2. Die PIN eingeben – die bekommst du von mir getrennt von dieser Mail. Der Link gilt 24 Stunden.\n'
     + '3. Deine Personalnummer und ein eigenes Backup-Passwort eintragen und „Verbinden“ tippen.\n'
     + '   Das Passwort auf allen eigenen Geräten gleich wählen und gut merken – ohne es ist das Backup verloren.\n\n'
     + 'Ist die App schon auf dem Home-Bildschirm: Im Browser „Code kopieren“ tippen, in der App unter Einstellungen → Daten → Zugangsdaten ins Feld „Repo“ einfügen.\n\nBitte den Link nicht weiterleiten.';
@@ -1872,7 +1875,7 @@ $('qrMake').onclick = async ()=>{
   try{
     const qrcode = await ladeQr();
     const qr = qrcode(0, 'M');
-    $('qrPinZeige').innerHTML = `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – nicht im Code, getrennt mitteilen (mündlich, anderer Kanal).`;
+    $('qrPinZeige').innerHTML = `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – nicht im Code, getrennt mitteilen (mündlich, anderer Kanal). Gültig bis ${new Date(Date.now() + ZUGANG_GUELTIG).toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}.`;
     qr.addData(zugangLink); qr.make();
     $('qrImg').innerHTML = qr.createSvgTag({cellSize:5, margin:2, scalable:true});
     const svg = $('qrImg').querySelector('svg'); svg.style.width = svg.style.height = 'min(70vw, 280px)';
@@ -3844,7 +3847,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.58';
+const APP_VERSION = '1.59';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
