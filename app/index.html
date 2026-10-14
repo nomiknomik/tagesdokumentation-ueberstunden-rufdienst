@@ -516,10 +516,11 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <h2><span data-icon="save"></span>Daten</h2>
     <div class="field"><label><b>Online-Backup &amp; Sync (privates GitHub-Repo, verschlüsselt)</b></label></div>
     <details class="monthgroup" id="syncFelder">
-      <summary><span>Zugangsdaten<span class="cnt">Repo, Token, Passwort</span></span><span data-icon="chevronRight"></span></summary>
+      <summary><span>Zugangsdaten<span class="cnt">Repo, Token, Name, Passwort</span></span><span data-icon="chevronRight"></span></summary>
       <div style="padding:0 14px 12px">
     <div class="row"><label>Repo (Besitzer/Name)</label><input id="sync_repo" name="username" autocomplete="username" placeholder="mustermann/tagesdoku-backup" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     <div class="row"><label>Token</label><input id="sync_token" type="text" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
+    <div class="row"><label>Name (Datei)</label><input id="sync_name" placeholder="leer lassen, wenn allein im Repo" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" name="password" placeholder="auf allen Geräten gleich" autocomplete="current-password"></div>
     <div class="row2">
       <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
@@ -528,7 +529,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       </div>
     </details>
     <div class="hint" id="syncMsg"></div>
-    <div class="hint">Sichert automatisch beim Öffnen und Verlassen der App, sobald sich etwas geändert hat. Ein anderes Gerät mit denselben drei Angaben übernimmt den Stand. Die Daten werden vor dem Hochladen mit dem Passwort verschlüsselt (AES-256), GitHub sieht nur unlesbaren Text. <b>Ohne das Passwort ist das Backup verloren.</b> Token: GitHub → Settings → Developer settings → Fine-grained tokens, nur dieses Repo, Berechtigung „Contents: Read and write“.</div>
+    <div class="hint">Sichert automatisch beim Öffnen und Verlassen der App, sobald sich etwas geändert hat. Ein anderes Gerät mit denselben Angaben übernimmt den Stand. Teilen sich mehrere Personen ein Repo, trägt jede einen eigenen Namen ein (eigene Datei) und ein eigenes Passwort. Die Daten werden vor dem Hochladen mit dem Passwort verschlüsselt (AES-256), GitHub sieht nur unlesbaren Text. <b>Ohne das Passwort ist das Backup verloren.</b> Token: GitHub → Settings → Developer settings → Fine-grained tokens, nur dieses Repo, Berechtigung „Contents: Read and write“.</div>
 
     <div class="field" style="margin-top:14px"><label><b>Automatische Kopien auf diesem Gerät</b></label></div>
     <div class="row2"><select id="snapSel"></select>
@@ -1385,7 +1386,9 @@ const LS_SYNC = 'tagesdoku_sync';   // {repo, token, pw, sha, zuletzt} - bewusst
 let sync = load(LS_SYNC, {});
 const saveSync = ()=> localStorage.setItem(LS_SYNC, JSON.stringify(sync));   // nicht save(): kein Dirty-Flag
 const syncAktiv = ()=> !!(sync.repo && sync.token && sync.pw);
-const SYNC_DATEI = 'tagesdoku_backup.json';
+/* Mehrere Personen im selben Repo: jede bekommt eine eigene Datei
+   tagesdoku_backup_<name>.json. Ohne Name bleibt es die alte Datei. */
+const syncDatei = ()=> sync.name ? `tagesdoku_backup_${sync.name}.json` : 'tagesdoku_backup.json';
 const b64 = buf => {   // in Stuecken: String.fromCharCode(...grosses Array) sprengt den Stack
   const u = new Uint8Array(buf); let s = '';
   for(let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
@@ -1424,7 +1427,7 @@ async function entschluesseln(datei){
   }catch(err){ throw new Error('Entschlüsseln fehlgeschlagen – Backup-Passwort falsch?'); }
 }
 async function gh(method, body){
-  const res = await fetch(`https://api.github.com/repos/${sync.repo}/contents/${SYNC_DATEI}` + (method==='GET' ? '?t='+Date.now() : ''), {
+  const res = await fetch(`https://api.github.com/repos/${sync.repo}/contents/${syncDatei()}` + (method==='GET' ? '?t='+Date.now() : ''), {
     method, cache:'no-store',
     headers:{Authorization:'Bearer '+sync.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'},
     body: body && JSON.stringify(body)
@@ -1577,15 +1580,17 @@ async function abgleichen(manuell){
   }
   syncLaeuft = false; syncStatus();
 }
-$('sync_repo').value = sync.repo || ''; $('sync_token').value = sync.token || ''; $('sync_pw').value = sync.pw || '';
+$('sync_repo').value = sync.repo || ''; $('sync_token').value = sync.token || ''; $('sync_pw').value = sync.pw || ''; $('sync_name').value = sync.name || '';
 if(syncAktiv() && sync.zuletzt) $('syncMsg').innerHTML = `<span class="ok">Online gesichert: ${new Date(sync.zuletzt).toLocaleString('de-DE')}.</span>`;
 $('syncSave').onclick = ()=>{
   const repo = $('sync_repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$|\/$/g,'');
   const token = $('sync_token').value.trim(), pw = $('sync_pw').value;
+  const name = $('sync_name').value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ß/g,'ss').replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');
   if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ $('syncMsg').innerHTML = '<span class="note">Repo bitte als „besitzer/name“ angeben.</span>'; return; }
   if(!token || pw.length < 8){ $('syncMsg').innerHTML = '<span class="note">Token und ein Passwort mit mindestens 8 Zeichen eintragen.</span>'; return; }
   // Neues Ziel oder Passwort: Abgleich beginnt von vorn (sha vergessen -> Rueckfrage statt stillem Ueberschreiben)
-  if(repo !== sync.repo || pw !== sync.pw) sync = {repo, token, pw}; else sync.token = token;
+  if(repo !== sync.repo || pw !== sync.pw || name !== (sync.name || '')) sync = {repo, token, pw, ...(name && {name})}; else sync.token = token;
+  $('sync_name').value = name;
   saveSync();
   abgleichen(true);
 };
@@ -1594,6 +1599,7 @@ $('syncBtn').onclick = ()=>{
   if(syncAktiv() && !syncFehler){ abgleichen(true); return; }
   // nicht eingerichtet oder Fehler: zu den Einstellungen, dort steht die Meldung
   document.querySelector('nav button[data-tab=cfg]').click();
+  $('syncFelder').open = true;
   setTimeout(()=> $('syncMsg').scrollIntoView({block:'center', behavior:'smooth'}), 50);
 };
 addEventListener('online',  ()=>{ syncStatus(); abgleichen(false); });
@@ -3319,7 +3325,7 @@ $('nettoRefs').addEventListener('click', e=>{
 });
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.39';
+const APP_VERSION = '1.40';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
