@@ -1801,6 +1801,7 @@ function zugangAnsicht(){
   const qr = zugangQr || !!sync.qr;
   ['syncRepoZeile','syncTokenZeile','zugangTeilen','syncTokenHint'].forEach(id => $(id).style.display = qr ? 'none' : '');
   $('syncQrInfo').style.display = qr ? '' : 'none';
+  ['sync_token','qr_token'].forEach(id => $(id).classList.toggle('maskiert', qr));   // Admin sieht den Token im Klartext
   $('syncFelderCnt').textContent = qr ? 'Personalnr., Passwort' : 'Repo, Token, Personalnr., Passwort';
 }
 /* Vor 1.52 eingerichtet (QR ab 1.42): Team-Nutzer hatten einen Namen bzw. das
@@ -1839,7 +1840,7 @@ function qrZeigen(teil){
 $('zugangTeilen').onclick = ()=>{
   const t = load(LS_TEILEN, {});
   $('qr_repo').value = t.repo || TEAM_REPO; $('qr_token').value = t.token || '';
-  $('qrMsg').textContent = ''; $('qr_pin').value = '';
+  $('qrMsg').textContent = ''; $('qr_pin').value = t.pin || '';
   qrZeigen('qrForm');
 };
 /* Formular pruefen, verschluesselten Link bauen (zugangLink); gibt die PIN zurueck */
@@ -1850,7 +1851,7 @@ async function zugangLinkBauen(){
   if(!token){ toast('Token fehlt.'); return null; }
   const pin = $('qr_pin').value.trim();
   if(!pin){ toast('PIN festlegen.'); return null; }
-  localStorage.setItem(LS_TEILEN, JSON.stringify({repo, token}));
+  localStorage.setItem(LS_TEILEN, JSON.stringify({repo, token, pin}));   // PIN merken, nur Admin-Geraet
   zugangLink = location.origin + location.pathname + '#zugang2=' + await zugangKodieren(repo, token, pin);
   return pin;
 }
@@ -1923,8 +1924,8 @@ $('zugangScannen').onclick = async ()=>{
   }
 };
 $('qrForget').onclick = ()=>{
-  localStorage.removeItem(LS_TEILEN); $('qr_token').value = '';
-  $('qrMsg').innerHTML = '<span class="ok">Token von diesem Gerät gelöscht.</span>';
+  localStorage.removeItem(LS_TEILEN); $('qr_token').value = ''; $('qr_pin').value = '';
+  $('qrMsg').innerHTML = '<span class="ok">Token und PIN von diesem Gerät gelöscht.</span>';
 };
 /* Prueft Lesen UND Schreiben: legt eine kleine Testdatei an und loescht sie
    gleich wieder (zwei Commits im Team-Repo, sonst keine Spuren). */
@@ -3843,7 +3844,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.57';
+const APP_VERSION = '1.58';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){

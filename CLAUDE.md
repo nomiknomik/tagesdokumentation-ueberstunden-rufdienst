@@ -108,7 +108,8 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   Per QR/Link eingerichtet (`sync.qr`) = Nutzer: Repo, Token und „Zugang
   weitergeben“ ausgeblendet (`zugangAnsicht()`), nur Personalnummer
   (`sync.kennung`, füllt leere Kopfdaten-`cfg.pnr`) + Passwort. Von Hand
-  eingetragen = Admin. Nur Anzeige – der Token liegt technisch im Browser. „Lokal geändert“
+  eingetragen = Admin: sieht den Token im Klartext, PIN wird in
+  `tagesdoku_teilen` gemerkt. Nur Anzeige – der Token liegt technisch im Browser. „Lokal geändert“
   heißt Prüfsumme ≠ `sync.hash` (Dirty-Flag allein ist nur ein Vorfilter).
   Haben beide Seiten geändert: Drei-Wege-Abgleich je Eintrag gegen die Basis
   (IndexedDB `kv/basis`), Rückfrage nur bei echten Kollisionen; vor jeder
