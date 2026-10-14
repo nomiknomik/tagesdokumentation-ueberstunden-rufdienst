@@ -568,6 +568,11 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <div class="row"><label>Repo (Besitzer/Name)</label><input id="qr_repo" placeholder="mustermann/tagesdoku-team" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
       <div class="row"><label>Token</label><input id="qr_token" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <button class="btn" id="qrMake" style="font-size:14px;min-height:44px">QR-Code erzeugen</button>
+      <div class="row2" style="margin-top:8px">
+        <button class="btn outline" id="qrTest" style="font-size:14px;min-height:44px">Verbindung testen</button>
+        <button class="btn outline" id="qrForget" style="font-size:14px;min-height:44px">Hier vergessen</button>
+      </div>
+      <div class="hint" id="qrMsg"></div>
       <div class="hint">Nur Repo und Token gehen in den Code – Name und Passwort trägt jede Person selbst ein. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
     </div>
     <div id="qrOut" style="display:none;text-align:center">
@@ -1656,6 +1661,7 @@ function qrZeigen(teil){
 $('zugangTeilen').onclick = ()=>{
   const t = load(LS_TEILEN, {});
   $('qr_repo').value = t.repo || 'nomiknomik/tagesdoku-team'; $('qr_token').value = t.token || '';
+  $('qrMsg').textContent = '';
   qrZeigen('qrForm');
 };
 $('qrMake').onclick = async ()=>{
@@ -1674,6 +1680,31 @@ $('qrMake').onclick = async ()=>{
   }catch(err){ toast(err.message); }
 };
 $('qrClose').onclick = ()=> $('qrBox').style.display = 'none';
+$('qrForget').onclick = ()=>{
+  localStorage.removeItem(LS_TEILEN); $('qr_token').value = '';
+  $('qrMsg').innerHTML = '<span class="ok">Token von diesem Gerät gelöscht.</span>';
+};
+/* Prueft Lesen UND Schreiben: legt eine kleine Testdatei an und loescht sie
+   gleich wieder (zwei Commits im Team-Repo, sonst keine Spuren). */
+$('qrTest').onclick = async ()=>{
+  const repo = $('qr_repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$|\/$/g,'');
+  const token = $('qr_token').value.trim(), msg = $('qrMsg');
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo) || !token){ msg.innerHTML = '<span class="note">Repo als „besitzer/name“ und Token eintragen.</span>'; return; }
+  msg.textContent = 'Teste Verbindung …';
+  const api = (pfad, opt={})=> fetch(`https://api.github.com/repos/${repo}${pfad}`, {cache:'no-store', ...opt,
+    headers:{Authorization:'Bearer '+token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'}});
+  try{
+    const r = await api('');
+    if(r.status === 401){ msg.innerHTML = '<span class="note">Token ungültig oder abgelaufen.</span>'; return; }
+    if(!r.ok){ msg.innerHTML = '<span class="note">Repo nicht gefunden oder Token hat keinen Zugriff darauf (' + r.status + ').</span>'; return; }
+    const pfad = '/contents/.verbindungstest';
+    const w = await api(pfad, {method:'PUT', body: JSON.stringify({message:'Verbindungstest', content: btoa('ok')})});
+    if(!w.ok){ msg.innerHTML = '<span class="note">Lesen geht, Schreiben nicht (' + w.status + ') – beim Token „Contents: Read and write“ setzen.</span>'; return; }
+    const sha = (await w.json()).content.sha;
+    await api(pfad, {method:'DELETE', body: JSON.stringify({message:'Verbindungstest entfernt', sha})});
+    msg.innerHTML = '<span class="ok">Verbindung in Ordnung: Lesen und Schreiben funktionieren.</span>';
+  }catch(err){ msg.innerHTML = '<span class="note">Keine Verbindung (' + err.message + ').</span>'; }
+};
 let empfangenerCode = '';
 $('qrCopy').onclick = ()=>{
   navigator.clipboard.writeText(empfangenerCode).then(()=> toast('Code kopiert.'), ()=> toast('Kopieren nicht möglich.'));
@@ -3458,7 +3489,7 @@ function grundInfoAktualisieren(){
 gehaltSaetzeSetzen(); grundInfoAktualisieren();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.43';
+const APP_VERSION = '1.44';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
