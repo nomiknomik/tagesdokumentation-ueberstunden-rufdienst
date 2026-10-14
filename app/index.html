@@ -533,6 +533,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
       <button class="btn outline" id="syncNow" style="font-size:14px;min-height:44px">Jetzt abgleichen</button>
     </div>
+    <button class="btn outline" id="zugangTeilen" style="font-size:14px;min-height:44px;margin-top:8px">Zugang per QR-Code weitergeben</button>
       </div>
     </details>
     <div class="hint" id="syncMsg"></div>
@@ -559,6 +560,28 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   </div>
 </section>
 </main>
+
+<div id="qrBox" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45);overflow:auto;padding:24px 16px">
+  <div class="card" style="max-width:420px;margin:0 auto">
+    <h2><span data-icon="users"></span>Zugang weitergeben</h2>
+    <div id="qrForm">
+      <div class="row"><label>Repo (Besitzer/Name)</label><input id="qr_repo" placeholder="mustermann/tagesdoku-team" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="row"><label>Token</label><input id="qr_token" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
+      <button class="btn" id="qrMake" style="font-size:14px;min-height:44px">QR-Code erzeugen</button>
+      <div class="hint">Nur Repo und Token gehen in den Code – Name und Passwort trägt jede Person selbst ein. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
+    </div>
+    <div id="qrOut" style="display:none;text-align:center">
+      <div id="qrImg" style="background:#fff;padding:12px;border-radius:12px;display:inline-block"></div>
+      <div class="hint" style="text-align:left">Kollegin/Kollege scannt mit der iPhone-Kamera. Ist die App dort schon auf dem Home-Bildschirm, öffnet sich Safari – dort „Code kopieren“ tippen und den Code in der App ins Feld „Repo“ einfügen.</div>
+    </div>
+    <div id="qrEmpfang" style="display:none">
+      <div class="hint" style="margin-top:0">Zugang erkannt für <b id="qrEmpfRepo"></b>.</div>
+      <button class="btn" id="qrCopy" style="font-size:14px;min-height:44px">Code kopieren</button>
+      <div class="hint">Die App auf dem Home-Bildschirm hat einen eigenen Speicher. Dort Einstellungen → Daten → Zugangsdaten öffnen und den Code ins Feld „Repo“ einfügen. Danach eigenen Namen und eigenes Passwort eintragen und „Verbinden“ tippen.</div>
+    </div>
+    <button class="btn ghost" id="qrClose" style="margin-top:8px">Schließen</button>
+  </div>
+</div>
 
 <div class="actionbar" id="actionbar">
   <div class="geldbar" id="geldBar">
@@ -1602,6 +1625,72 @@ $('syncSave').onclick = ()=>{
   abgleichen(true);
 };
 $('syncNow').onclick = ()=> abgleichen(true);
+
+/* --- Zugang (Repo + Token) per QR-Code an Kollegen weitergeben ---
+   Link mit #zugang=<base64url>; das Fragment geht nie an den Server.
+   Name und Passwort sind bewusst NICHT im Code. */
+const LS_TEILEN = 'tagesdoku_teilen';   // nur Geraet, nicht im Backup
+const zugangKodieren = (r, t)=> btoa(JSON.stringify({r, t})).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+function zugangLesen(txt){
+  const m = String(txt||'').match(/zugang=([\w-]+)/); if(!m) return null;
+  try{ const z = JSON.parse(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')));
+       return z && z.r && z.t ? z : null; }catch(e){ return null; }
+}
+function zugangUebernehmen(z){
+  document.querySelector('nav button[data-tab=cfg]').click();
+  $('syncFelder').open = true;
+  $('sync_repo').value = z.r; $('sync_token').value = z.t;
+  $('syncMsg').innerHTML = '<span class="ok">Zugang übernommen. Jetzt eigenen Namen und eigenes Backup-Passwort eintragen und „Verbinden“ tippen.</span>';
+  setTimeout(()=> $('sync_name').scrollIntoView({block:'center', behavior:'smooth'}), 50);
+}
+let qrLib = null;
+const ladeQr = ()=> qrLib ||= new Promise((ok, fail)=>{
+  const sc = document.createElement('script'); sc.src = 'qrcode.js';
+  sc.onload = ()=> ok(window.qrcode); sc.onerror = ()=>{ qrLib = null; fail(new Error('QR-Modul nicht geladen')); };
+  document.head.appendChild(sc);
+});
+function qrZeigen(teil){
+  ['qrForm','qrOut','qrEmpfang'].forEach(id => $(id).style.display = id===teil ? 'block' : 'none');
+  $('qrBox').style.display = 'block';
+}
+$('zugangTeilen').onclick = ()=>{
+  const t = load(LS_TEILEN, {});
+  $('qr_repo').value = t.repo || ''; $('qr_token').value = t.token || '';
+  qrZeigen('qrForm');
+};
+$('qrMake').onclick = async ()=>{
+  const repo = $('qr_repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$|\/$/g,'');
+  const token = $('qr_token').value.trim();
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ toast('Repo bitte als „besitzer/name“ angeben.'); return; }
+  if(!token){ toast('Token fehlt.'); return; }
+  localStorage.setItem(LS_TEILEN, JSON.stringify({repo, token}));
+  try{
+    const qrcode = await ladeQr();
+    const qr = qrcode(0, 'M');
+    qr.addData(location.origin + location.pathname + '#zugang=' + zugangKodieren(repo, token)); qr.make();
+    $('qrImg').innerHTML = qr.createSvgTag({cellSize:5, margin:2, scalable:true});
+    const svg = $('qrImg').querySelector('svg'); svg.style.width = svg.style.height = 'min(70vw, 280px)';
+    qrZeigen('qrOut');
+  }catch(err){ toast(err.message); }
+};
+$('qrClose').onclick = ()=> $('qrBox').style.display = 'none';
+let empfangenerCode = '';
+$('qrCopy').onclick = ()=>{
+  navigator.clipboard.writeText(empfangenerCode).then(()=> toast('Code kopiert.'), ()=> toast('Kopieren nicht möglich.'));
+};
+/* Code oder Link ins Repo-Feld eingefuegt */
+$('sync_repo').addEventListener('input', e=>{ const z = zugangLesen(e.target.value); if(z) zugangUebernehmen(z); });
+/* Aufruf ueber den QR-Link */
+{
+  const z = zugangLesen(location.hash);
+  if(z){
+    empfangenerCode = location.hash.slice(1);
+    history.replaceState(null, '', location.pathname + location.search);
+    zugangUebernehmen(z);
+    const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+    if(!standalone){ $('qrEmpfRepo').textContent = z.r; qrZeigen('qrEmpfang'); }
+  }
+}
 $('syncBtn').onclick = ()=>{
   if(syncAktiv() && !syncFehler){ abgleichen(true); return; }
   // nicht eingerichtet oder Fehler: zu den Einstellungen, dort steht die Meldung
@@ -3369,7 +3458,7 @@ function grundInfoAktualisieren(){
 gehaltSaetzeSetzen(); grundInfoAktualisieren();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.41';
+const APP_VERSION = '1.42';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){

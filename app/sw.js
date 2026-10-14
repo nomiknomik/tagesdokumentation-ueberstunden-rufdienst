@@ -1,8 +1,8 @@
-const CACHE = 'tagesdoku-v47';
+const CACHE = 'tagesdoku-v48';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf',
-  './icon-192.png', './icon-512.png',
+  './icon-192.png', './icon-512.png', './qrcode.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
 ];
