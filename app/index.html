@@ -505,7 +505,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   </div>
   <div class="card">
     <h2><span data-icon="euro"></span>Gehalt (Tarif)</h2>
-    <div class="hint" style="margin-top:0">Grundgehalt laut Abrechnung (LA 050, brutto). Bei einer Erhöhung eine Zeile mit dem ersten Monat des neuen Betrags hinzufügen. Der älteste Betrag gilt auch für frühere Monate.</div>
+    <div class="hint" style="margin-top:0">Grundgehalt laut Abrechnung (LA 050, brutto) und Arbeitsquote (leer = 100 %, Basis 40 Std./Woche). Bei einer Änderung eine Zeile mit dem ersten Monat des neuen Werts hinzufügen. Die älteste Zeile gilt auch für frühere Monate.</div>
     <div id="grundListe" style="margin-top:10px"></div>
     <button class="btn outline" id="grundAdd" style="font-size:14px;min-height:44px">Gehaltsänderung hinzufügen</button>
     <div class="hint" id="grundInfo"></div>
@@ -522,6 +522,9 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card">
     <h2><span data-icon="save"></span>Daten</h2>
     <div class="field"><label><b>Online-Backup &amp; Sync (privates GitHub-Repo, verschlüsselt)</b></label></div>
+    <div class="row"><label>Nutzung auf diesem Gerät</label>
+      <select id="syncModus"><option value="online">Online (Sync)</option><option value="offline">Nur offline</option></select></div>
+    <div id="syncOnline">
     <details class="monthgroup" id="syncFelder">
       <summary><span>Zugangsdaten<span class="cnt">Repo, Token, Name, Passwort</span></span><span data-icon="chevronRight"></span></summary>
       <div style="padding:0 14px 12px">
@@ -538,7 +541,9 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       </div>
     </details>
     <div class="hint" id="syncMsg"></div>
-    <div class="hint">Sichert automatisch beim Öffnen und Verlassen der App, sobald sich etwas geändert hat. Ein anderes Gerät mit denselben Angaben übernimmt den Stand. Teilen sich mehrere Personen ein Repo, trägt jede einen eigenen Namen ein (eigene Datei) und ein eigenes Passwort. Die Daten werden vor dem Hochladen mit dem Passwort verschlüsselt (AES-256), GitHub sieht nur unlesbaren Text. <b>Ohne das Passwort ist das Backup verloren.</b> Token: GitHub → Settings → Developer settings → Fine-grained tokens, nur dieses Repo, Berechtigung „Contents: Read and write“.</div>
+    </div>
+    <div class="hint" id="syncOfflineHint" style="display:none">Daten bleiben nur auf diesem Gerät. Für Sync mit Rechner oder Handy oben „Online“ wählen.</div>
+    <div class="hint" id="syncOnlineHint">Sichert automatisch beim Öffnen und Verlassen der App, sobald sich etwas geändert hat. Ein anderes Gerät mit denselben Angaben übernimmt den Stand. Teilen sich mehrere Personen ein Repo, trägt jede einen eigenen Namen ein (eigene Datei) und ein eigenes Passwort. Die Daten werden vor dem Hochladen mit dem Passwort verschlüsselt (AES-256), GitHub sieht nur unlesbaren Text. <b>Ohne das Passwort ist das Backup verloren.</b> Token: GitHub → Settings → Developer settings → Fine-grained tokens, nur dieses Repo, Berechtigung „Contents: Read and write“.</div>
 
     <div class="field" style="margin-top:14px"><label><b>Automatische Kopien auf diesem Gerät</b></label></div>
     <div class="row2"><select id="snapSel"></select>
@@ -561,6 +566,17 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   </div>
 </section>
 </main>
+
+<div id="startBox" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45);overflow:auto;padding:24px 16px">
+  <div class="card" style="max-width:420px;margin:0 auto">
+    <h2><span data-icon="cloudCheck"></span>Willkommen</h2>
+    <div class="hint" style="margin-top:0">Sollen die Daten zwischen deinen Geräten (Handy, Rechner) abgeglichen werden? Dafür brauchst du die Zugangsdaten zum Online-Backup – oder einen QR-Code von einer Kollegin/einem Kollegen.</div>
+    <button class="btn" id="startQr" style="font-size:14px;min-height:44px;margin-top:12px">QR-Code scannen</button>
+    <button class="btn outline" id="startManuell" style="font-size:14px;min-height:44px;margin-top:8px">Zugangsdaten eingeben</button>
+    <button class="btn ghost" id="startOffline" style="margin-top:8px">Offline nutzen</button>
+    <div class="hint">Lässt sich später unter Einstellungen → Daten ändern.</div>
+  </div>
+</div>
 
 <div id="qrBox" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45);overflow:auto;padding:24px 16px">
   <div class="card" style="max-width:420px;margin:0 auto">
@@ -1794,6 +1810,41 @@ $('sync_repo').addEventListener('input', e=>{ const z = zugangLesen(e.target.val
     if(!standalone){ $('qrEmpfRepo').textContent = z.r; qrZeigen('qrEmpfang'); }
   }
 }
+/* --- Erster Start: online (Zugang) oder offline? Nur dieses Geraet, nicht im Backup. --- */
+const LS_MODUS = 'tagesdoku_modus';
+function modusSetzen(m){
+  localStorage.setItem(LS_MODUS, m);
+  $('syncModus').value = m;
+  $('syncOnline').style.display = $('syncOnlineHint').style.display = m === 'online' ? '' : 'none';
+  $('syncOfflineHint').style.display = m === 'online' ? 'none' : '';
+}
+{
+  let m = localStorage.getItem(LS_MODUS);
+  /* Bestehende Installationen nicht fragen: wer schon Daten hat, hat sich entschieden */
+  if(!m && (syncAktiv() || zugangLesen(location.hash))) m = 'online';
+  else if(!m && (echteTageAnzahl() || einstellungenGesetzt())) m = 'offline';
+  if(m) modusSetzen(m); else $('startBox').style.display = 'block';
+}
+const zuDenZugangsdaten = ()=>{
+  document.querySelector('nav button[data-tab=cfg]').click();
+  $('syncFelder').open = true;
+  setTimeout(()=>{ $('syncFelder').scrollIntoView({block:'start', behavior:'smooth'}); $('sync_repo').focus(); }, 50);
+};
+$('startManuell').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('online'); zuDenZugangsdaten(); };
+$('startQr').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('online'); $('zugangScannen').click(); };
+$('startOffline').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('offline'); };
+$('syncModus').onchange = e=>{
+  if(e.target.value === 'offline' && syncAktiv()){
+    if(!confirm('Online-Sync auf diesem Gerät beenden?\n\nDie Zugangsdaten werden hier gelöscht. Das Online-Backup und die Daten auf diesem Gerät bleiben erhalten.')){
+      e.target.value = 'online'; return;
+    }
+    sync = {}; saveSync();
+    ['sync_repo','sync_token','sync_pw','sync_name'].forEach(id => $(id).value = '');
+    $('syncMsg').textContent = ''; syncFehler = ''; syncStatus();
+  }
+  modusSetzen(e.target.value);
+  if(e.target.value === 'online' && !syncAktiv()){ $('syncFelder').open = true; }
+};
 $('syncBtn').onclick = ()=>{
   if(syncAktiv() && !syncFehler){ abgleichen(true); return; }
   // nicht eingerichtet oder Fehler: zu den Einstellungen, dort steht die Meldung
@@ -2914,21 +2965,25 @@ function gehaltMigrieren(){
   }
   delete g.grund; delete g.grundAlt; delete g.stufe;
 }
-const grundVerlauf = () => ((cfg.gehalt && cfg.gehalt.verlauf) || [])
-  .filter(e => /^\d{4}-\d{2}$/.test(e.ab || '') && gehaltNum(e.grund)).sort((a,b) => a.ab.localeCompare(b.ab));
-const grundFuer = ym => {
-  const v = grundVerlauf(); if(!v.length) return 0;
+const grundVerlauf = feld => ((cfg.gehalt && cfg.gehalt.verlauf) || [])
+  .filter(e => /^\d{4}-\d{2}$/.test(e.ab || '') && gehaltNum(e[feld])).sort((a,b) => a.ab.localeCompare(b.ab));
+const verlaufWert = (feld, ym) => {
+  const v = grundVerlauf(feld); if(!v.length) return 0;
   let g = v[0]; v.forEach(e => { if(e.ab <= ym) g = e; });
-  return gehaltNum(g.grund);
+  return gehaltNum(g[feld]);
 };
-const STD_TEILER = 173.92;
+const grundFuer = ym => verlaufWert('grund', ym);
+/* Arbeitsquote (Teilzeit) als Anteil, leer = 100 %. Sie steht in derselben
+   Liste wie das Grundgehalt, weil sich beide meist gemeinsam aendern. */
+const quoteFuer = ym => Math.min(verlaufWert('quote', ym) || 100, 100) / 100;
+const STD_TEILER = 173.92;   // 40 Std x 4,348 Wochen, bei Teilzeit x Quote
 /* Setzt 734/796/797 im Satzobjekt des Monats aus dessen Grundgehalt. Die
    Saetze haengen am Monat, deshalb vor jeder Euro-Rechnung neu setzen. */
 function gehaltSaetzeSetzen(ym){
   const s = ym < '2026-06' ? GEHALT.SAETZE_BIS_MAI_2026 : GEHALT.SAETZE_AB_JUNI_2026;
   s._std ??= s[734];                         // Standardwert aus gehalt.js merken
   const grund = grundFuer(ym);
-  const std = grund ? Math.round(grund / STD_TEILER * 100) / 100 : s._std;
+  const std = grund ? Math.round(grund / (STD_TEILER * quoteFuer(ym)) * 100) / 100 : s._std;
   s[734] = std; s[796] = Math.round(std * 200) / 100; s[797] = Math.round(std * 400) / 100;
   return s;
 }
@@ -3052,8 +3107,11 @@ function gehaltEintraege(ym){
     const wd = new Date(n*86400000).getUTCDay();
     if(abwesend && wd >= 1 && wd <= 5 && !isHoliday(k)){
       const regel = DUTY[wd === 1 ? 'amb2' : 'amb4'];
+      /* Teilzeit mit kuerzeren Tagen: anteilig. Teilzeit ueber ganze Tage
+         (Spalte Anwesenheit) hat volle Tage, dort bleibt es beim Regeldienst. */
+      const anteil = teilzeitMonat(k.slice(0,7)) ? 1 : quoteFuer(k.slice(0,7));
       out.push({_appTag:k, datum:k, von:null, bis:null,
-                istStd: nettoStd(regel.start, regel.end), sollStd:0,
+                istStd: Math.round(nettoStd(regel.start, regel.end) * anteil * 100) / 100, sollStd:0,
                 zeitart:abwesend, rbdTag:false});
     }
 
@@ -3320,6 +3378,16 @@ const plusMonate = (ym, n) => {
   return `${Math.floor(t/12)}-${pad(t%12 + 1)}`;
 };
 
+/* Kontozeile mit Arbeitsquote: der Rechenkern kennt nur Vollzeit
+   (Arbeitstage x 8 h), das Soll wird hier anteilig gekuerzt. */
+function kontoMonat(m, vorSaldo){
+  const k = GEHALT.ueberstundenkonto(gehaltEintraege(m), m, vorSaldo);
+  const q = quoteFuer(m); if(q >= 1) return k;
+  const r = x => Math.round(x * 100) / 100;
+  k.soll = r(GEHALT.monatssoll(m) * q); k.saldo = r(k.ist - k.soll);
+  k.saldoGesamt = r((vorSaldo || 0) + k.saldo);
+  return k;
+}
 /* ---------- Überstundenkonto ----------
    Eigenes Rechenwerk, unabhängig von der Gehaltsprognose und besser belegt
    als LA 731 (6/6 Monate exakt gegen die echten Kontostände). Die App
@@ -3332,7 +3400,7 @@ function kontoFuer(ym){
   let letzte = null;
   let m = plusMonate(c.abMonat, 1);
   for(let i = 0; m <= ym && i < 120; i++){
-    const k = GEHALT.ueberstundenkonto(gehaltEintraege(m), m, saldoGesamt);
+    const k = kontoMonat(m, saldoGesamt);
     /* Ueberstunden an Rufdienst-Tagen (ab 09/2026) sind zur Auszahlung
        vorgesehen, bleiben aber auf dem Konto, bis die Auszahlung gebucht ist -
        so fuehrt es die TDA (09/2026: Konto 108,92 h inklusive dieser Stunden).
@@ -3360,6 +3428,7 @@ function kontoAbdeckung(ym){
     const k = nrIso(tagNr(`${ym}-01`) + i);
     const wd = new Date(tagNr(k)*86400000).getUTCDay();
     if(wd < 1 || wd > 5 || isHoliday(k)) continue;
+    if(!mitZeile.has(k) && derive(k).code === 'frei') continue;   // Teilzeit: laut Anwesenheit frei
     arbeitstage++;
     if(mitZeile.has(k)) belegt++;
   }
@@ -3382,7 +3451,7 @@ function renderKonto(ym){
     return;
   }
   $('kontoInhalt').innerHTML = `<table class="patab">
-    <tr><td>Soll (${(GEHALT.monatssoll(ym)/8).toLocaleString('de-DE')} Arbeitstage × 8,00 h)</td><td class="r">${k.soll.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
+    <tr><td>Soll (${(GEHALT.monatssoll(ym)/8).toLocaleString('de-DE')} Arbeitstage × 8,00 h${quoteFuer(ym) < 1 ? ` × ${(quoteFuer(ym)*100).toLocaleString('de-DE')} %` : ''})</td><td class="r">${k.soll.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
     <tr><td>Ist (geleistet und angerechnet)</td><td class="r">${k.ist.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
     <tr><td>Saldo des Monats</td><td class="r">${std(k.saldo)}</td></tr>
     <tr class="sum"><td>Saldo gesamt</td><td class="r">${std(k.saldoGesamt)}</td></tr>
@@ -3572,17 +3641,19 @@ $('nettoRefs').addEventListener('click', e=>{
 
 /* Gehalt (Tarif): pro Geraet in cfg, landet mit im Backup */
 function grundInfoAktualisieren(){
-  const ym = iso(new Date()).slice(0,7), g = grundFuer(ym);
+  const ym = iso(new Date()).slice(0,7), g = grundFuer(ym), q = quoteFuer(ym);
+  const qTxt = q < 1 ? ` bei ${Math.round(q*1000)/10} % (${(40*q).toLocaleString('de-DE')} Std./Woche)` : '';
   $('grundInfo').innerHTML = g
-    ? `Aktuell (${monthLabel(ym)}): ${eur(g)}, Stundenentgelt ${eur(gehaltSaetzeSetzen(ym)[734])} (Grundgehalt ÷ 173,92) – für Rufdienst-Einsätze (734) und die Pauschalen 796/797.`
+    ? `Aktuell (${monthLabel(ym)}): ${eur(g)}${qTxt}, Stundenentgelt ${eur(gehaltSaetzeSetzen(ym)[734])} (Grundgehalt ÷ (173,92 × Quote)) – für Rufdienst-Einsätze (734) und die Pauschalen 796/797.`
     : 'Grundgehalt laut Gehaltsabrechnung (LA 050) eintragen. Ohne Wert fehlt die Grundvergütung und die Rufdienst-Sätze sind nur Beispielwerte.';
 }
 function renderGrundListe(){
   const v = (cfg.gehalt && cfg.gehalt.verlauf) || [];
   $('grundListe').innerHTML = v.map((e,i)=>`
+    <div class="field"><label>ab Monat</label><input type="month" data-grundf="ab" data-i="${i}" value="${e.ab||''}"></div>
     <div class="grid2" style="align-items:end">
-      <div class="field"><label>ab Monat</label><input type="month" data-grundf="ab" data-i="${i}" value="${e.ab||''}"></div>
       <div class="field"><label>Grundgehalt €</label><input inputmode="decimal" data-grundf="grund" data-i="${i}" value="${e.grund||''}"></div>
+      <div class="field"><label>Quote %</label><input inputmode="decimal" data-grundf="quote" data-i="${i}" value="${e.quote||''}" placeholder="100"></div>
     </div>
     <button class="del" data-grunddel="${i}" style="margin-bottom:10px">${icon('square')}Löschen</button>`).join('');
   grundInfoAktualisieren();
@@ -3604,7 +3675,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.48';
+const APP_VERSION = '1.49';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){

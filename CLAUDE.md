@@ -76,6 +76,13 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
 - Dienstplan-Import liest Spalten nach Überschrift (im Oktober-Plan fehlt
   „Urlaub“). Spalte Anwesenheit = Teilzeit: steht das eigene Kürzel im Monat
   dort, sind nur diese Wochentage Arbeitstage (`teilzeitMonat()`), Rest „frei“.
+- Arbeitsquote (`quote` in `cfg.gehalt.verlauf`, `quoteFuer(ym)`, leer =
+  100 %): Stundenentgelt = Grund ÷ (173,92 × Quote); Konto-Soll über
+  `kontoMonat()` × Quote; Abwesenheitsgutschrift × Quote, außer in
+  Teilzeit-Monaten über Spalte Anwesenheit (dort ganze Tage).
+- Erster Start: `#startBox` fragt QR / Zugangsdaten / offline, Wahl in
+  `tagesdoku_modus` (nur Gerät, nicht im Backup), änderbar über `#syncModus`.
+  Bestehende Installationen mit Daten werden nicht gefragt.
 - Erste Online-Sicherung auch ohne Tage, sobald Einstellungen gesetzt sind
   (`einstellungenGesetzt()`).
 - `hasContent()` entscheidet, was als erfasst gilt; `persist()` und Export
