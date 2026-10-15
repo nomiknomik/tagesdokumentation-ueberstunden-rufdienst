@@ -478,8 +478,9 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
             <input type="text" id="termName" placeholder="Bezeichnung, z. B. Herbstferien / DGCH">
             <div class="reihe"><label class="f">von (optional)<input type="date" id="termVon"></label><label class="f">bis<input type="date" id="termBis"></label></div>
             <button class="btn out" id="termAdd"><span data-icon="plus"></span>Termin</button>
+            <label class="btn gh" style="justify-content:flex-start;cursor:pointer"><span data-icon="upload"></span>Ferien aus .ics importieren<input type="file" id="termIcs" accept=".ics,text/calendar" multiple hidden></label>
           </div>
-          <div class="hint" style="margin-top:6px">Ohne Datum anlegen und dann im Kalender einpinseln (✎ wählt den Termin). BW-Schulferien sind fest hinterlegt. Kongresse erscheinen auch im Dienstplan.</div>
+          <div class="hint" style="margin-top:6px">Ohne Datum anlegen und dann im Kalender einpinseln (✎ wählt den Termin). BW-Schulferien bis 01/2028 sind hinterlegt, Winterferien und weitere Jahre als Termin oder per ICS-Import. Kongresse erscheinen auch im Dienstplan.</div>
         </div>
       </aside>
     </div>
@@ -564,7 +565,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.13';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.14';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -602,6 +603,7 @@ const ICONS = {
   logOut:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
   refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
   edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
   trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>'
 };
 const icon = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]||''}</svg>`;
@@ -1307,16 +1309,15 @@ $('kal').addEventListener('pointermove', e => { if(strich){ const s = tagUnter(e
 
 /* =================== Termine (Ferien, Kongresse) =================== */
 const TERMIN = {ferien: {name: 'Ferien', farbe: '#5B9BD5'}, kongress: {name: 'Kongress', farbe: '#7A5AA6'}, sonst: {name: 'Termin', farbe: '#8A7F72'}};
-/* Schulferien BW (Quellen: KMK/Kultusministerium laut Ferienportalen, Stand 10/2026).
-   Mit "unsicher" markierte Termine widersprechen sich in den Quellen - pruefen! */
+/* Schulferien BW laut schulferien.org-ICS (Stand 10/2026); Winterferien legt jede
+   Schule selbst fest -> von Hand als Termin. Weitere Jahre per ICS-Import. */
 const BW_FERIEN = [
-  ['2025-12-22', '2026-01-05', 'Weihnachtsferien'], ['2026-03-30', '2026-04-11', 'Osterferien', 1],
+  ['2025-12-22', '2026-01-05', 'Weihnachtsferien'], ['2026-03-30', '2026-04-11', 'Osterferien'],
   ['2026-05-26', '2026-06-05', 'Pfingstferien'], ['2026-07-30', '2026-09-12', 'Sommerferien'],
-  ['2026-10-26', '2026-10-30', 'Herbstferien'], ['2026-12-23', '2027-01-09', 'Weihnachtsferien'],
-  ['2027-03-30', '2027-04-03', 'Osterferien', 1], ['2027-05-18', '2027-05-29', 'Pfingstferien'],
+  ['2026-10-26', '2026-10-31', 'Herbstferien'], ['2026-12-23', '2027-01-09', 'Weihnachtsferien'],
+  ['2027-03-25', '2027-04-03', 'Osterferien'], ['2027-05-18', '2027-05-29', 'Pfingstferien'],
   ['2027-07-29', '2027-09-11', 'Sommerferien'], ['2027-11-02', '2027-11-06', 'Herbstferien'],
-  ['2027-12-23', '2028-01-08', 'Weihnachtsferien'], ['2028-04-18', '2028-04-22', 'Osterferien', 1],
-  ['2028-06-06', '2028-06-17', 'Pfingstferien', 1], ['2028-07-27', '2028-09-09', 'Sommerferien', 1]
+  ['2027-12-23', '2028-01-08', 'Weihnachtsferien']
 ].map(([von, bis, name, u]) => ({id: 'bw' + von, art: 'ferien', name, von, bis, bw: true, unsicher: !!u}));
 const tageVon = t => t.tage ? t.tage : null;
 const imTermin = (t, s) => t.tage ? t.tage.includes(s) : (t.von <= s && s <= (t.bis || t.von));
@@ -1350,6 +1351,27 @@ function renderTermine(y){
     const aus = urlTyp === 'termin' && termId === b.dataset.pin;
     termId = aus ? '' : b.dataset.pin; urlTyp = aus ? 'urlaub' : 'termin'; renderUrlaub(); });
 }
+/* ICS-Import (z. B. schulferien.org): DTEND ist exklusiv; schon vorhandene Tage werden uebersprungen */
+$('termIcs').onchange = async e => {
+  const neu = [];
+  for(const f of e.target.files){
+    const txt = (await f.text()).replace(/\r?\n[ \t]/g, '');
+    for(const ev of txt.split('BEGIN:VEVENT').slice(1)){
+      const feld = k => { const m = ev.match(new RegExp('^' + k + '[^:\\n]*:(.*)$', 'm')); return m ? m[1].trim() : ''; };
+      const d = x => x.slice(0, 4) + '-' + x.slice(4, 6) + '-' + x.slice(6, 8);
+      const von = feld('DTSTART'), bis = feld('DTEND');
+      if(!/^\d{8}/.test(von)) continue;
+      const name = feld('SUMMARY').replace(/\s*\d{4}\s*Baden-W\S*$/, '').replace(/\\,/g, ',') || 'Ferien';
+      const tage = []; for(let x = d(von), ende = /^\d{8}/.test(bis) ? plus(d(bis), -1) : d(von); x <= ende && tage.length < 120; x = plus(x, 1)) tage.push(x);
+      const frei = tage.filter(x => !termineAm(x).some(t => t.art === 'ferien'));
+      if(frei.length) neu.push({id: Date.now().toString(36) + neu.length, art: 'ferien', name, tage: frei, von_k: ichK, ics: true});
+    }
+  }
+  e.target.value = '';
+  if(!neu.length) return toast('Keine neuen Ferientage gefunden.');
+  cfgAendern(`Ferien importiert (${neu.length})`, d => (d.termine ||= []).push(...neu));
+  toast(neu.length + ' Ferienabschnitt(e) importiert.');
+};
 /* Termin-Pinsel: Tag an/aus; der erste Tag des Strichs entscheidet */
 function terminTag(s){
   if(!strich || strich.erledigt.has(s)) return;

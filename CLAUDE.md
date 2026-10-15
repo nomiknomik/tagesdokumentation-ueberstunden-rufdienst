@@ -54,8 +54,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   blass + je eine angeschnittene Woche; Mausrad über das Ende wechselt Monat (Plan)
   im Plan. Veröffentlichung zurücknehmen: Planer oder `tagesdoku_admin`.
   Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, tage[]}]`, alt:
-  `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (bis Sommer 2028,
-  teils „unsicher“ – jährlich gegen Kultusministerium prüfen/ergänzen). Kongresse
+  `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (aus schulferien.org-
+  ICS bis 01/2028), weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv);
+  Winterferien legt jede Schule selbst fest → von Hand. Kongresse
   auch im Dienstplan.
   Diensthabender zählt ab 11 (Nachmittag), Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
