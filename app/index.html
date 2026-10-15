@@ -3890,7 +3890,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.61';
+const APP_VERSION = '1.62';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
@@ -3972,17 +3972,20 @@ $('appVersion').onclick = async ()=>{
 };
 
 if('serviceWorker' in navigator){
+  /* Neu laden nur bei einem Update. Beim ersten Besuch (noch kein SW) wuerde das
+     Neuladen eine gerade per Link geoeffnete Einladung verwerfen. */
+  const ersterBesuch = !navigator.serviceWorker.controller;
   navigator.serviceWorker.register('sw.js').then(reg=>{
     if(!reg) return;
     reg.update();
     reg.addEventListener('updatefound', ()=>{
       const nw = reg.installing;
-      if(nw) nw.addEventListener('statechange', ()=>{ if(nw.state==='activated') location.reload(); });
+      if(nw) nw.addEventListener('statechange', ()=>{ if(nw.state==='activated' && !ersterBesuch) location.reload(); });
     });
   });
   let swReloaded = false;
   navigator.serviceWorker.addEventListener('controllerchange', ()=>{
-    if(swReloaded) return; swReloaded = true; location.reload();
+    if(swReloaded || ersterBesuch) return; swReloaded = true; location.reload();
   });
 }
 </script>

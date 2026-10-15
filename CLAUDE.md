@@ -93,7 +93,9 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
 - Zeit-/Tagesrechnung über UTC-Tagesnummern (DST).
 - `clipboard.writeText` synchron am Anfang des Klick-Handlers (iOS-Geste).
 - Service Worker: `index.html` network-first, Rest cache-first, `api.github.com`
-  nie über den SW.
+  nie über den SW. Neu laden nach SW-Wechsel nur bei Update, nie beim ersten Besuch
+  (`ersterBesuch`) – sonst geht ein per Link geöffneter Einladungs-Code verloren.
+  Playwright-Tests mit `serviceWorkers:'block'` sehen das nicht.
 - Backup/Sync: `save()` setzt `tagesdoku_dirty`; Sync-Zugangsdaten
   (`tagesdoku_sync`) nur über `saveSync()`, nie im Backup. Online-Datei im
   privaten Repo, AES-GCM/PBKDF2, Abgleich über Datei-SHA. Dateiname
