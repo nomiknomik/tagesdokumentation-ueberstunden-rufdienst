@@ -232,7 +232,10 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-box.ur:hover{border-color:var(--primary)}
 .ur-dat{position:absolute;top:5px;left:8px;right:8px;font-weight:800;font-size:12px;line-height:1.1}
 .ur-dat small{display:block;font-size:8.5px;color:var(--danger);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ur-st{position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:9px}
+.ur-zahl{position:absolute;top:5px;right:7px;font-size:10.5px;font-weight:800;display:flex;gap:2px;align-items:baseline}
+.ur-zahl i{color:var(--muted);font-style:normal;font-weight:400}
+.ur-zahl b.ok{color:#3E9B63} .ur-zahl b.kn{color:#C47A2C} .ur-zahl b.rot{color:var(--danger)}
+.ur-dat{right:44px !important}
 .ur-st.kn{background:#E9A55A} .ur-st.rot{background:var(--danger)}
 .ur-chips{position:absolute;left:6px;right:6px;bottom:5px;display:flex;flex-wrap:wrap;gap:2px}
 .ur-chip{font-size:9px;font-weight:800;border-radius:5px;padding:1px 4px;color:#fff;background:var(--f);opacity:.8}
@@ -565,7 +568,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.14';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.15';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1418,9 +1421,24 @@ async function ladeJahr(y){
   cacheSchreiben();
   urlGeladen[y] = true;
 }
+/* Besetzung fuer den Urlaubsplan: ohne eingeteilten Dienst wird angenommen, dass einer
+   der Anwesenden Dienst hat (vormittags also einer weniger). Tooltip: wer da ist. */
+function urlBesetzung(s){
+  if(!werktag(s)) return null;
+  const da = [], weg = [], dh = dienstVon(s);
+  for(const p of personen()){ const a = abwesend(p, s); if(a) weg.push(`${p.name || p.k} (${ABW_NAME[a]})`); else da.push(p); }
+  const r = besRegel(wt(s)), b = dh ? besetzung(s) : null;
+  const w = b ? b.w : [Math.max(0, da.length - 1), da.length];
+  const st = w.map((n, i) => n >= r.soll[i] ? 'ok' : n >= r.min[i] ? 'kn' : 'rot');
+  const tip = `Anwesend (${da.length}): ${da.map(p => p.name || p.k).join(', ') || '–'}`
+    + (weg.length ? `\nAbwesend: ${weg.join(', ')}` : '')
+    + `\nDienst: ${dh ? (person(dh) ? person(dh).name || dh : dh) + ' (ab 11 Uhr)' : 'noch nicht eingeteilt'}`
+    + `\nSoll ${r.soll.join('/')} · Minimum ${r.min.join('/')} (vorm./nachm.)`;
+  return {w, st, tip};
+}
 function urlTagHtml(s){
   const ft = feiertag(s), we = wt(s) >= 6;
-  const b = besetzung(s), st = b ? zweiFenster(b).map(x => x[1]).reduce(schlechter) : '';
+  const ub = urlBesetzung(s);
   let chips = '';
   for(const p of personen()){
     const e = eintrag(p.k, s);
@@ -1433,9 +1451,9 @@ function urlTagHtml(s){
   const band = tm.length ? `<div class="ur-band">${tm.map(t => `<i style="background:${TERMIN[t.art].farbe}" title="${esc(TERMIN[t.art].name + ': ' + t.name)}"></i>`).join('')}</div>` : '';
   const tname = tm.filter(t => terminSpanne(t)[0] === s || !imTermin(t, plus(s, -1)) || wt(s) === 1)
     .map(t => `<span style="color:${TERMIN[t.art].farbe}" title="${esc(t.name)}">${esc(t.name)}</span>`).join(' · ');
-  return `<div class="mx-box ur ${ft ? 'ft' : we ? 'we' : ''} ${tm.some(t => t.art === 'ferien') ? 'ferien' : ''} ${s === heute() ? 'heute' : ''}" data-tag="${s}">${band}`
+  return `<div class="mx-box ur ${ft ? 'ft' : we ? 'we' : ''} ${tm.some(t => t.art === 'ferien') ? 'ferien' : ''} ${s === heute() ? 'heute' : ''}" data-tag="${s}"${ub ? ` title="${esc(ub.tip)}"` : ''}>${band}`
     + `<div class="ur-dat">${+s.slice(8)}${s.slice(8) === '01' ? '.' + +s.slice(5, 7) + '.' : '.'}${ft ? `<small title="${esc(ft)}">${esc(ft)}</small>` : ''}${tname ? `<small class="tn">${tname}</small>` : ''}</div>`
-    + (b && st !== 'ok' ? `<span class="ur-st ${st}" title="Besetzung ${st === 'rot' ? 'unterschritten' : 'knapp'}"></span>` : '')
+    + (ub ? `<span class="ur-zahl">${ub.w.map((n, i) => `<b class="${ub.st[i]}">${n}</b>`).join('<i>|</i>')}</span>` : '')
     + `<div class="ur-chips">${chips}</div></div>`;
 }
 function renderUrlaub(){

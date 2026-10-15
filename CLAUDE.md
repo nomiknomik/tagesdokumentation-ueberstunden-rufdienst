@@ -56,7 +56,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, tage[]}]`, alt:
   `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (aus schulferien.org-
   ICS bis 01/2028), weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv);
-  Winterferien legt jede Schule selbst fest → von Hand. Kongresse
+  Winterferien legt jede Schule selbst fest → von Hand. Urlaub-Kacheln: Besetzung
+  vorm.|nachm. (`urlBesetzung()`; ohne eingeteilten Dienst vormittags einer weniger),
+  Tooltip = Anwesende/Abwesende. Kongresse
   auch im Dienstplan.
   Diensthabender zählt ab 11 (Nachmittag), Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
