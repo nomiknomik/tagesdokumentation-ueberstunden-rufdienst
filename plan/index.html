@@ -203,6 +203,17 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-wu.wunsch{color:#2F7D4A;border-color:#A8D8B8;background:#F3FAF5} .mx-wu.nogo{color:#A6543F;border-color:#EBC2B6;background:#FCF3F0}
 .mx-wu.hart{border-style:solid}
 
+/* Nachbarmonate in der Matrix */
+.mx-box.nachbar{opacity:.42;filter:saturate(.35);cursor:pointer;background:#fff}
+.mx-box.nachbar.we{background:repeating-linear-gradient(135deg,#F6F0E5 0 8px,#F9F4EB 8px 16px)}
+.mx-box.nachbar:hover{opacity:.7}
+.mx-woche.rand{height:58px;overflow:hidden}
+.mx-woche.rand.oben{align-items:end;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 85%);mask-image:linear-gradient(to bottom,transparent,#000 85%)}
+.mx-woche.rand.unten{-webkit-mask-image:linear-gradient(to top,transparent,#000 85%);mask-image:linear-gradient(to top,transparent,#000 85%)}
+.mx-woche.rand.oben .mx-box{min-height:118px}
+.mx-box.fremd{opacity:.45;filter:saturate(.35)}
+.mx-box.fremd .ur-chip{opacity:.7}
+
 /* ---------- Urlaub ---------- */
 .ur-monat{font-weight:800;font-size:15px;margin:14px 0 6px 47px;color:var(--primary-dark)}
 .mx-box.ur{min-height:62px;cursor:pointer;user-select:none;touch-action:none}
@@ -350,6 +361,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
           <span class="hint" id="pubInfo"></span>
           <span style="flex:1"></span>
           <button class="btn out" id="druckBtn"><span data-icon="printer"></span>Drucken</button>
+          <button class="btn out hidden" id="unpubBtn" title="Veröffentlichung zurücknehmen (Planer/Admin)"><span data-icon="refresh"></span>Zurücknehmen</button>
           <button class="btn" id="pubBtn"><span data-icon="send"></span>Veröffentlichen</button>
         </div>
         <div class="tabelle" id="planTab"></div>
@@ -528,7 +540,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.8';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.10';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -900,6 +912,7 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') zu(); else if
 let tab = 'plan';
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = ()=>{
   tab = b.dataset.tab; merken('planung_tab', tab);
+  if(tab === 'urlaub') urlScrollZiel = ym;
   document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
   ['plan','meine','urlaub','cfg'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
   render();
@@ -928,7 +941,8 @@ function render(){
 
 /* =================== Plan =================== */
 const darfEinteilen = () => cfg.gruppen.oa.einteilen !== 'planer' || !!(ich() && ich().planer);
-const darfVeroeffentlichen = () => !cfg.personen.some(p => p.planer) || !!(ich() && ich().planer);
+const istAdmin = () => localStorage.getItem('tagesdoku_admin') === '1';
+const darfVeroeffentlichen = () => !cfg.personen.some(p => p.planer) || !!(ich() && ich().planer) || istAdmin();
 
 function renderPlan(){
   const D = dienstDaten(ym) || {tage:{}};
@@ -997,6 +1011,7 @@ function renderPlan(){
   $('ansichtSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === (matrix ? 'matrix' : 'liste')));
   const tab_ = $('planTab'); tab_.innerHTML = matrix ? matrixHtml(info) : h; tab_.classList.toggle('dimm', !!markK);
   tab_.classList.toggle('matrix', matrix);
+  tab_.querySelectorAll('[data-nachbar]').forEach(el => el.onclick = ()=> monatWechseln(+el.dataset.nachbar));
   tab_.querySelectorAll('.dzelle').forEach(el => el.onclick = e => {
     const v = e.target.closest('[data-vorschlag]');
     if(v){ e.stopPropagation(); const [s, k] = v.dataset.vorschlag.split('|'); einteilen(s, k); return; }
@@ -1009,6 +1024,7 @@ function renderPlan(){
   $('pubBtn').innerHTML = icon('send') + (pub ? 'Erneut veröffentlichen' : 'Veröffentlichen');
   $('pubBtn').disabled = !darfVeroeffentlichen() || nurLesen;
   $('pubBtn').title = darfVeroeffentlichen() ? '' : 'Nur Planer:innen';
+  $('unpubBtn').classList.toggle('hidden', !pub || !darfVeroeffentlichen() || nurLesen);
   // Zaehler
   let z = '';
   for(const p of diensttauglich()){
@@ -1031,16 +1047,25 @@ $('ansichtSeg').querySelectorAll('button').forEach(b => b.onclick = ()=>{
 });
 const kw = s => { const t = tn(s), do_ = t - wt(s) + 4, j = vonTn(do_).slice(0, 4); return Math.floor((do_ - tn(j + '-01-01')) / 7) + 1; };
 const tint = (hex, a) => { const n = parseInt(String(hex).slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
+function nachbarBox(s){
+  const p = person(dienstVon(s)), ft = feiertag(s);
+  return `<div class="mx-box nachbar ${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''}" data-nachbar="${s < ym ? -1 : 1}" title="${monatName(ymVon(s))} öffnen">`
+    + `<div class="mx-dat">${+s.slice(8)}.${s.slice(8) === '01' ? +s.slice(5, 7) + '.' : ''}</div>`
+    + (p ? `<div class="mx-dienst" style="background:${tint(farbe(p), .1)};border-color:${tint(farbe(p), .3)};color:${farbe(p)}">${pk(p)}<b class="nn">${esc(nachn(p))}</b></div>` : '')
+    + '</div>';
+}
 function matrixHtml(info){
   let h = `<div class="mx-kopf"><div>KW</div>${WT.slice(1).map(x => `<div>${x}</div>`).join('')}</div>`;
-  const vorne = info[0].w - 1;
-  const zellen = Array(vorne).fill(null).concat(info);
-  while(zellen.length % 7) zellen.push(null);
-  for(let i = 0; i < zellen.length; i += 7){
-    const erst = zellen.slice(i, i + 7).find(Boolean);
-    h += `<div class="mx-woche"><div class="mx-kw">KW<b>${kw(erst.s)}</b></div>`;
-    for(const x of zellen.slice(i, i + 7)){
-      if(!x){ h += '<div class="mx-box aus"></div>'; continue; }
+  /* Nachbarmonate: angrenzende Tage blass, dazu je eine angeschnittene Woche oben/unten */
+  const nach = {}; info.forEach(x => nach[x.s] = x);
+  const erster = info[0].s, letzter = info[info.length - 1].s;
+  const von = plus(erster, 1 - wt(erster) - 7), bis = plus(letzter, 7 - wt(letzter) + 7);
+  for(let w0 = von; w0 <= bis; w0 = plus(w0, 7)){
+    const rand = plus(w0, 6) < erster ? 'oben' : w0 > letzter ? 'unten' : '';
+    h += `<div class="mx-woche ${rand ? 'rand ' + rand : ''}"><div class="mx-kw">KW<b>${kw(plus(w0, 3))}</b></div>`;
+    for(let i = 0; i < 7; i++){
+      const x = nach[plus(w0, i)];
+      if(!x){ h += nachbarBox(plus(w0, i)); continue; }
       const st = x.b ? (x.b.st.includes('rot') ? 'rot' : x.b.st.includes('kn') ? 'kn' : 'ok') : '';
       const cls = ['mx-box', x.ft ? 'ft' : x.w >= 6 ? 'we' : st, x.heute ? 'heute' : '', x.mark ? 'mark' : ''].join(' ');
       let z = '';
@@ -1129,6 +1154,13 @@ function einteilen(s, k){
     d.log.push({am: Date.now(), von: ichK, tag: s, alt: jetzt, neu: k});
   });
 }
+$('unpubBtn').onclick = ()=>{
+  if(!confirm(`Veröffentlichung von ${monatName(ym)} zurücknehmen?\n\nDer Plan wird wieder Entwurf, Tausch-Markierungen entfallen.`)) return;
+  aendern(pfadDienst(ym), {tage:{}, log:[]}, 'Veröffentlichung zurückgenommen', d => {
+    delete d.veroeffentlicht;
+    (d.log ||= []).push({am: Date.now(), von: ichK, zurueckgenommen: true});
+  });
+};
 $('pubBtn').onclick = ()=>{
   const D = dienstDaten(ym) || {tage:{}};
   const leer = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
@@ -1278,7 +1310,7 @@ function renderUrlaub(){
   $('urlJahr').textContent = y;
   if(!urlGeladen[y] && zugang() && !nurLesen){
     $('urlTab').innerHTML = '<div class="hint" style="padding:20px">Lade Urlaube ' + y + ' …</div>';
-    ladeJahr(y).then(()=>{ if(tab === 'urlaub') renderUrlaub(); }, e => { urlGeladen[y] = true; toast(e.message); renderUrlaub(); });
+    ladeJahr(y).then(()=>{ if(tab === 'urlaub'){ urlScrollZiel ||= ym; renderUrlaub(); } }, e => { urlGeladen[y] = true; toast(e.message); renderUrlaub(); });
     return;
   }
   // Jahr: Montag vor dem 1.1. bis Sonntag nach dem 31.12.
@@ -1308,7 +1340,7 @@ function renderUrlaub(){
     }
     h += '</div>';
   }
-  $('urlTab').innerHTML = h;
+  $('urlTab').innerHTML = h; urlFremd();
   // Zaehler
   const ziel = cfg.urlaubPlan ?? 25, anspruch = cfg.urlaubAnspruch ?? 31;
   $('urlZaehler').innerHTML = personen().map(p => { const u = urlaubstage(p, y);
@@ -1326,12 +1358,33 @@ $('urlTab').addEventListener('pointerdown', e => {
   e.preventDefault(); strich = {erledigt: new Set(), url: true}; pinselTag(s, urlK, urlTyp);
 });
 $('urlTab').addEventListener('pointermove', e => { if(strich && strich.url){ const s = tagUnter(e, '#urlTab .mx-box[data-tag]'); if(s) pinselTag(s, urlK, urlTyp); } });
+/* Matrix: ueber das Ende hinaus scrollen wechselt den Monat */
+let ueber = 0, ueberT = 0, wechselt = false;
+window.addEventListener('wheel', e => {
+  const url = tab === 'urlaub';
+  if(!(url || (tab === 'plan' && $('planTab').classList.contains('matrix'))) || $('dlg').innerHTML || wechselt) return;
+  const el = document.documentElement, unten = innerHeight + scrollY >= el.scrollHeight - 2, oben = scrollY <= 0;
+  if(!((e.deltaY > 0 && unten) || (e.deltaY < 0 && oben))){ ueber = 0; return; }
+  if(Date.now() - ueberT > 700) ueber = 0;
+  ueberT = Date.now(); ueber += e.deltaY;
+  if(Math.abs(ueber) < (url ? 500 : 260)) return;
+  const n = ueber > 0 ? 1 : -1; ueber = 0; wechselt = true;
+  if(url){   // Urlaub: ins naechste/vorige Jahr
+    ym = n > 0 ? (+ym.slice(0, 4) + 1) + '-01' : (+ym.slice(0, 4) - 1) + '-12'; merken('planung_monat', ym);
+    urlScrollZiel = ym; render(); setTimeout(()=> wechselt = false, 1500); return;
+  }
+  const ziel = ()=> window.scrollTo({top: n > 0 ? 0 : el.scrollHeight});
+  monatWechseln(n).then(()=>{ ziel(); setTimeout(()=> wechselt = false, 500); });
+  ziel();
+}, {passive: true});
+/* Urlaub: Tage ausserhalb des aktuellen Monats blass */
+const urlFremd = ()=> $('urlTab').querySelectorAll('.mx-box[data-tag]').forEach(b => b.classList.toggle('fremd', b.dataset.tag.slice(0, 7) !== ym));
 /* Beim Scrollen den Monat im Kopf mitfuehren */
 window.addEventListener('scroll', ()=>{
   if(tab !== 'urlaub') return;
   let akt = '';
   $('urlTab').querySelectorAll('.ur-monat').forEach(m => { if(m.getBoundingClientRect().top < 200) akt = m.dataset.ym; });
-  if(akt && akt !== ym){ ym = akt; merken('planung_monat', ym); $('mTitel').textContent = monatName(ym); }
+  if(akt && akt !== ym){ ym = akt; merken('planung_monat', ym); $('mTitel').textContent = monatName(ym); urlFremd(); }
 }, {passive: true});
 
 function eintragDialog(p, s){
@@ -1553,7 +1606,7 @@ async function start(){
 /* Version + Update: ausstehende Aenderungen speichern, dann ohne Cache neu laden */
 $('verBtn').textContent = 'v' + PLAN_VERSION;
 { const t = load('planung_tab', 'plan'); const b = document.querySelector(`nav.tabs button[data-tab="${t}"]`);
-  if(b && t !== 'plan'){ tab = t; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  if(b && t !== 'plan'){ tab = t; urlScrollZiel = ym; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
     ['plan','meine','urlaub','cfg'].forEach(x => $('tab-' + x).classList.toggle('hidden', x !== tab)); } }
 $('verBtn').onclick = async ()=>{
   if(Object.keys(queue).length || flushLaeuft){ toast('Speichere zuerst …'); await flush(); }
