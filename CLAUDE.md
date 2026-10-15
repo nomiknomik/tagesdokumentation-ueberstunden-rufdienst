@@ -58,7 +58,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   ICS bis 01/2028), weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv);
   Winterferien legt jede Schule selbst fest → von Hand. Urlaub-Kacheln: Besetzung
   vorm.|nachm. (`urlBesetzung()`; ohne eingeteilten Dienst vormittags einer weniger),
-  Tooltip = Anwesende/Abwesende. Kongresse
+  Tooltip = nur Anwesende (eine pro Zeile). Kongresse
   auch im Dienstplan.
   Diensthabender zählt ab 11 (Nachmittag), Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).

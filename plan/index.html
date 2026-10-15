@@ -568,7 +568,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.15';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.16';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1430,10 +1430,7 @@ function urlBesetzung(s){
   const r = besRegel(wt(s)), b = dh ? besetzung(s) : null;
   const w = b ? b.w : [Math.max(0, da.length - 1), da.length];
   const st = w.map((n, i) => n >= r.soll[i] ? 'ok' : n >= r.min[i] ? 'kn' : 'rot');
-  const tip = `Anwesend (${da.length}): ${da.map(p => p.name || p.k).join(', ') || '–'}`
-    + (weg.length ? `\nAbwesend: ${weg.join(', ')}` : '')
-    + `\nDienst: ${dh ? (person(dh) ? person(dh).name || dh : dh) + ' (ab 11 Uhr)' : 'noch nicht eingeteilt'}`
-    + `\nSoll ${r.soll.join('/')} · Minimum ${r.min.join('/')} (vorm./nachm.)`;
+  const tip = 'Anwesend:\n' + (da.map(p => (p.name || p.k) + (p.k === dh ? ' (Dienst ab 11)' : '')).join('\n') || '–');
   return {w, st, tip};
 }
 function urlTagHtml(s){
