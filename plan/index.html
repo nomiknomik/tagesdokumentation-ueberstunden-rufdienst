@@ -489,7 +489,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.4';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.5';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -848,8 +848,9 @@ function dialog(html, init){
   s.addEventListener('click', e => { if(e.target === s) zu(); });
   if(init) init($('dlg').querySelector('.dialog'));
 }
-const zu = () => { $('dlg').innerHTML = ''; };
-document.addEventListener('keydown', e => { if(e.key === 'Escape') zu(); });
+let dialogTaste = null;   // Tastatur-Handler des offenen Dialogs
+const zu = () => { $('dlg').innerHTML = ''; dialogTaste = null; };
+document.addEventListener('keydown', e => { if(e.key === 'Escape') zu(); else if(dialogTaste) dialogTaste(e); });
 
 let tab = 'plan';
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = ()=>{
@@ -1022,7 +1023,8 @@ function waehlen(s){
   const liste = diensttauglich().map(p => ({p, ...bewerte(p, s)})).sort((a, b) => b.score - a.score);
   const ft = feiertag(s);
   dialog(`<h3>${WTL[wt(s)]}, ${kurzDat(s)}${ft ? ' · ' + esc(ft) : ''}</h3>
-    <div class="unter">Rufdienst ${dienstArt(s)} · sortiert nach Eignung, alles ist überschreibbar</div>
+    <div class="unter">Rufdienst ${dienstArt(s)} · sortiert nach Eignung, alles ist überschreibbar ·
+      <b>Tippen:</b> Anfangsbuchstabe des Nachnamens <span id="tippAnz" class="tag n" style="display:none"></span></div>
     ${liste.map(x => `<button class="kand ${x.p.k === akt ? 'akt' : ''} ${x.score <= -50 ? 'schlecht' : ''}" data-k="${esc(x.p.k)}">
       ${pk(x.p)}<span class="mid"><b>${esc(x.p.name || x.p.k)}</b><span class="tags">${x.tags.map(t => `<span class="tag ${t[0]}">${esc(t[1])}</span>`).join('') || '<span class="tag n">keine Einträge</span>'}</span></span>
       <span class="cnt">${x.n}/${x.max}</span></button>`).join('')}
@@ -1030,6 +1032,35 @@ function waehlen(s){
     el => {
       el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ einteilen(s, b.dataset.k); zu(); });
       $('dlgZu').onclick = zu;
+      /* Nachname antippen: eindeutig -> sofort eintragen; mehrdeutig -> Liste
+         auf die Treffer reduzieren, weitere Buchstaben grenzen ein, Enter nimmt
+         den markierten, Pfeile wechseln, Rueckschritt nimmt Buchstaben zurueck. */
+      let tipp = '', wahl = 0;
+      const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const nachname = p => norm(p.name ? p.name.trim().split(/\s+/).pop() : p.k);
+      const knoepfe = [...el.querySelectorAll('.kand[data-k]')];
+      const treffer = ()=> knoepfe.filter(b => nachname(person(b.dataset.k)).startsWith(tipp));
+      const zeigen = ()=>{
+        const t = treffer();
+        knoepfe.forEach(b => { b.style.display = !tipp || t.includes(b) ? '' : 'none'; b.style.outline = ''; });
+        if(tipp && t[wahl]) t[wahl].style.outline = '2px solid var(--primary)';
+        $('tippAnz').style.display = tipp ? '' : 'none'; $('tippAnz').textContent = tipp.toUpperCase() + '…';
+      };
+      dialogTaste = e => {
+        if(e.ctrlKey || e.metaKey || e.altKey) return;
+        const t = treffer();
+        if(e.key === 'Enter' && tipp && t[wahl]){ e.preventDefault(); t[wahl].click(); return; }
+        if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); if(t.length) wahl = (wahl + (e.key === 'ArrowDown' ? 1 : -1) + t.length) % t.length; zeigen(); return; }
+        if(e.key === 'Backspace'){ e.preventDefault(); tipp = tipp.slice(0, -1); wahl = 0; zeigen(); return; }
+        if(!/^\p{L}$/u.test(e.key)) return;
+        e.preventDefault();
+        const neu = tipp + norm(e.key);
+        const n = knoepfe.filter(b => nachname(person(b.dataset.k)).startsWith(neu));
+        if(!n.length){ toast('Kein Nachname mit „' + neu.toUpperCase() + '…“'); return; }
+        tipp = neu; wahl = 0;
+        if(n.length === 1){ n[0].click(); return; }
+        zeigen();
+      };
     });
 }
 function einteilen(s, k){
