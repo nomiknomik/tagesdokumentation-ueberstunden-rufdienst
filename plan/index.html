@@ -157,6 +157,51 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .legende{display:grid;gap:6px;font-size:12px;color:var(--text2)}
 .legende div{display:flex;gap:6px;align-items:center}
 
+/* ---------- Matrix (1 Zeile = 1 Woche) ---------- */
+.tabelle.matrix{background:transparent;border:0;box-shadow:none;overflow:visible}
+.tabelle.matrix.dimm .mx-box:not(.mark):not(.aus){opacity:.38}
+.mx-kopf,.mx-woche{display:grid;grid-template-columns:40px repeat(7,minmax(0,1fr));gap:7px}
+.mx-kopf{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;text-align:center}
+.mx-woche{margin-bottom:7px}
+.mx-kw{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:10px;font-weight:700}
+.mx-kw b{font-size:14px;color:var(--text2)}
+.mx-box{position:relative;border-radius:14px;min-height:118px;border:1px solid var(--border);background:#fff}
+.mx-box.aus{background:transparent;border-style:dashed;opacity:.5}
+.mx-box.ok{background:linear-gradient(180deg,#F3F9F5,#FBFDFB)}
+.mx-box.kn{background:linear-gradient(180deg,#FCF5EA,#FFFBF5)}
+.mx-box.rot{background:linear-gradient(180deg,#FAEAE5,#FFF7F4);border-color:rgba(194,73,46,.25)}
+.mx-box.we{background:repeating-linear-gradient(135deg,#F6F0E5 0 8px,#F9F4EB 8px 16px)}
+.mx-box.ft{background:repeating-linear-gradient(135deg,#F5E9E5 0 8px,#F9F0ED 8px 16px)}
+.mx-box.heute{box-shadow:0 0 0 2px var(--primary)}
+.mx-box .dzelle{position:absolute;inset:0;border-radius:14px}
+.mx-box .dzelle:hover{background:rgba(0,99,110,.04)}
+.mx-dat{position:absolute;top:7px;left:9px;font-weight:800;font-size:13px;line-height:1.1}
+.mx-dat small{display:block;font-size:9px;color:var(--danger);font-weight:700}
+.mx-zahl{position:absolute;top:7px;right:8px;font-size:11px;font-weight:800;display:flex;gap:2px;align-items:baseline}
+.mx-zahl i{color:var(--muted);font-style:normal;font-weight:400}
+.mx-zahl b.ok{color:#3E9B63} .mx-zahl b.kn{color:#C47A2C} .mx-zahl b.rot{color:var(--danger)}
+.mx-zahl sup{font-size:8.5px;color:var(--warning);margin-left:2px}
+.mx-dienst{position:absolute;left:8px;right:8px;top:36px;height:32px;border-radius:9px;display:flex;align-items:center;gap:7px;padding:0 7px 0 4px;
+  border:1px solid;font-size:13px}
+.mx-dienst .pk{width:22px;height:22px;border-radius:7px;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.mx-dienst small{margin-left:auto;font-size:9.5px;font-weight:700;opacity:.7}
+.mx-dienst .warn,.mx-dienst .warno{display:flex} .mx-dienst .warn{color:var(--danger)} .mx-dienst .warno{color:var(--warning)}
+.mx-dienst .ic{width:13px;height:13px}
+.mx-dienst{white-space:nowrap;overflow:hidden}
+.mx-dienst.leer{border:1.5px dashed rgba(43,36,32,.2);color:var(--muted);font-weight:600;padding-left:9px;font-size:12px}
+.mx-dienst .vorschlag{padding:0 5px;font-size:10px}
+.mx-hw{position:absolute;left:9px;right:9px;top:72px;font-size:9.5px;line-height:1.2;color:var(--text2);font-weight:600;max-height:24px;overflow:hidden}
+.mx-hw .r{color:var(--danger)}
+.mx-bl{position:absolute;bottom:6px;left:8px;display:flex;flex-wrap:wrap;max-width:62%}
+.mx-mini{display:inline-flex;align-items:center;justify-content:center;border-radius:99px;min-width:18px;height:18px;padding:0 3px;font-size:8px;font-weight:800;
+  color:#fff;margin-right:-3px;border:1.5px solid #fff;opacity:.85}
+.mx-mini.gef{background:#fff;border-style:dashed;opacity:1}
+.mx-br{position:absolute;bottom:5px;right:6px;display:flex;gap:2px;flex-wrap:wrap;justify-content:flex-end;max-width:45%}
+.mx-wu{display:inline-flex;align-items:center;gap:2px;border-radius:5px;padding:0 4px;font-size:9px;font-weight:700;border:1px dashed}
+.mx-wu .ic{width:10px;height:10px}
+.mx-wu.wunsch{color:#2F7D4A;border-color:#A8D8B8;background:#F3FAF5} .mx-wu.nogo{color:#A6543F;border-color:#EBC2B6;background:#FCF3F0}
+.mx-wu.hart{border-style:solid}
+
 /* ---------- Meine Eintraege ---------- */
 .zwei{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
 .kal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
@@ -283,6 +328,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
     <div class="planwrap">
       <div>
         <div class="werkzeug">
+          <span class="seg" id="ansichtSeg"><button data-a="liste">Liste</button><button data-a="matrix">Matrix</button></span>
           <span class="pill entwurf" id="pubPill">Entwurf</span>
           <span class="hint" id="pubInfo"></span>
           <span style="flex:1"></span>
@@ -443,7 +489,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.3';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.4';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -839,17 +885,18 @@ function renderPlan(){
   const D = dienstDaten(ym) || {tage:{}};
   const pub = D.veroeffentlicht, stand = pub ? pub.stand || {} : {};
   let tausche = 0;
-  const n = tageIm(ym), hz = heute();
+  const n = tageIm(ym), hz = heute(), info = [];
   let h = `<div class="zeile kopf"><div>Tag</div><div>Dienst</div><div>Besetzung</div><div>Abwesend</div><div>Wünsche / No-Gos</div><div>Hinweise</div></div>`;
   for(let d = 1; d <= n; d++){
     const s = ds(+ym.slice(0,4), +ym.slice(5,7), d), w = wt(s), ft = feiertag(s), dh = dienstVon(s), dp = person(dh);
     const cls = ['zeile', ft ? 'ft' : w >= 6 ? 'we' : '', s === hz ? 'heute' : '', w === 1 && d > 1 ? 'kw-start' : '',
       markK && (dh === markK || eintrag(markK, s)) ? 'mark' : ''].join(' ');
     // Dienst
-    let dzelle;
+    let dzelle, getauscht = false, partner = '', warn = '';
     if(dp){
       const b = bewerte(dp, s), schlimm = b.tags.some(t => t[0] === 'r'), mittel = b.tags.some(t => t[0] === 'o');
-      const getauscht = pub && stand[s] !== undefined && stand[s] !== dh;
+      getauscht = pub && stand[s] !== undefined && stand[s] !== dh;
+      warn = schlimm ? 'r' : mittel ? 'o' : '';
       if(getauscht) tausche++;
       dzelle = `<span class="dchip" title="${esc(b.tags.map(t => t[1]).join(' · '))}">${pk(dp)}${esc(dp.k)}`
         + (schlimm ? `<span class="warn">${icon('alert')}</span>` : mittel ? `<span class="warno">${icon('alert')}</span>` : '')
@@ -858,8 +905,9 @@ function renderPlan(){
       dzelle = `<span class="dchip leer">${darfEinteilen() ? '+ einteilen' : '–'}</span>`;
       if(pub && stand[s]){ tausche++; }
       // Vorschlag Fr+So: Freitag belegt, Sonntag frei (oder umgekehrt)
-      const partner = w === 7 ? dienstVon(plus(s, -2)) : w === 5 ? dienstVon(plus(s, 2)) : '';
-      if(partner && person(partner) && darfEinteilen() && !abwesend(person(partner), s))
+      partner = w === 7 ? dienstVon(plus(s, -2)) : w === 5 ? dienstVon(plus(s, 2)) : '';
+      if(!(partner && person(partner) && darfEinteilen() && !abwesend(person(partner), s))) partner = '';
+      if(partner)
         dzelle += `<span class="vorschlag" data-vorschlag="${s}|${partner}">${esc(partner)} wie ${w === 7 ? 'Fr' : 'So'}?</span>`;
     }
     // Besetzung
@@ -886,11 +934,20 @@ function renderPlan(){
     if(b && b.w[0] === 0) hw += `<div class="hinw rot">${icon('alert')}bis 11 Uhr evtl. kein OA</div>`;
     else if(b && b.st.includes('rot')) hw += `<div class="hinw rot">${icon('alert')}Unterbesetzt ${b.st.map((x, i) => x === 'rot' ? FENSTER[i] : '').filter(Boolean).join(', ')}</div>`;
     hinweise(s).forEach(x => hw += `<div class="hinw">${icon('info')}${esc(x.text)}</div>`);
+    info.push({s, d, w, ft, dp, b, getauscht, partner, warn,
+      hwRot: b && b.w[0] === 0 ? 'bis 11 Uhr evtl. kein OA' : b && b.st.includes('rot') ? 'unterbesetzt ' + b.st.map((x, i) => x === 'rot' ? FENSTER[i] : '').filter(Boolean).join(', ') : '',
+      hwGrau: hinweise(s).map(x => x.text), mark: cls.includes('mark'), heute: s === hz,
+      abw: personen().map(p => [p, abwesend(p, s), gefaehrdet(p, s)]).filter(x => x[1] || x[2]),
+      wu: personen().map(p => [p, eintrag(p.k, s)]).filter(x => x[1] && (x[1].typ === 'wunsch' || x[1].typ === 'nogo')),
+      tipp: dp ? bewerte(dp, s).tags.map(t => t[1]).join(' · ') : ''});
     h += `<div class="${cls}"><div class="tagzelle"><span class="wt">${WT[w]}</span><b>${d}.</b>${ft ? `<span class="ftn">${esc(ft)}</span>` : ''}</div>`
       + `<div class="dzelle ${darfEinteilen() ? '' : 'gesperrt'}" data-tag="${s}">${dzelle}<span class="art">${dienstArt(s)}</span></div>`
       + `<div>${bz}</div><div>${ab}</div><div>${wu}</div><div style="flex-direction:column;align-items:flex-start">${hw}</div></div>`;
   }
-  const tab_ = $('planTab'); tab_.innerHTML = h; tab_.classList.toggle('dimm', !!markK);
+  const matrix = ansicht === 'matrix' && innerWidth > 760;
+  $('ansichtSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === (matrix ? 'matrix' : 'liste')));
+  const tab_ = $('planTab'); tab_.innerHTML = matrix ? matrixHtml(info) : h; tab_.classList.toggle('dimm', !!markK);
+  tab_.classList.toggle('matrix', matrix);
   tab_.querySelectorAll('.dzelle').forEach(el => el.onclick = e => {
     const v = e.target.closest('[data-vorschlag]');
     if(v){ e.stopPropagation(); const [s, k] = v.dataset.vorschlag.split('|'); einteilen(s, k); return; }
@@ -914,6 +971,50 @@ function renderPlan(){
   z += `<div class="hint" style="margin-top:8px">${frei ? frei + ' Tag' + (frei > 1 ? 'e' : '') + ' noch ohne Dienst' : 'Alle Tage besetzt ✓'}</div>`;
   $('zaehler').innerHTML = z;
   $('zaehler').querySelectorAll('.prow').forEach(el => el.onclick = ()=>{ markK = markK === el.dataset.k ? '' : el.dataset.k; renderPlan(); });
+}
+
+/* Matrix: eine Zeile je Kalenderwoche, Hintergrund = Besetzung (blass) */
+let ansicht = load('planung_ansicht', 'liste');
+$('ansichtSeg').querySelectorAll('button').forEach(b => b.onclick = ()=>{
+  ansicht = b.dataset.a; try{ localStorage.setItem('planung_ansicht', JSON.stringify(ansicht)); }catch(e){}
+  if(ansicht === 'matrix' && innerWidth <= 760) toast('Matrix nur auf breitem Bildschirm.');
+  renderPlan();
+});
+const kw = s => { const t = tn(s), do_ = t - wt(s) + 4, j = vonTn(do_).slice(0, 4); return Math.floor((do_ - tn(j + '-01-01')) / 7) + 1; };
+const tint = (hex, a) => { const n = parseInt(String(hex).slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
+function matrixHtml(info){
+  let h = `<div class="mx-kopf"><div>KW</div>${WT.slice(1).map(x => `<div>${x}</div>`).join('')}</div>`;
+  const vorne = info[0].w - 1;
+  const zellen = Array(vorne).fill(null).concat(info);
+  while(zellen.length % 7) zellen.push(null);
+  for(let i = 0; i < zellen.length; i += 7){
+    const erst = zellen.slice(i, i + 7).find(Boolean);
+    h += `<div class="mx-woche"><div class="mx-kw">KW<b>${kw(erst.s)}</b></div>`;
+    for(const x of zellen.slice(i, i + 7)){
+      if(!x){ h += '<div class="mx-box aus"></div>'; continue; }
+      const st = x.b ? (x.b.st.includes('rot') ? 'rot' : x.b.st.includes('kn') ? 'kn' : 'ok') : '';
+      const cls = ['mx-box', x.ft ? 'ft' : x.w >= 6 ? 'we' : st, x.heute ? 'heute' : '', x.mark ? 'mark' : ''].join(' ');
+      let z = '';
+      if(x.b) z = `<div class="mx-zahl" title="sicher anwesend ${FENSTER.join(' / ')} · Soll ${x.b.regel.soll.join('/')}${x.b.gef.length ? ' · nach Dienst: ' + x.b.gef.map(p => p.k).join(', ') : ''}">`
+        + x.b.w.map((n, j) => `<b class="${x.b.st[j]}">${n}</b>`).join('<i>·</i>') + (x.b.gef.length ? `<sup>+${x.b.gef.length}</sup>` : '') + '</div>';
+      const f = x.dp ? farbe(x.dp) : '';
+      const dienst = x.dp
+        ? `<div class="mx-dienst" style="background:${tint(f, .13)};border-color:${tint(f, .45)};color:${f}" title="${esc(x.tipp)}">${pk(x.dp)}<b>${esc(x.dp.k)}</b>`
+          + (x.warn ? `<span class="${x.warn === 'r' ? 'warn' : 'warno'}">${icon('alert')}</span>` : '')
+          + (x.getauscht ? '<span class="tausch" title="nach Veröffentlichung geändert"></span>' : '') + `<small>${dienstArt(x.s)}</small></div>`
+        : `<div class="mx-dienst leer">${x.partner ? `<span class="vorschlag" data-vorschlag="${x.s}|${x.partner}" title="wie ${x.w === 7 ? 'Freitag' : 'Sonntag'} übernehmen">${esc(x.partner)} wie ${x.w === 7 ? 'Fr' : 'So'}?</span>` : darfEinteilen() ? '+ einteilen' : '–'}<small>${dienstArt(x.s)}</small></div>`;
+      const abw = x.abw.map(([p, a, g]) => a
+        ? `<span class="mx-mini" style="background:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a])}">${esc(p.k)}</span>`
+        : `<span class="mx-mini gef" style="color:${farbe(p)};border-color:${farbe(p)}" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('');
+      const wu = x.wu.map(([p, e]) => `<span class="mx-wu ${e.typ} ${e.stufe === 'hart' ? 'hart' : ''}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + ' ' + (e.stufe || ''))}">${icon(TYPEN[e.typ].icon)}${esc(p.k)}</span>`).join('');
+      const hw = x.hwRot || x.hwGrau.length ? `<div class="mx-hw">${x.hwRot ? `<span class="r">⚠ ${esc(x.hwRot)}</span> ` : ''}${x.hwGrau.map(esc).join(' · ')}</div>` : '';
+      h += `<div class="${cls}"><div class="dzelle" data-tag="${x.s}">`
+        + `<div class="mx-dat">${x.d}.${x.ft ? `<small>${esc(x.ft)}</small>` : ''}</div>${z}${dienst}${hw}`
+        + `<div class="mx-bl">${abw}</div><div class="mx-br">${wu}</div></div></div>`;
+    }
+    h += '</div>';
+  }
+  return h;
 }
 
 function waehlen(s){

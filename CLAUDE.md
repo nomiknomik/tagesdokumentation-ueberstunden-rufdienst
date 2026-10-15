@@ -40,6 +40,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Klick auf die Wolke (`#status`), nie je Eingabe. Pinsel im Wunsch-Kalender;
   Teilzeit-Muster `manuell` = Werktage frei außer Eintrag `da`. `PLAN_VERSION` bei
   jeder Änderung hochzählen; Klick auf die Version speichert und lädt ohne Cache neu.
+  Plan als Liste oder Matrix (1 Zeile = 1 KW, `matrixHtml()`, nur > 760 px,
+  Wahl in `planung_ansicht`); beide aus denselben Tagesdaten (`info`).
   Besetzung je Zeitfenster bis 11 / 11–13 / ab 13, Diensthabender ab 11, Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
 - `add_fields.py`, `build_html.py` (veraltet, erzeugt die heutige HTML nicht
