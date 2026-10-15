@@ -118,7 +118,9 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   leere Kopfdaten-`cfg.pnr`) + Passwort. Admin nur mit `tagesdoku_admin`='1'
   (Gerät): Migration = hat `tagesdoku_teilen` oder synct von Hand mit eigenem
   Repo (≠ `TEAM_REPO`); sonst „Admin-Anmeldung“ mit Gist-Token, geprüft über
-  `GET /user` = Besitzer des Team-Repos. Admin sieht den Token im Klartext,
+  `GET /user` = Besitzer des Team-Repos. Oder per Admin-QR („Admin-Gerät
+  hinzufügen“): PIN-verschlüsselt mit `g` (Gist-Token) und `admin:1`, nur als
+  QR (kein Link/Gist), setzt Flag und `tagesdoku_teilen`, eigener Sync unberührt. Admin sieht den Token im Klartext,
   PIN wird in `tagesdoku_teilen` gemerkt. Nur Anzeige – der Token liegt technisch im Browser. „Lokal geändert“
   heißt Prüfsumme ≠ `sync.hash` (Dirty-Flag allein ist nur ein Vorfilter).
   Haben beide Seiten geändert: Drei-Wege-Abgleich je Eintrag gegen die Basis

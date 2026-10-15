@@ -597,6 +597,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <div class="row"><label>Gist-Token (optional)</label><input id="qr_gist" placeholder="github_pat_… mit „Gists: Read and write“" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <div class="row"><label>PIN für den Code</label><input id="qr_pin" placeholder="beliebig, z. B. 4711" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <button class="btn" id="qrMake" style="font-size:14px;min-height:44px">QR-Code erzeugen</button>
+      <button class="btn outline" id="qrAdmin" style="font-size:14px;min-height:44px;margin-top:8px">Admin-Gerät hinzufügen (QR-Code)</button>
       <button class="btn outline" id="qrMail" style="font-size:14px;min-height:44px;margin-top:8px">Link erzeugen und per E-Mail senden</button>
       <div class="row2" style="margin-top:8px">
         <button class="btn outline" id="qrTest" style="font-size:14px;min-height:44px">Verbindung testen</button>
@@ -1759,10 +1760,10 @@ async function pinSchluessel(pin, salt){
   return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:ZUGANG_ITER, hash:'SHA-256'},
     basis, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
 }
-async function zugangKodieren(r, t, pin){
+async function zugangKodieren(r, t, pin, extra){
   const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, await pinSchluessel(pin, salt),
-    new TextEncoder().encode(JSON.stringify({r, t, bis: Date.now() + ZUGANG_GUELTIG}))));
+    new TextEncoder().encode(JSON.stringify({r, t, ...extra, bis: Date.now() + ZUGANG_GUELTIG}))));
   const alles = new Uint8Array(28 + ct.length); alles.set(salt); alles.set(iv, 16); alles.set(ct, 28);
   return b64url(alles);
 }
@@ -1795,6 +1796,15 @@ async function gistEinladung(id){
 }
 let pinGist = '';
 function zugangUebernehmen(z, kopieZeigen){
+  if(z.admin && z.g){   // Admin-Geraet: Weitergabe-Daten + Admin-Flag; eigener Sync bleibt unberuehrt
+    localStorage.setItem(LS_ADMIN, '1');
+    localStorage.setItem(LS_TEILEN, JSON.stringify({...load(LS_TEILEN, {}), repo: z.r, token: z.t, gist: z.g}));
+    zugangQr = false; zugangAnsicht();
+    document.querySelector('nav button[data-tab=cfg]').click();
+    karteAuf($('syncFelder')); $('syncFelder').open = true;
+    $('syncMsg').innerHTML = '<span class="ok">Als Admin-Gerät eingerichtet. Für dein eigenes Backup hier Repo, Token und Passwort eintragen.</span>';
+    return;
+  }
   if(z.gist){
     gistEinladung(z.gist).then(code => { zugangUebernehmen({code}, kopieZeigen); pinGist = z.gist; },
       e => setTimeout(()=> toast(e.message === 'weg' ? 'Diese Einladung ist abgelaufen oder gelöscht – bitte einen neuen Code anfordern.'
@@ -1929,17 +1939,31 @@ $('qrMail').onclick = async ()=>{
   $('qrMsg').innerHTML = `<span class="ok">Link erzeugt. Falls sich keine E-Mail öffnet: <a href="${mail}">E-Mail öffnen</a>. PIN <b>${pin.replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))}</b> getrennt mitteilen.</span>`;
   location.href = mail;
 };
-$('qrMake').onclick = async ()=>{
-  const pin = await zugangLinkBauen(); if(!pin) return;
+/* Admin-Code: zusaetzlich Gist-Token, nur als QR (nicht per Mail/Gist), nur fuer eigene Geraete */
+$('qrAdmin').onclick = async ()=>{
+  const g = $('qr_gist').value.trim();
+  if(!g){ toast('Zuerst den Gist-Token eintragen.'); return; }
+  const repo = $('qr_repo').value.trim(), token = $('qr_token').value.trim(), pin = $('qr_pin').value.trim();
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo) || !token){ toast('Repo und Team-Token eintragen.'); return; }
+  if(!pin){ toast('PIN festlegen.'); return; }
+  localStorage.setItem(LS_TEILEN, JSON.stringify({repo, token, pin, gist: g}));
+  zugangLink = location.origin + location.pathname + '#zugang2=' + await zugangKodieren(repo, token, pin, {g, admin: 1});
+  await qrAnzeigen(pin, true);
+};
+async function qrAnzeigen(pin, admin){
   try{
     const qrcode = await ladeQr();
     const qr = qrcode(0, 'M');
-    $('qrPinZeige').innerHTML = `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – nicht im Code, getrennt mitteilen (mündlich, anderer Kanal). Gültig bis ${new Date(Date.now() + ZUGANG_GUELTIG).toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}.`;
+    $('qrLink').style.display = admin ? 'none' : '';
+    $('qrPinZeige').innerHTML = (admin ? '<b>Admin-Code – nur auf eigenen Geräten scannen, nicht weitergeben.</b><br>' : '') + `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – nicht im Code, getrennt mitteilen (mündlich, anderer Kanal). Gültig bis ${new Date(Date.now() + ZUGANG_GUELTIG).toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}.`;
     qr.addData(zugangLink); qr.make();
     $('qrImg').innerHTML = qr.createSvgTag({cellSize:5, margin:2, scalable:true});
     const svg = $('qrImg').querySelector('svg'); svg.style.width = svg.style.height = 'min(70vw, 280px)';
     qrZeigen('qrOut');
   }catch(err){ toast(err.message); }
+}
+$('qrMake').onclick = async ()=>{
+  const pin = await zugangLinkBauen(); if(pin) await qrAnzeigen(pin, false);
 };
 $('qrClose').onclick = ()=>{ scanStop(); $('qrBox').style.display = 'none'; };
 
@@ -3919,7 +3943,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.64';
+const APP_VERSION = '1.65';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
