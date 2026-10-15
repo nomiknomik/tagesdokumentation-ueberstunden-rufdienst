@@ -2023,7 +2023,7 @@ function modusSetzen(m){
 {
   let m = localStorage.getItem(LS_MODUS);
   /* Bestehende Installationen nicht fragen: wer schon Daten hat, hat sich entschieden */
-  if(!m && (syncAktiv() || zugangLesen(location.hash))) m = 'online';
+  if(!m && (syncAktiv() || empfangenerCode)) m = 'online';   // Link geoeffnet: kein Startdialog ueber der PIN-Abfrage (Hash ist hier schon entfernt)
   else if(!m && (echteTageAnzahl() || einstellungenGesetzt())) m = 'offline';
   if(m) modusSetzen(m); else $('startBox').style.display = 'block';
 }
@@ -3890,7 +3890,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.60';
+const APP_VERSION = '1.61';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
