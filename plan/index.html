@@ -176,7 +176,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-box .dzelle{position:absolute;inset:0;border-radius:14px}
 .mx-box .dzelle:hover{background:rgba(0,99,110,.04)}
 .mx-dat{position:absolute;top:7px;left:9px;font-weight:800;font-size:13px;line-height:1.1}
-.mx-dat small{display:block;font-size:9px;color:var(--danger);font-weight:700}
+.mx-dat{right:9px}
+.mx-dat small{display:block;font-size:9px;color:var(--danger);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mx-zahl{position:absolute;top:7px;right:8px;font-size:11px;font-weight:800;display:flex;gap:2px;align-items:baseline}
 .mx-zahl i{color:var(--muted);font-style:normal;font-weight:400}
 .mx-zahl b.ok{color:#3E9B63} .mx-zahl b.kn{color:#C47A2C} .mx-zahl b.rot{color:var(--danger)}
@@ -489,7 +490,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.6';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.7';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1012,7 +1013,7 @@ function matrixHtml(info){
       const wu = x.wu.map(([p, e]) => `<span class="mx-wu ${e.typ} ${e.stufe === 'hart' ? 'hart' : ''}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + ' ' + (e.stufe || ''))}">${icon(TYPEN[e.typ].icon)}${esc(p.k)}</span>`).join('');
       const hw = x.hwRot || x.hwGrau.length ? `<div class="mx-hw">${x.hwRot ? `<span class="r">⚠ ${esc(x.hwRot)}</span> ` : ''}${x.hwGrau.map(esc).join(' · ')}</div>` : '';
       h += `<div class="${cls}"><div class="dzelle" data-tag="${x.s}">`
-        + `<div class="mx-dat">${x.d}.${x.ft ? `<small>${esc(x.ft)}</small>` : ''}</div>${z}${dienst}${hw}`
+        + `<div class="mx-dat">${x.d}.${x.ft ? `<small title="${esc(x.ft)}">${esc(x.ft)}</small>` : ''}</div>${z}${dienst}${hw}`
         + `<div class="mx-bl">${abw}</div><div class="mx-br">${wu}</div></div></div>`;
     }
     h += '</div>';
