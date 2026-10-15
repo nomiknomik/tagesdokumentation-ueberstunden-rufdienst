@@ -43,6 +43,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Plan als Liste oder Matrix (1 Zeile = 1 KW, `matrixHtml()`, nur > 760 px,
   Wahl in `planung_ansicht`); beide aus denselben Tagesdaten (`info`). Letzter
   Monat/Reiter je Gerät in `planung_monat`/`planung_tab` (Start/Update dort).
+  Zoom −/+ im Kopf: CSS `zoom` auf `<html>`, 70–200 %, je Gerät in `planung_zoom`.
   Besetzung nur Vormittag / Nachmittag (vor/ab 11; `besRegel()` fasst alte 3-Fenster-
   Konfiguration zusammen), keine Dienstart (ZD1…)
   in der Oberfläche – Funktionen statt Abrechnungsart folgen später.

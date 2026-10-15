@@ -47,6 +47,10 @@ nav.tabs .ic{width:16px;height:16px}
   display:flex;align-items:center;justify-content:center;cursor:pointer}
 .rund:hover{border-color:var(--primary)}
 .status{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.zoom{display:flex;align-items:center;border:1px solid var(--border);background:var(--card);border-radius:999px;overflow:hidden}
+.zoom button{border:0;background:transparent;width:30px;height:30px;font-size:17px;font-weight:700;color:var(--primary);cursor:pointer}
+.zoom button:hover{background:var(--primary-soft)}
+.zoom span{font-size:11px;font-weight:700;color:var(--text2);min-width:40px;text-align:center}
 .status{border:0;background:transparent;cursor:pointer;padding:4px 6px;border-radius:8px}
 .status:hover{background:var(--primary-soft)}
 .status[data-st=wait]{color:var(--warning);font-weight:700}
@@ -358,6 +362,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
       <h2 id="mTitel">–</h2>
       <button class="rund" id="mVor" title="Nächster Monat"><span data-icon="chevronRight"></span></button>
     </div>
+    <div class="zoom" title="Darstellung verkleinern/vergrößern (je Gerät)"><button id="zoomMinus">−</button><span id="zoomWert">100 %</span><button id="zoomPlus">+</button></div>
     <button class="status" id="status" data-st="off" title="Jetzt speichern bzw. neu laden"><span data-icon="cloud"></span><span id="statusTxt">offline</span></button>
     <div class="ich" id="ichBtn" title="Angemeldet als"></div>
   </div>
@@ -568,7 +573,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.17';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.18';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1764,6 +1769,17 @@ async function start(){
   render();
   if(!ich()) ichWaehlen();
 }
+/* Zoom je Geraet (CSS zoom auf <html>), 70–200 % */
+let zoom = +load('planung_zoom', 1) || 1;
+const zoomSetzen = z => {
+  zoom = Math.round(Math.min(2, Math.max(.7, z)) * 10) / 10;
+  document.documentElement.style.zoom = zoom; $('zoomWert').textContent = Math.round(zoom * 100) + ' %';
+  merken('planung_zoom', zoom);
+};
+$('zoomMinus').onclick = ()=> zoomSetzen(zoom - .1);
+$('zoomPlus').onclick = ()=> zoomSetzen(zoom + .1);
+$('zoomWert').ondblclick = ()=> zoomSetzen(1);
+zoomSetzen(zoom);
 /* Version + Update: ausstehende Aenderungen speichern, dann ohne Cache neu laden */
 $('verBtn').textContent = 'v' + PLAN_VERSION;
 { const t = load('planung_tab', 'plan'); const b = document.querySelector(`nav.tabs button[data-tab="${t}"]`);
