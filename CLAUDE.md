@@ -28,6 +28,16 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   **und** `CACHE` in `sw.js` hochzählen.
 - `Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf` (auch in `app/`)
   – Original + 67 AcroForm-Felder. Kopfzeile Name/Personalnummer bleibt leer.
+- `plan/` – Dienstplanung OA (Desktop, Wünsche auch am Handy), eigenständig, nur
+  online. Daten im **Klartext** im privaten `tagesdoku-team`: `plan/config.json`
+  (Team, Teams, Besetzung, Gruppenhinweise, Feiertage, Grenzen),
+  `plan/wuensche/<Kürzel>/<JJJJ-MM>.json`, `plan/dienst/<JJJJ-MM>.json` (Plan,
+  Protokoll, `veroeffentlicht.stand` für Tausch-Markierung). Zugang = Tagesdoku-
+  Token (gleiche Domain, `tagesdoku_sync`/`tagesdoku_teilen`) oder Einladung
+  (`planung_zugang`), Person in `planung_ich`. Schreiben über `aendern()`: Änderung
+  als Funktion, auf frischen Repo-Stand neu angewandt (SHA-Konflikt → wiederholen).
+  Besetzung je Zeitfenster bis 11 / 11–13 / ab 13, Diensthabender ab 11, Vortags-
+  Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
 - `add_fields.py`, `build_html.py` (veraltet, erzeugt die heutige HTML nicht
   mehr), `make_icons.py` (App-Icon, Pillow).
 

@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FAF5EC">
+<title>Dienstplanung</title>
+<style>
+:root{
+  --primary:#00636E; --primary-dark:#004A56; --primary-soft:#E3F0EF;
+  --success:#158F47; --success-soft:#E2F3E8;
+  --warning:#B45309; --warning-soft:#FBEBD6;
+  --danger:#C2492E;  --danger-soft:#F8E1DA;
+  --bg:#FAF5EC; --card:#FFFFFF; --input:#F6EEE0;
+  --text:#2A2420; --text2:#6B5F52; --muted:#9C8F80;
+  --border:rgba(43,36,32,.12); --line:rgba(43,36,32,.07);
+  --we:#F4ECDD; --ft:#F1E3E0;
+  --radius:16px;
+}
+*{box-sizing:border-box}
+html{height:100%}
+body{margin:0;min-height:100dvh;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;font-size:14px;line-height:1.4}
+button,input,select{font:inherit;color:inherit}
+.ic{width:18px;height:18px;flex:0 0 auto}
+.hidden{display:none !important}
+
+/* ---------- Kopf ---------- */
+header{position:sticky;top:0;z-index:20;background:rgba(250,245,236,.94);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border)}
+.hd{max-width:1320px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+.logo .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary-light,#0A7480),var(--primary-dark));
+  color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,99,110,.25)}
+.logo small{display:block;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.02em}
+nav.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px}
+nav.tabs button{border:0;background:transparent;padding:7px 14px;border-radius:999px;display:flex;gap:6px;align-items:center;
+  color:var(--text2);font-weight:600;cursor:pointer}
+nav.tabs button.on{background:var(--primary);color:#fff}
+nav.tabs .ic{width:16px;height:16px}
+.monat{display:flex;align-items:center;gap:6px;margin-left:auto}
+.monat h2{margin:0;font-size:17px;min-width:150px;text-align:center}
+.rund{width:34px;height:34px;border-radius:999px;border:1.5px solid var(--border);background:var(--card);color:var(--primary);
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.rund:hover{border-color:var(--primary)}
+.status{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.status[data-st=ok]{color:var(--success)} .status[data-st=busy]{color:var(--warning)} .status[data-st=err]{color:var(--danger)}
+.ich .pk{width:26px;height:26px;border-radius:999px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.ich{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:4px 10px 4px 4px;cursor:pointer}
+
+main{max-width:1320px;margin:0 auto;padding:18px 20px 60px}
+.banner{background:var(--warning-soft);color:var(--warning);border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;gap:8px;align-items:center}
+
+/* ---------- Karten, Knoepfe ---------- */
+.card{background:linear-gradient(180deg,#FFFFFF,#FFFCF6);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;margin-bottom:14px;box-shadow:0 4px 16px rgba(43,36,32,.06)}
+.card h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+.card h3 .ic{color:var(--primary)}
+.hint{color:var(--text2);font-size:12.5px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;padding:9px 16px;
+  font-weight:600;cursor:pointer;background:linear-gradient(135deg,#0A7480,var(--primary));color:#fff;box-shadow:0 6px 14px rgba(0,99,110,.2)}
+.btn.out{background:var(--card);color:var(--text2);border:1.5px solid var(--border);box-shadow:none}
+.btn.gh{background:transparent;color:var(--text2);box-shadow:none;padding:6px 10px}
+.btn.rot{background:var(--danger)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn .ic{width:16px;height:16px}
+input[type=text],input[type=date],input[type=number],input[type=password],select{background:var(--input);border:1px solid transparent;
+  border-radius:10px;padding:8px 10px;min-width:0}
+input:focus,select:focus{outline:2px solid var(--primary);outline-offset:0;background:#fff}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text2);font-weight:600}
+.reihe{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+
+/* ---------- Chips ---------- */
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px 2px 3px;font-size:12px;font-weight:600;
+  background:#fff;border:1px solid var(--border);white-space:nowrap;line-height:18px}
+.chip .pk{width:20px;height:20px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700}
+.chip .ic{width:13px;height:13px}
+.chip.leer{padding:2px 9px;color:var(--muted)}
+.chip.t-urlaub{background:#FFF6DC;border-color:#F0D99A}
+.chip.t-fb{background:#E7EEFA;border-color:#BCCDEB}
+.chip.t-frei,.chip.t-tz{background:#F0ECE6;border-color:#DDD3C5;color:var(--text2)}
+.chip.gef{border-style:dashed;border-color:var(--warning);background:var(--warning-soft);color:var(--warning)}
+.chip.t-wunsch{background:var(--success-soft);border-color:#A8D8B8;color:#0F6B35}
+.chip.t-wunsch.weich{background:#fff;border-style:dashed}
+.chip.t-nogo{background:var(--danger-soft);border-color:#EBB3A4;color:#9A3520}
+.chip.t-nogo.weich{background:#fff;border-style:dashed}
+.chip.t-da{background:var(--primary-soft);border-color:#B5D6D4;color:var(--primary-dark)}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;border-radius:6px;padding:1px 6px;white-space:nowrap}
+.tag.g{background:var(--success-soft);color:#0F6B35}
+.tag.o{background:var(--warning-soft);color:var(--warning)}
+.tag.r{background:var(--danger-soft);color:#9A3520}
+.tag.n{background:#F0ECE6;color:var(--text2)}
+
+/* ---------- Plan (vertikal) ---------- */
+.planwrap{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start}
+.werkzeug{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700}
+.pill.entwurf{background:#F0ECE6;color:var(--text2)}
+.pill.pub{background:var(--success-soft);color:var(--success)}
+.tabelle{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:clip;box-shadow:0 4px 16px rgba(43,36,32,.06)}
+.zeile{display:grid;grid-template-columns:96px 170px 132px minmax(140px,1.2fr) minmax(140px,1.2fr) minmax(120px,1fr);
+  border-bottom:1px solid var(--line);min-height:46px}
+.zeile:last-child{border-bottom:0}
+.zeile > div{padding:7px 10px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0}
+.zeile.kopf{background:#F7F1E6;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);min-height:34px;
+  position:sticky;top:57px;z-index:5}
+.zeile.we{background:var(--we)}
+.zeile.ft{background:var(--ft)}
+.zeile.heute{box-shadow:inset 3px 0 0 var(--primary)}
+.zeile.kw-start{border-top:2px solid rgba(43,36,32,.13)}
+.tagzelle{flex-direction:column;align-items:flex-start !important;gap:0 !important;justify-content:center}
+.tagzelle b{font-size:15px}
+.tagzelle .wt{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase}
+.tagzelle .ftn{font-size:10.5px;color:var(--danger);font-weight:600;line-height:1.2}
+.dzelle{cursor:pointer;position:relative}
+.dzelle:hover{background:rgba(0,99,110,.05)}
+.dzelle.gesperrt{cursor:default}
+.dzelle .art{font-size:10.5px;color:var(--muted);font-weight:700;margin-left:auto}
+.dchip{display:inline-flex;align-items:center;gap:7px;border-radius:10px;padding:4px 10px 4px 4px;background:#fff;border:1.5px solid var(--border);font-weight:700}
+.dchip .pk{width:24px;height:24px;border-radius:8px;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center}
+.dchip.leer{border-style:dashed;color:var(--muted);padding:5px 10px;font-weight:600}
+.dchip .warn{color:var(--danger)} .dchip .warno{color:var(--warning)}
+.tausch{width:7px;height:7px;border-radius:9px;background:#7A5AA6;display:inline-block;margin-left:2px}
+.vorschlag{font-size:11px;color:var(--primary);border:1px dashed var(--primary);border-radius:8px;padding:2px 7px;background:var(--primary-soft);cursor:pointer}
+.ampel{display:flex;gap:4px}
+.ampel span{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:36px;height:32px;border-radius:8px;font-weight:800;font-size:13px;line-height:1}
+.ampel span small{font-size:8.5px;font-weight:700;opacity:.75;margin-top:2px}
+.ampel sup{position:absolute;top:-5px;right:-5px;background:var(--warning);color:#fff;border-radius:8px;font-size:9px;padding:1px 4px;line-height:1.2}
+.ampel .ok{background:var(--success-soft);color:var(--success)}
+.ampel .kn{background:var(--warning-soft);color:var(--warning)}
+.ampel .rot{background:var(--danger);color:#fff}
+.ampel .aus{background:transparent;color:var(--muted)}
+.hinw{font-size:11.5px;color:var(--text2);display:flex;gap:4px;align-items:flex-start;line-height:1.25}
+.hinw .ic{width:13px;height:13px;color:var(--muted);margin-top:1px}
+.hinw.rot{color:var(--danger);font-weight:600}
+.hinw.rot .ic{color:var(--danger)}
+.dimm .zeile:not(.kopf):not(.mark){opacity:.38}
+
+.seite{position:sticky;top:76px}
+.seite .card{padding:14px}
+.prow{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:10px;cursor:pointer}
+.prow:hover,.prow.on{background:var(--primary-soft)}
+.prow .pk{width:26px;height:26px;border-radius:8px;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.prow .nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .nm small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+.prow .zahl{font-weight:800;font-size:15px}
+.prow .zahl small{font-weight:600;color:var(--muted);font-size:11px}
+.balken{height:4px;border-radius:4px;background:var(--line);margin:2px 6px 6px 40px;overflow:hidden}
+.balken i{display:block;height:100%;background:var(--primary)}
+.balken i.voll{background:var(--danger)}
+.legende{display:grid;gap:6px;font-size:12px;color:var(--text2)}
+.legende div{display:flex;gap:6px;align-items:center}
+
+/* ---------- Meine Eintraege ---------- */
+.zwei{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+.kal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.kal .kk{font-size:11px;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase}
+.kal button{min-height:74px;border:1px solid var(--border);background:#fff;border-radius:12px;padding:6px;display:flex;flex-direction:column;
+  align-items:flex-start;gap:4px;cursor:pointer;text-align:left}
+.kal button:hover{border-color:var(--primary)}
+.kal button.we{background:var(--we)} .kal button.ft{background:var(--ft)}
+.kal button.tz{background:repeating-linear-gradient(135deg,#F3EEE7 0 6px,#fff 6px 12px)}
+.kal button .n{font-weight:800;font-size:14px}
+.kal button .fn{font-size:9.5px;color:var(--danger);font-weight:600;line-height:1.1}
+.kal button .chip{font-size:10.5px;padding:1px 6px 1px 3px}
+.kal button .mein-d{font-size:10px;color:#fff;background:var(--primary);border-radius:6px;padding:1px 5px;font-weight:700}
+.kal .leer{border:0;background:transparent;cursor:default;min-height:0}
+.liste{display:grid;gap:8px}
+.lz{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 10px}
+.lz .t{flex:1}
+.x{border:0;background:transparent;color:var(--muted);cursor:pointer;padding:4px;display:flex}
+.x:hover{color:var(--danger)}
+
+/* ---------- Einstellungen ---------- */
+.raster{width:100%;border-collapse:collapse}
+.raster th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-align:left;padding:6px}
+.raster td{padding:5px 6px;border-top:1px solid var(--line);vertical-align:middle}
+.raster input[type=number]{width:58px}
+.raster input[type=text]{width:100%}
+.farbe{width:30px;height:30px;border:0;padding:0;background:none;cursor:pointer}
+.chk{display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:12.5px;white-space:nowrap}
+.cfggrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;align-items:start}
+
+/* ---------- Dialog ---------- */
+.schleier{position:fixed;inset:0;background:rgba(42,36,32,.35);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.dialog{background:var(--bg);border-radius:20px;width:min(520px,100%);max-height:88vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25);padding:18px}
+.dialog h3{margin:0 0 4px;font-size:17px}
+.dialog .unter{color:var(--text2);font-size:12.5px;margin-bottom:14px}
+.kand{display:flex;align-items:center;gap:10px;width:100%;border:1px solid var(--border);background:#fff;border-radius:12px;padding:8px 10px;
+  margin-bottom:6px;cursor:pointer;text-align:left}
+.kand:hover{border-color:var(--primary)}
+.kand.akt{border:2px solid var(--primary)}
+.kand.schlecht{opacity:.62}
+.kand .pk{width:30px;height:30px;border-radius:9px;color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.kand .mid{flex:1;min-width:0}
+.kand .mid b{display:block}
+.kand .tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.kand .cnt{font-weight:800;color:var(--text2);font-size:13px}
+.typwahl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.typwahl button{border:1.5px solid var(--border);background:#fff;border-radius:12px;padding:10px;display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:600}
+.typwahl button.on{border-color:var(--primary);background:var(--primary-soft)}
+.typwahl button .ic{width:18px;height:18px}
+.seg{display:inline-flex;background:var(--input);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:600;color:var(--text2)}
+.seg button.on{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.fuss{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:#fff;border-radius:999px;padding:10px 18px;
+  z-index:60;font-weight:600;box-shadow:0 10px 24px rgba(0,0,0,.2)}
+.msg{font-size:12.5px;margin-top:8px}
+.msg.err{color:var(--danger)} .msg.ok{color:var(--success)}
+
+/* ---------- Schmal (Handy) ---------- */
+@media (max-width:1000px){
+  .planwrap{grid-template-columns:1fr}
+  .seite{position:static}
+  .zwei{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .hd{padding:8px 16px;gap:8px}
+  .logo small{display:none}
+  .monat{margin-left:0;width:100%;justify-content:space-between;order:5}
+  nav.tabs{order:4}
+  nav.tabs button span.txt{display:none}
+  main{padding:14px 16px 60px}
+  .zeile.kopf{display:none}
+  .zeile{grid-template-columns:62px 1fr;grid-auto-rows:auto}
+  .zeile > div:nth-child(n+3){grid-column:2;padding-top:0}
+  .zeile > div:empty{display:none}
+  .kal button{min-height:58px;padding:4px}
+  .kal button .chip .txt{display:none}
+  .cfggrid{grid-template-columns:1fr}
+  #druckBtn{display:none}
+  .raster{font-size:12px}
+}
+@media print{
+  header,.seite,.werkzeug,.banner{display:none !important}
+  .planwrap{grid-template-columns:1fr} body{background:#fff}
+  .zeile.kopf{position:static}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <div class="logo"><div class="mark"><span data-icon="calendar"></span></div><div>Dienstplanung<small>Oberärzte · Allgemein- und Viszeralchirurgie</small></div></div>
+    <nav class="tabs">
+      <button data-tab="plan" class="on"><span data-icon="grid"></span><span class="txt">Plan</span></button>
+      <button data-tab="meine"><span data-icon="heart"></span><span class="txt">Wünsche</span></button>
+      <button data-tab="cfg"><span data-icon="settings"></span><span class="txt">Einstellungen</span></button>
+    </nav>
+    <div class="monat">
+      <button class="rund" id="mZur" title="Vormonat"><span data-icon="chevronLeft"></span></button>
+      <h2 id="mTitel">–</h2>
+      <button class="rund" id="mVor" title="Nächster Monat"><span data-icon="chevronRight"></span></button>
+    </div>
+    <div class="status" id="status" data-st="off" title="Speicherstand"><span data-icon="cloud"></span><span id="statusTxt">offline</span></div>
+    <div class="ich" id="ichBtn" title="Angemeldet als"></div>
+  </div>
+</header>
+
+<main>
+  <div class="banner hidden" id="banner"></div>
+
+  <!-- ===== Plan ===== -->
+  <section id="tab-plan">
+    <div class="planwrap">
+      <div>
+        <div class="werkzeug">
+          <span class="pill entwurf" id="pubPill">Entwurf</span>
+          <span class="hint" id="pubInfo"></span>
+          <span style="flex:1"></span>
+          <button class="btn out" id="druckBtn"><span data-icon="printer"></span>Drucken</button>
+          <button class="btn" id="pubBtn"><span data-icon="send"></span>Veröffentlichen</button>
+        </div>
+        <div class="tabelle" id="planTab"></div>
+      </div>
+      <aside class="seite">
+        <div class="card">
+          <h3><span data-icon="users"></span>Dienste im Monat</h3>
+          <div id="zaehler"></div>
+          <div class="hint" style="margin-top:6px">Klick auf eine Person hebt ihre Tage hervor.</div>
+        </div>
+        <div class="card">
+          <h3><span data-icon="info"></span>Legende</h3>
+          <div class="legende">
+            <div><span class="ampel"><span class="ok">2<small>bis 11</small></span></span>Besetzung: sicher anwesend je Zeitfenster</div>
+            <div><span class="chip gef"><span data-icon="moon"></span>XY</span>nach Dienst – fehlt evtl.</div>
+            <div><span class="chip t-wunsch"><span data-icon="heart"></span>hart</span><span class="chip t-wunsch weich"><span data-icon="heart"></span>weich</span>Dienstwunsch</div>
+            <div><span class="chip t-nogo"><span data-icon="ban"></span>hart</span><span class="chip t-nogo weich"><span data-icon="ban"></span>weich</span>No-Go</div>
+            <div><span class="tausch"></span>&nbsp;nach Veröffentlichung getauscht</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===== Meine Wuensche ===== -->
+  <section id="tab-meine" class="hidden">
+    <div class="zwei">
+      <div class="card">
+        <div class="reihe" style="margin-bottom:12px;justify-content:space-between">
+          <h3 style="margin:0"><span data-icon="calendar"></span>Einträge</h3>
+          <label class="f" style="flex-direction:row;align-items:center;gap:8px">für <select id="fuerSel"></select></label>
+        </div>
+        <div class="kal" id="kal"></div>
+        <div class="hint" style="margin-top:10px">Tag antippen: Dienstwunsch, No-Go, Urlaub, Fortbildung oder frei eintragen.
+          Schraffierte Tage sind laut Teilzeitmuster frei.</div>
+      </div>
+      <div>
+        <div class="card">
+          <h3><span data-icon="sliders"></span>Regeln</h3>
+          <div class="liste" id="regelListe"></div>
+          <div class="reihe" style="margin-top:10px">
+            <select id="rTyp"><option value="kein">Kein Dienst am</option><option value="pref">Dienst bevorzugt am</option></select>
+            <select id="rWt"></select>
+            <select id="rStufe"><option value="weich">weich</option><option value="hart">hart</option></select>
+            <button class="btn out" id="rAdd"><span data-icon="plus"></span>Regel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3><span data-icon="clock"></span>Teilzeit</h3>
+          <div class="reihe" style="margin-bottom:10px">
+            <label class="f">Arbeitsquote %<input type="number" id="quote" min="10" max="100" step="5" style="width:90px"></label>
+            <div class="hint" id="maxInfo" style="padding-bottom:9px"></div>
+          </div>
+          <div class="liste" id="tzListe"></div>
+          <div class="hint" style="margin:12px 0 6px;font-weight:700">Muster hinzufügen</div>
+          <div class="seg" id="tzArt"><button data-v="block" class="on">Block im Wechsel</button><button data-v="woche">feste Wochentage frei</button></div>
+          <div class="reihe" id="tzBlock" style="margin-top:10px">
+            <label class="f">erster Arbeitstag<input type="date" id="tzAb"></label>
+            <label class="f">Tage da<input type="number" id="tzAn" value="7" min="1" style="width:70px"></label>
+            <label class="f">Tage frei<input type="number" id="tzAus" value="7" min="1" style="width:70px"></label>
+          </div>
+          <div class="reihe hidden" id="tzWoche" style="margin-top:10px"></div>
+          <div class="reihe" style="margin-top:10px">
+            <label class="f">gilt bis (optional)<input type="date" id="tzBis"></label>
+            <button class="btn out" id="tzAdd"><span data-icon="plus"></span>Muster</button>
+          </div>
+          <div class="hint" style="margin-top:8px">Beispiel Wechsel Mi–Di: erster Arbeitstag = ein Mittwoch, 7 Tage da, 7 frei.
+            Einzelne Tage im Kalender als „frei“ oder „anwesend“ korrigieren.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Einstellungen ===== -->
+  <section id="tab-cfg" class="hidden">
+    <div class="cfggrid">
+      <div class="card" style="grid-column:1/-1">
+        <h3><span data-icon="users"></span>Team</h3>
+        <div style="overflow-x:auto"><table class="raster" id="teamTab"></table></div>
+        <div class="reihe" style="margin-top:10px">
+          <label class="f">Kürzel<input type="text" id="nK" maxlength="6" style="width:80px"></label>
+          <label class="f">Name<input type="text" id="nName" style="width:180px"></label>
+          <label class="f">Rolle<select id="nRolle"><option value="oa">Oberarzt/-ärztin</option><option value="chef">Chefarzt (keine Dienste)</option></select></label>
+          <button class="btn out" id="nAdd"><span data-icon="plus"></span>Person</button>
+        </div>
+        <div class="hint" style="margin-top:8px">Das Kürzel ist der Dateiname der Wünsche und lässt sich nachträglich nicht ändern.
+          „Planer“ darf veröffentlichen; ist niemand Planer, dürfen alle.</div>
+      </div>
+      <div class="card">
+        <h3><span data-icon="layers"></span>Teams</h3>
+        <div class="liste" id="teamsListe"></div>
+        <div class="reihe" style="margin-top:10px"><input type="text" id="neuTeam" placeholder="Teamname"><button class="btn out" id="teamAdd"><span data-icon="plus"></span>Team</button></div>
+      </div>
+      <div class="card">
+        <h3><span data-icon="activity"></span>Mindestbesetzung (Chef + OA)</h3>
+        <table class="raster" id="besTab"></table>
+        <div class="hint" style="margin-top:8px">Soll / Minimum je Zeitfenster. Der Diensthabende zählt ab 11 Uhr.
+          Wer am Vortag Dienst hatte, gilt als „fehlt evtl.“ und zählt nicht sicher.</div>
+      </div>
+      <div class="card">
+        <h3><span data-icon="info"></span>Gruppenhinweise</h3>
+        <div class="liste" id="hwListe"></div>
+        <div style="margin-top:12px;display:grid;gap:8px">
+          <input type="text" id="hwName" placeholder="Bezeichnung, z. B. Bariatrie Di/Do">
+          <div id="hwPers"></div>
+          <div class="reihe">
+            <label class="f">mind. anwesend<input type="number" id="hwMin" value="1" min="1" style="width:70px"></label>
+            <div id="hwTage"></div>
+            <button class="btn out" id="hwAdd"><span data-icon="plus"></span>Hinweis</button>
+          </div>
+          <div class="reihe"><span class="hint">Personen aus Team übernehmen:</span><span id="hwTeamBtns"></span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3><span data-icon="star"></span>Feiertage &amp; Grenzen</h3>
+        <div class="hint" id="ftListe" style="margin-bottom:10px"></div>
+        <div class="liste" id="ftExtra"></div>
+        <div class="reihe" style="margin-top:10px">
+          <input type="date" id="ftDat"><input type="text" id="ftName" placeholder="Name, z. B. Heiligabend">
+          <button class="btn out" id="ftAdd"><span data-icon="plus"></span>Feiertag</button>
+        </div>
+        <div class="reihe" style="margin-top:16px">
+          <label class="f">max. Dienste / Monat (100 %)<input type="number" id="gMax" min="1" style="width:90px"></label>
+          <label class="f">max. Wochenenden in Folge<input type="number" id="gWe" min="1" style="width:90px"></label>
+        </div>
+        <div class="hint" style="margin-top:6px">Bei Teilzeit: max. Dienste × Arbeitsquote, abgerundet. Wochenende = Sa- oder So-Dienst.</div>
+      </div>
+      <div class="card">
+        <h3><span data-icon="key"></span>Zugang</h3>
+        <div class="hint" id="zugInfo"></div>
+        <div class="reihe" style="margin-top:10px">
+          <button class="btn out" id="ichWechsel"><span data-icon="user"></span>Person wechseln</button>
+          <button class="btn out" id="abmelden"><span data-icon="logOut"></span>Zugang entfernen</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="dlg"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Dienstplanung (Oberaerzte). Daten im Klartext im privaten Team-Repo:
+     plan/config.json                 Team, Teams, Regeln, Feiertage, Grenzen
+     plan/wuensche/<K>/<JJJJ-MM>.json Eintraege einer Person je Monat
+     plan/dienst/<JJJJ-MM>.json       Plan, Protokoll, Veroeffentlichung
+   Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
+   ein vorhandener Tagesdoku-Zugang direkt uebernommen.
+   ===================================================================== */
+const TEAM_REPO = 'nomiknomik/tagesdoku-team';
+const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
+const $ = id => document.getElementById(id);
+const load = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+
+/* ---------- Icons (Feather-Stil) ---------- */
+const ICONS = {
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  grid:'<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>',
+  heart:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+  ban:'<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+  book:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  check:'<polyline points="20 6 9 17 4 12"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  chevronLeft:'<polyline points="15 18 9 12 15 6"/>', chevronRight:'<polyline points="9 18 15 12 9 6"/>',
+  cloud:'<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  info:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  alert:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  send:'<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+  printer:'<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  sliders:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+  layers:'<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  activity:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+  key:'<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
+  logOut:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+  refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>'
+};
+const icon = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]||''}</svg>`;
+const icons = root => root.querySelectorAll('[data-icon]').forEach(el => { el.outerHTML = icon(el.dataset.icon); });
+icons(document);
+
+/* ---------- Datum (UTC-Tagesnummern, DST-sicher) ---------- */
+const pad = n => String(n).padStart(2, '0');
+const ds = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;          // m: 1..12
+const tn = s => Date.UTC(+s.slice(0,4), +s.slice(5,7) - 1, +s.slice(8,10)) / 864e5;
+const vonTn = n => { const d = new Date(n * 864e5); return ds(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); };
+const plus = (s, n) => vonTn(tn(s) + n);
+const wt = s => { const w = new Date(tn(s) * 864e5).getUTCDay(); return w === 0 ? 7 : w; };   // 1 = Mo … 7 = So
+const ymVon = s => s.slice(0, 7);
+const ymPlus = (ym, n) => { const d = new Date(Date.UTC(+ym.slice(0,4), +ym.slice(5,7) - 1 + n, 1)); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1); };
+const tageIm = ym => new Date(Date.UTC(+ym.slice(0,4), +ym.slice(5,7), 0)).getUTCDate();
+const heute = () => { const d = new Date(); return ds(d.getFullYear(), d.getMonth() + 1, d.getDate()); };
+const WT = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+const WTL = ['', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+const MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const monatName = ym => MON[+ym.slice(5,7) - 1] + ' ' + ym.slice(0, 4);
+const kurzDat = s => +s.slice(8,10) + '.' + +s.slice(5,7) + '.';
+
+/* ---------- Feiertage Baden-Wuerttemberg ---------- */
+function ostern(y){
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25),
+        g = Math.floor((b - f + 1) / 3), h = (19*a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4,
+        l = (32 + 2*e + 2*i - h - k) % 7, m = Math.floor((a + 11*h + 22*l) / 451), n = h + l - 7*m + 114;
+  return ds(y, Math.floor(n / 31), n % 31 + 1);
+}
+const ftCache = {};
+function feiertageBW(y){
+  if(ftCache[y]) return ftCache[y];
+  const o = ostern(y);
+  return ftCache[y] = {[ds(y,1,1)]:'Neujahr', [ds(y,1,6)]:'Heilige Drei Könige', [plus(o,-2)]:'Karfreitag', [plus(o,1)]:'Ostermontag',
+    [ds(y,5,1)]:'Tag der Arbeit', [plus(o,39)]:'Christi Himmelfahrt', [plus(o,50)]:'Pfingstmontag', [plus(o,60)]:'Fronleichnam',
+    [ds(y,10,3)]:'Tag der Deutschen Einheit', [ds(y,11,1)]:'Allerheiligen', [ds(y,12,25)]:'1. Weihnachtstag', [ds(y,12,26)]:'2. Weihnachtstag'};
+}
+const feiertag = s => { const e = (cfg.feiertage || []).find(x => x.datum === s); return e ? e.name : (feiertageBW(+s.slice(0,4))[s] || ''); };
+const werktag = s => wt(s) <= 5 && !feiertag(s);
+/* Rufdienst-Art wie in der Tagesdoku (DUTY): Mo–Do ZD1, Fr ZD2, Sa RBD, So/Feiertag RBD2 */
+const dienstArt = s => feiertag(s) || wt(s) === 7 ? 'RBD2' : wt(s) === 6 ? 'RBD' : wt(s) === 5 ? 'ZD2' : 'ZD1';
+
+/* ---------- Konfiguration ---------- */
+const FARBEN = ['#00636E','#C2492E','#7A5AA6','#2F7D32','#B45309','#1F6FB2','#A33A6B','#5E7C16','#8A5A2B','#3A4F8F','#C0841A','#4D8C8C'];
+const CFG_LEER = {
+  version: 1, personen: [],
+  teams: [{id:'bar', name:'Bariatrie'}, {id:'kol', name:'Kolonchirurgie'}],
+  gruppen: {oa: {name:'Oberärzte', einteilen:'alle'}},   // spaeter Assistenten: einteilen 'planer'
+  besetzung: {1:{soll:[2,2,2],min:[2,2,2]}, 2:{soll:[3,3,4],min:[3,3,3]}, 3:{soll:[2,2,2],min:[2,2,2]},
+              4:{soll:[3,3,4],min:[3,3,3]}, 5:{soll:[2,2,2],min:[2,2,2]}},
+  hinweise: [], feiertage: [], maxDienste: 13, maxWeFolge: 2
+};
+const FENSTER = ['bis 11', '11–13', 'ab 13'];
+const TYPEN = {
+  wunsch: {name:'Dienstwunsch', icon:'heart', stufen:true},
+  nogo:   {name:'No-Go', icon:'ban', stufen:true},
+  urlaub: {name:'Urlaub', icon:'sun', abw:true},
+  fb:     {name:'Fortbildung', icon:'book', abw:true},
+  frei:   {name:'frei', icon:'moon', abw:true},
+  da:     {name:'anwesend (Ausnahme)', icon:'check'}
+};
+const ABW_NAME = {urlaub:'Urlaub', fb:'Fortbildung', frei:'frei', tz:'Teilzeit frei'};
+const ABW_ICON = {urlaub:'sun', fb:'book', frei:'moon', tz:'clock'};
+
+let cfg = clone(CFG_LEER);
+const files = {};            // pfad -> {data, sha}
+let ym = ymPlus(heute().slice(0, 7), 1);   // geplant wird meist der naechste Monat
+let ichK = load(LS_ICH, '');
+let markK = '';              // hervorgehobene Person
+let nurLesen = false;
+
+const personen = () => cfg.personen.filter(p => p.aktiv !== false);
+const person = k => cfg.personen.find(p => p.k === k);
+const diensttauglich = () => personen().filter(p => p.rolle !== 'chef');
+const ich = () => person(ichK);
+const farbe = p => p ? (p.farbe || FARBEN[cfg.personen.indexOf(p) % FARBEN.length]) : '#999';
+const pk = (p, cls = 'pk') => `<span class="${cls}" style="background:${farbe(p)}">${esc(p ? p.k : '?')}</span>`;
+const pfadCfg = 'plan/config.json';
+const pfadDienst = m => `plan/dienst/${m}.json`;
+const pfadWunsch = (k, m) => `plan/wuensche/${k}/${m}.json`;
+
+/* ---------- Zugang ---------- */
+function zugang(){
+  const z = load(LS_ZUGANG, null);
+  if(z && z.token && z.repo) return z;
+  const s = load('tagesdoku_sync', {});
+  if(s.token && s.repo === TEAM_REPO) return {repo: s.repo, token: s.token, quelle: 'Tagesdoku'};
+  const t = load('tagesdoku_teilen', {});
+  if(t.token && t.repo === TEAM_REPO) return {repo: t.repo, token: t.token, quelle: 'Tagesdoku (Admin)'};
+  return null;
+}
+
+/* ---------- GitHub Contents API ---------- */
+const dekodieren = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, '')), c => c.charCodeAt(0)));
+const kodieren = s => { const u = new TextEncoder().encode(s); let r = ''; for(let i = 0; i < u.length; i += 0x8000) r += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(r); };
+async function gh(method, pfad, body){
+  const z = zugang();
+  if(!z) throw new Error('Kein Zugang eingerichtet.');
+  const res = await fetch(`https://api.github.com/repos/${z.repo}/contents/${pfad}` + (method === 'GET' ? '?t=' + Date.now() : ''), {
+    method, cache:'no-store',
+    headers:{Authorization:'Bearer ' + z.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'},
+    body: body && JSON.stringify(body)
+  });
+  if(method === 'GET' && res.status === 404) return null;
+  if(res.status === 409 || res.status === 422) return {konflikt: true};
+  if(res.status === 401) throw new Error('Token ungültig oder abgelaufen.');
+  if(res.status === 403) throw new Error('Token darf nicht schreiben oder Abruf-Limit erreicht.');
+  if(!res.ok) throw new Error('GitHub antwortet mit ' + res.status + '.');
+  return res.json();
+}
+async function repoPruefen(){
+  const z = zugang();
+  const r = await fetch(`https://api.github.com/repos/${z.repo}`, {cache:'no-store', headers:{Authorization:'Bearer ' + z.token}});
+  if(r.status === 401) throw new Error('Token ungültig oder abgelaufen.');
+  if(!r.ok) throw new Error('Repo nicht gefunden oder Token hat keinen Zugriff darauf.');
+}
+async function lesen(pfad){
+  if(queue[pfad]) return files[pfad];   // lokale Aenderung wartet noch: nicht ueberschreiben
+  const j = await gh('GET', pfad);
+  files[pfad] = j ? {data: JSON.parse(dekodieren(j.content)), sha: j.sha} : {data: null, sha: null};
+  return files[pfad];
+}
+function cacheSchreiben(){
+  try{ localStorage.setItem(LS_CACHE, JSON.stringify(files)); }catch(e){}
+}
+
+/* Schreiben: jede Aenderung ist eine Funktion auf den Dateiinhalt. Lokal sofort
+   angewandt, nach kurzer Ruhe auf den frischen Stand im Repo erneut angewandt
+   und hochgeladen (bei SHA-Konflikt neu laden und wiederholen). So gehen
+   gleichzeitige Aenderungen anderer nicht verloren. */
+const queue = {};            // pfad -> {fns, leer, was}
+let flushTimer = 0, flushLaeuft = false;
+function aendern(pfad, leer, was, fn){
+  if(nurLesen){ toast('Offline – nur lesen.'); return; }
+  const f = files[pfad] || (files[pfad] = {data: null, sha: null});
+  if(!f.data) f.data = clone(leer);
+  fn(f.data, false);
+  const q = queue[pfad] || (queue[pfad] = {fns: [], leer, was: new Set()});
+  q.fns.push(fn); q.was.add(was);
+  status('busy', 'speichert …');
+  clearTimeout(flushTimer); flushTimer = setTimeout(flush, 1200);
+  render();
+}
+async function flush(){
+  if(flushLaeuft){ clearTimeout(flushTimer); flushTimer = setTimeout(flush, 800); return; }
+  flushLaeuft = true;
+  try{
+    for(const pfad of Object.keys(queue)){
+      const q = queue[pfad]; delete queue[pfad];
+      for(let versuch = 0; ; versuch++){
+        if(versuch > 4) throw new Error('Speichern scheiterte mehrfach an gleichzeitigen Änderungen.');
+        const j = await gh('GET', pfad);
+        const data = j ? JSON.parse(dekodieren(j.content)) : clone(q.leer);
+        q.fns.forEach(fn => fn(data, true));
+        const r = await gh('PUT', pfad, {message: `Planung: ${[...q.was].join(', ')} (${ichK || '?'})`,
+          content: kodieren(JSON.stringify(data, null, 1)), ...(j ? {sha: j.sha} : {})});
+        if(r.konflikt) continue;
+        files[pfad] = {data, sha: r.content.sha};
+        break;
+      }
+    }
+    cacheSchreiben();
+    status('ok', 'gespeichert');
+  }catch(e){
+    status('err', 'Fehler'); toast(e.message);
+  }finally{
+    flushLaeuft = false;
+    render();
+  }
+}
+const wartet = () => Object.keys(queue).length > 0 || flushLaeuft;
+window.addEventListener('beforeunload', e => { if(wartet()){ e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- Laden ---------- */
+async function ladeAlles(){
+  status('busy', 'lädt …');
+  try{
+    const c = await lesen(pfadCfg);
+    cfg = Object.assign(clone(CFG_LEER), c.data || {});
+    const pf = [pfadDienst(ymPlus(ym, -1)), pfadDienst(ym), pfadDienst(ymPlus(ym, 1))];
+    personen().forEach(p => pf.push(pfadWunsch(p.k, ym), pfadWunsch(p.k, ymPlus(ym, 1))));
+    await Promise.all(pf.map(lesen));
+    cacheSchreiben();
+    nurLesen = false; $('banner').classList.add('hidden');
+    status(wartet() ? 'busy' : 'ok', wartet() ? 'speichert …' : 'aktuell');
+    return !!c.data;
+  }catch(e){
+    const cache = load(LS_CACHE, null);
+    if(cache && cache[pfadCfg] && cache[pfadCfg].data){
+      Object.assign(files, cache); cfg = Object.assign(clone(CFG_LEER), cache[pfadCfg].data);
+      nurLesen = true;
+      $('banner').innerHTML = icon('alert') + ' Keine Verbindung (' + esc(e.message) + ') – letzter Stand, nur lesen.';
+      $('banner').classList.remove('hidden');
+      status('err', 'offline');
+      return true;
+    }
+    throw e;
+  }
+}
+setInterval(()=>{ if(document.visibilityState === 'visible' && !wartet() && zugang() && cfg.personen.length) ladeAlles().then(render, ()=>{}); }, 120000);
+window.addEventListener('focus', ()=>{ if(!wartet() && zugang() && cfg.personen.length) ladeAlles().then(render, ()=>{}); });
+
+/* ---------- Abfragen ---------- */
+const dienstDaten = m => (files[pfadDienst(m)] || {}).data;
+const dienstVon = s => { const d = dienstDaten(ymVon(s)); return (d && d.tage && d.tage[s] && d.tage[s].oa) || ''; };
+const eintrag = (k, s) => { const f = files[pfadWunsch(k, ymVon(s))]; return f && f.data && f.data.tage ? f.data.tage[s] : undefined; };
+function teilzeitFrei(p, s){
+  for(const t of p.teilzeit || []){
+    if((t.ab && s < t.ab) || (t.bis && s > t.bis)) continue;
+    if(t.typ === 'woche' && (t.wt || []).includes(wt(s))) return true;
+    if(t.typ === 'block'){ const z = ((tn(s) - tn(t.ab)) % (t.an + t.aus) + (t.an + t.aus)) % (t.an + t.aus); if(z >= t.an) return true; }
+  }
+  return false;
+}
+/* Abwesenheitsgrund oder '' – haengt nur an Eintrag bzw. Teilzeitmuster */
+function abwesend(p, s){
+  const e = eintrag(p.k, s);
+  if(e && TYPEN[e.typ] && TYPEN[e.typ].abw) return e.typ;
+  if(e && e.typ === 'da') return '';
+  return teilzeitFrei(p, s) ? 'tz' : '';
+}
+const gefaehrdet = (p, s) => werktag(s) && dienstVon(plus(s, -1)) === p.k && !abwesend(p, s);
+const maxDienste = p => Math.floor((cfg.maxDienste || 13) * (p.quote || 100) / 100);
+const diensteIm = (k, m) => { const d = dienstDaten(m); return d && d.tage ? Object.values(d.tage).filter(x => x.oa === k).length : 0; };
+
+/* Besetzung eines Werktags: sicher Anwesende je Zeitfenster (der Diensthabende
+   ab 11 Uhr), dazu die nach Dienst evtl. Fehlenden */
+function besetzung(s, ohneDienstVortag){
+  if(!werktag(s)) return null;
+  const dh = dienstVon(s), regel = cfg.besetzung[wt(s)] || {soll:[0,0,0], min:[0,0,0]};
+  let sicher = 0, dhDa = 0, gef = [];
+  for(const p of personen()){
+    if(abwesend(p, s)) continue;
+    if(p.k === dh){ dhDa = 1; continue; }
+    if(p.k !== ohneDienstVortag && gefaehrdet(p, s)){ gef.push(p); continue; }
+    sicher++;
+  }
+  const w = [sicher, sicher + dhDa, sicher + dhDa];
+  const st = w.map((n, i) => n >= regel.soll[i] ? 'ok' : n >= regel.min[i] ? 'kn' : (n + gef.length >= regel.min[i] && n > 0) ? 'kn' : 'rot');
+  return {w, st, gef, regel, dh};
+}
+function hinweise(s){
+  if(!werktag(s)) return [];
+  const out = [];
+  for(const h of cfg.hinweise || []){
+    if(!(h.tage || []).includes(wt(s))) continue;
+    const da = (h.personen || []).map(person).filter(p => p && p.aktiv !== false && !abwesend(p, s));
+    const sicher = da.filter(p => !gefaehrdet(p, s));
+    if(da.length < h.min) out.push({rot: false, text: `${h.name}: nur ${da.length} von mind. ${h.min} da`});
+    else if(sicher.length < h.min) out.push({rot: false, text: `${h.name}: nur mit Kolleg:in nach Dienst`});
+  }
+  return out;
+}
+const weGearbeitet = (k, sa) => dienstVon(sa) === k || dienstVon(plus(sa, 1)) === k;
+/* Laenge der Serie gearbeiteter Wochenenden, wenn k am Tag s (Sa/So) Dienst macht */
+function weSerie(k, s){
+  const sa = wt(s) === 6 ? s : plus(s, -1);
+  let n = 1;
+  for(let x = plus(sa, -7); weGearbeitet(k, x); x = plus(x, -7)) n++;
+  for(let x = plus(sa, 7); weGearbeitet(k, x); x = plus(x, 7)) n++;
+  return n;
+}
+/* Bewertung einer Person fuer den Dienst am Tag s */
+function bewerte(p, s){
+  const tags = [], e = eintrag(p.k, s); let score = 0;
+  const a = abwesend(p, s);
+  if(a){ tags.push(['r', ABW_NAME[a]]); score -= 100; }
+  if(e && e.typ === 'nogo'){ tags.push([e.stufe === 'hart' ? 'r' : 'o', 'No-Go' + (e.stufe === 'hart' ? '' : ' (weich)')]); score -= e.stufe === 'hart' ? 80 : 30; }
+  if(e && e.typ === 'wunsch'){ tags.push(['g', 'Wunsch' + (e.stufe === 'hart' ? '' : ' (weich)')]); score += e.stufe === 'hart' ? 60 : 30; }
+  for(const r of p.regeln || []){
+    if(r.wt !== wt(s)) continue;
+    if(r.typ === 'kein'){ tags.push([r.stufe === 'hart' ? 'r' : 'o', 'kein ' + WT[r.wt]]); score -= r.stufe === 'hart' ? 60 : 20; }
+    if(r.typ === 'pref'){ tags.push(['g', 'gern ' + WT[r.wt]]); score += r.stufe === 'hart' ? 25 : 12; }
+  }
+  const n = diensteIm(p.k, ymVon(s)) - (dienstVon(s) === p.k ? 1 : 0), max = maxDienste(p);
+  if(n >= max){ tags.push(['r', `max. ${max} erreicht`]); score -= 50; }
+  if(dienstVon(plus(s, -1)) === p.k) { tags.push(['o', 'Dienst am Vortag']); score -= 15; }
+  if(dienstVon(plus(s, 1)) === p.k) { tags.push(['o', 'Dienst am Folgetag']); score -= 15; }
+  if(wt(s) >= 6){
+    const serie = weSerie(p.k, s);
+    if(serie > (cfg.maxWeFolge || 2)){ tags.push(['o', `${serie}. WE in Folge`]); score -= 25; }
+  }
+  if(wt(s) === 7 && dienstVon(plus(s, -2)) === p.k){ tags.push(['g', 'passt zu Fr']); score += 10; }
+  if(wt(s) === 5 && dienstVon(plus(s, 2)) === p.k){ tags.push(['g', 'passt zu So']); score += 10; }
+  const f = plus(s, 1);
+  if(werktag(f) && !abwesend(p, f) && dienstVon(s) !== p.k){
+    // Folgetag mit p als "nach Dienst": wird es eng?
+    const b = besetzung(f);
+    if(b){ const vorher = person(dienstVon(s));   // bisheriger Diensthabender waere am Folgetag wieder sicher da
+      const sicher = b.w[0] - (b.gef.includes(p) || b.dh === p.k ? 0 : 1) + (vorher && b.gef.includes(vorher) ? 1 : 0);
+      if(sicher < 1){ tags.push(['r', 'Folgetag: bis 11 Uhr evtl. kein OA']); score -= 40; }
+      else if(sicher < b.regel.min[0]){ tags.push(['o', 'Folgetag knapp']); score -= 15; } }
+  }
+  score -= n * 3;   // leichte Gleichverteilung
+  return {score, tags, n, max};
+}
+
+/* ---------- UI-Helfer ---------- */
+function toast(t){ const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(()=> el.remove(), 3200); }
+function status(st, txt){ $('status').dataset.st = st; $('statusTxt').textContent = txt; }
+function dialog(html, init){
+  $('dlg').innerHTML = `<div class="schleier"><div class="dialog">${html}</div></div>`;
+  icons($('dlg'));
+  const s = $('dlg').firstChild;
+  s.addEventListener('click', e => { if(e.target === s) zu(); });
+  if(init) init($('dlg').querySelector('.dialog'));
+}
+const zu = () => { $('dlg').innerHTML = ''; };
+document.addEventListener('keydown', e => { if(e.key === 'Escape') zu(); });
+
+let tab = 'plan';
+document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = ()=>{
+  tab = b.dataset.tab;
+  document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  ['plan','meine','cfg'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
+  render();
+});
+async function monatWechseln(n){
+  ym = ymPlus(ym, n); render();
+  try{ await ladeAlles(); }catch(e){ toast(e.message); }
+  render();
+}
+$('mZur').onclick = ()=> monatWechseln(-1);
+$('mVor').onclick = ()=> monatWechseln(1);
+$('druckBtn').onclick = ()=> window.print();
+
+function render(){
+  cfg = Object.assign(clone(CFG_LEER), (files[pfadCfg] || {}).data || {});
+  $('mTitel').textContent = monatName(ym);
+  const p = ich();
+  $('ichBtn').innerHTML = p ? `${pk(p)}<b>${esc(p.name || p.k)}</b>` : '<span class="hint">nicht angemeldet</span>';
+  if(tab === 'plan') renderPlan();
+  if(tab === 'meine') renderMeine();
+  if(tab === 'cfg') renderCfg();
+}
+
+/* =================== Plan =================== */
+const darfEinteilen = () => cfg.gruppen.oa.einteilen !== 'planer' || !!(ich() && ich().planer);
+const darfVeroeffentlichen = () => !cfg.personen.some(p => p.planer) || !!(ich() && ich().planer);
+
+function renderPlan(){
+  const D = dienstDaten(ym) || {tage:{}};
+  const pub = D.veroeffentlicht, stand = pub ? pub.stand || {} : {};
+  let tausche = 0;
+  const n = tageIm(ym), hz = heute();
+  let h = `<div class="zeile kopf"><div>Tag</div><div>Dienst</div><div>Besetzung</div><div>Abwesend</div><div>Wünsche / No-Gos</div><div>Hinweise</div></div>`;
+  for(let d = 1; d <= n; d++){
+    const s = ds(+ym.slice(0,4), +ym.slice(5,7), d), w = wt(s), ft = feiertag(s), dh = dienstVon(s), dp = person(dh);
+    const cls = ['zeile', ft ? 'ft' : w >= 6 ? 'we' : '', s === hz ? 'heute' : '', w === 1 && d > 1 ? 'kw-start' : '',
+      markK && (dh === markK || eintrag(markK, s)) ? 'mark' : ''].join(' ');
+    // Dienst
+    let dzelle;
+    if(dp){
+      const b = bewerte(dp, s), schlimm = b.tags.some(t => t[0] === 'r'), mittel = b.tags.some(t => t[0] === 'o');
+      const getauscht = pub && stand[s] !== undefined && stand[s] !== dh;
+      if(getauscht) tausche++;
+      dzelle = `<span class="dchip" title="${esc(b.tags.map(t => t[1]).join(' · '))}">${pk(dp)}${esc(dp.k)}`
+        + (schlimm ? `<span class="warn">${icon('alert')}</span>` : mittel ? `<span class="warno">${icon('alert')}</span>` : '')
+        + (getauscht ? `<span class="tausch" title="Getauscht – veröffentlicht war: ${esc(stand[s] || 'niemand')}"></span>` : '') + `</span>`;
+    }else{
+      dzelle = `<span class="dchip leer">${darfEinteilen() ? '+ einteilen' : '–'}</span>`;
+      if(pub && stand[s]){ tausche++; }
+      // Vorschlag Fr+So: Freitag belegt, Sonntag frei (oder umgekehrt)
+      const partner = w === 7 ? dienstVon(plus(s, -2)) : w === 5 ? dienstVon(plus(s, 2)) : '';
+      if(partner && person(partner) && darfEinteilen() && !abwesend(person(partner), s))
+        dzelle += `<span class="vorschlag" data-vorschlag="${s}|${partner}">${esc(partner)} wie ${w === 7 ? 'Fr' : 'So'}?</span>`;
+    }
+    // Besetzung
+    const b = besetzung(s);
+    let bz = '';
+    if(b) bz = `<div class="ampel" title="Soll ${b.regel.soll.join('/')} · Minimum ${b.regel.min.join('/')}${b.gef.length ? ' · nach Dienst: ' + b.gef.map(p => p.k).join(', ') : ''}">`
+      + b.w.map((x, i) => `<span class="${b.st[i]}">${x}${b.gef.length && i === 0 ? '<sup title="nach Dienst, fehlt evtl.">+' + b.gef.length + '</sup>' : ''}<small>${FENSTER[i]}</small></span>`).join('') + '</div>';
+    // Abwesend + gefaehrdet
+    let ab = '';
+    for(const p of personen()){
+      const a = abwesend(p, s);
+      if(a) ab += `<span class="chip t-${a}">${pk(p)}${icon(ABW_ICON[a])}</span>`;
+      else if(gefaehrdet(p, s)) ab += `<span class="chip gef" title="Dienst am Vortag – fehlt evtl.">${pk(p)}${icon('moon')}</span>`;
+    }
+    // Wuensche
+    let wu = '';
+    for(const p of personen()){
+      const e = eintrag(p.k, s);
+      if(e && (e.typ === 'wunsch' || e.typ === 'nogo'))
+        wu += `<span class="chip t-${e.typ} ${e.stufe === 'hart' ? '' : 'weich'}" title="${esc(TYPEN[e.typ].name + ' ' + (e.stufe || '') + (e.notiz ? ': ' + e.notiz : ''))}">${pk(p)}${icon(TYPEN[e.typ].icon)}</span>`;
+    }
+    // Hinweise
+    let hw = '';
+    if(b && b.w[0] === 0) hw += `<div class="hinw rot">${icon('alert')}bis 11 Uhr evtl. kein OA</div>`;
+    else if(b && b.st.includes('rot')) hw += `<div class="hinw rot">${icon('alert')}Unterbesetzt ${b.st.map((x, i) => x === 'rot' ? FENSTER[i] : '').filter(Boolean).join(', ')}</div>`;
+    hinweise(s).forEach(x => hw += `<div class="hinw">${icon('info')}${esc(x.text)}</div>`);
+    h += `<div class="${cls}"><div class="tagzelle"><span class="wt">${WT[w]}</span><b>${d}.</b>${ft ? `<span class="ftn">${esc(ft)}</span>` : ''}</div>`
+      + `<div class="dzelle ${darfEinteilen() ? '' : 'gesperrt'}" data-tag="${s}">${dzelle}<span class="art">${dienstArt(s)}</span></div>`
+      + `<div>${bz}</div><div>${ab}</div><div>${wu}</div><div style="flex-direction:column;align-items:flex-start">${hw}</div></div>`;
+  }
+  const tab_ = $('planTab'); tab_.innerHTML = h; tab_.classList.toggle('dimm', !!markK);
+  tab_.querySelectorAll('.dzelle').forEach(el => el.onclick = e => {
+    const v = e.target.closest('[data-vorschlag]');
+    if(v){ e.stopPropagation(); const [s, k] = v.dataset.vorschlag.split('|'); einteilen(s, k); return; }
+    if(darfEinteilen()) waehlen(el.dataset.tag);
+  });
+  // Veroeffentlichung
+  $('pubPill').className = 'pill ' + (pub ? 'pub' : 'entwurf');
+  $('pubPill').textContent = pub ? 'Veröffentlicht' : 'Entwurf';
+  $('pubInfo').textContent = pub ? `am ${new Date(pub.am).toLocaleDateString('de-DE')} von ${pub.von}` + (tausche ? ` · ${tausche} Änderung${tausche > 1 ? 'en' : ''} seither` : '') : '';
+  $('pubBtn').innerHTML = icon('send') + (pub ? 'Erneut veröffentlichen' : 'Veröffentlichen');
+  $('pubBtn').disabled = !darfVeroeffentlichen() || nurLesen;
+  $('pubBtn').title = darfVeroeffentlichen() ? '' : 'Nur Planer:innen';
+  // Zaehler
+  let z = '';
+  for(const p of diensttauglich()){
+    const n2 = diensteIm(p.k, ym), max = maxDienste(p);
+    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : ''}</small></div>`
+      + `<div class="zahl">${n2}<small> / ${max}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, max) * 100)}%"></i></div>`;
+  }
+  const frei = Array.from({length: n}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
+  z += `<div class="hint" style="margin-top:8px">${frei ? frei + ' Tag' + (frei > 1 ? 'e' : '') + ' noch ohne Dienst' : 'Alle Tage besetzt ✓'}</div>`;
+  $('zaehler').innerHTML = z;
+  $('zaehler').querySelectorAll('.prow').forEach(el => el.onclick = ()=>{ markK = markK === el.dataset.k ? '' : el.dataset.k; renderPlan(); });
+}
+
+function waehlen(s){
+  const akt = dienstVon(s);
+  const liste = diensttauglich().map(p => ({p, ...bewerte(p, s)})).sort((a, b) => b.score - a.score);
+  const ft = feiertag(s);
+  dialog(`<h3>${WTL[wt(s)]}, ${kurzDat(s)}${ft ? ' · ' + esc(ft) : ''}</h3>
+    <div class="unter">Rufdienst ${dienstArt(s)} · sortiert nach Eignung, alles ist überschreibbar</div>
+    ${liste.map(x => `<button class="kand ${x.p.k === akt ? 'akt' : ''} ${x.score <= -50 ? 'schlecht' : ''}" data-k="${esc(x.p.k)}">
+      ${pk(x.p)}<span class="mid"><b>${esc(x.p.name || x.p.k)}</b><span class="tags">${x.tags.map(t => `<span class="tag ${t[0]}">${esc(t[1])}</span>`).join('') || '<span class="tag n">keine Einträge</span>'}</span></span>
+      <span class="cnt">${x.n}/${x.max}</span></button>`).join('')}
+    <div class="fuss">${akt ? '<button class="btn out" data-k="">' + icon('trash') + 'Leeren</button>' : ''}<button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
+    el => {
+      el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ einteilen(s, b.dataset.k); zu(); });
+      $('dlgZu').onclick = zu;
+    });
+}
+function einteilen(s, k){
+  const alt = dienstVon(s), m = ymVon(s);
+  if(alt === k) return;
+  aendern(pfadDienst(m), {tage:{}, log:[]}, `Dienst ${kurzDat(s)}`, (d, remote) => {
+    d.tage ||= {}; d.log ||= [];
+    const jetzt = (d.tage[s] && d.tage[s].oa) || '';
+    if(remote && jetzt !== alt && jetzt !== k){
+      // gleichzeitig von jemand anderem anders belegt
+      if(!confirm(`${kurzDat(s)}: Inzwischen wurde ${jetzt || 'niemand'} eingetragen.\nTrotzdem ${k || 'leeren'}?`)) return;
+    }
+    if(k) d.tage[s] = {oa: k, von: ichK, am: Date.now()}; else delete d.tage[s];
+    d.log.push({am: Date.now(), von: ichK, tag: s, alt: jetzt, neu: k});
+  });
+}
+$('pubBtn').onclick = ()=>{
+  const D = dienstDaten(ym) || {tage:{}};
+  const leer = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
+  if(!confirm(`${monatName(ym)} veröffentlichen?${leer ? `\n\nAchtung: ${leer} Tag(e) noch ohne Dienst.` : ''}\n\nSpätere Änderungen werden dezent als Tausch markiert.`)) return;
+  const stand = {}; Object.entries(D.tage || {}).forEach(([s, x]) => stand[s] = x.oa);
+  aendern(pfadDienst(ym), {tage:{}, log:[]}, 'veröffentlicht', d => {
+    d.veroeffentlicht = {am: Date.now(), von: ichK, stand};
+    (d.log ||= []).push({am: Date.now(), von: ichK, veroeffentlicht: true});
+  });
+};
+
+/* =================== Meine Wuensche =================== */
+let fuerK = '';
+function renderMeine(){
+  if(!fuerK || !person(fuerK)) fuerK = ichK;
+  $('fuerSel').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === fuerK ? 'selected' : ''}>${esc(p.name || p.k)}${p.k === ichK ? ' (ich)' : ''}</option>`).join('');
+  const p = person(fuerK);
+  if(!p) return;
+  const y = +ym.slice(0,4), mo = +ym.slice(5,7), n = tageIm(ym);
+  let h = WT.slice(1).map(x => `<div class="kk">${x}</div>`).join('');
+  for(let i = 1; i < wt(ds(y, mo, 1)); i++) h += '<div class="leer"></div>';
+  for(let d = 1; d <= n; d++){
+    const s = ds(y, mo, d), e = eintrag(p.k, s), ft = feiertag(s), tz = teilzeitFrei(p, s) && !(e && e.typ === 'da');
+    let inh = '';
+    if(e && TYPEN[e.typ]) inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''}">${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}</span></span>`;
+    if(dienstVon(s) === p.k) inh += `<span class="mein-d">Dienst</span>`;
+    h += `<button data-tag="${s}" class="${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''} ${tz ? 'tz' : ''}"><span class="n">${d}</span>${ft ? `<span class="fn">${esc(ft)}</span>` : ''}${inh}</button>`;
+  }
+  $('kal').innerHTML = h;
+  $('kal').querySelectorAll('button[data-tag]').forEach(b => b.onclick = ()=> eintragDialog(p, b.dataset.tag));
+  // Regeln
+  $('regelListe').innerHTML = (p.regeln || []).map((r, i) => `<div class="lz"><span class="tag ${r.typ === 'kein' ? (r.stufe === 'hart' ? 'r' : 'o') : 'g'}">${r.stufe}</span>
+    <span class="t">${r.typ === 'kein' ? 'Kein Dienst' : 'Dienst bevorzugt'} am ${WTL[r.wt]}</span><button class="x" data-i="${i}">${icon('x')}</button></div>`).join('')
+    || '<div class="hint">Keine Regeln.</div>';
+  $('regelListe').querySelectorAll('.x').forEach(b => b.onclick = ()=> personAendern(p.k, 'Regel entfernt', q => q.regeln.splice(+b.dataset.i, 1)));
+  // Teilzeit
+  $('quote').value = p.quote || 100;
+  $('maxInfo').textContent = `→ max. ${maxDienste(p)} Dienste im Monat`;
+  $('tzListe').innerHTML = (p.teilzeit || []).map((t, i) => `<div class="lz">${icon('clock')}<span class="t">${t.typ === 'block'
+      ? `${t.an} Tage da, ${t.aus} frei, ab ${kurzDat(t.ab)}${t.ab.slice(0,4)} (${WT[wt(t.ab)]}–${WT[wt(plus(t.ab, t.an - 1))]})`
+      : `frei: ${(t.wt || []).map(x => WT[x]).join(', ')}${t.ab ? ', ab ' + kurzDat(t.ab) + t.ab.slice(0,4) : ''}`}${t.bis ? ', bis ' + kurzDat(t.bis) + t.bis.slice(0,4) : ''}</span>
+      <button class="x" data-i="${i}">${icon('x')}</button></div>`).join('') || '<div class="hint">Vollzeit – kein Muster.</div>';
+  $('tzListe').querySelectorAll('.x').forEach(b => b.onclick = ()=> personAendern(p.k, 'Teilzeitmuster entfernt', q => q.teilzeit.splice(+b.dataset.i, 1)));
+}
+$('fuerSel').onchange = e => { fuerK = e.target.value; renderMeine(); };
+$('rWt').innerHTML = WTL.slice(1).map((x, i) => `<option value="${i + 1}">${x}</option>`).join('');
+$('tzWoche').innerHTML = WT.slice(1, 6).map((x, i) => `<label class="chk"><input type="checkbox" value="${i + 1}">${x}</label>`).join('')
+  + '<label class="f">ab (optional)<input type="date" id="tzWAb"></label>';
+$('rAdd').onclick = ()=> personAendern(fuerK, 'Regel', q => (q.regeln ||= []).push({typ: $('rTyp').value, wt: +$('rWt').value, stufe: $('rStufe').value}));
+$('quote').onchange = ()=>{ const v = Math.max(10, Math.min(100, +$('quote').value || 100)); personAendern(fuerK, 'Arbeitsquote', q => { q.quote = v; }); };
+let tzArt = 'block';
+$('tzArt').querySelectorAll('button').forEach(b => b.onclick = ()=>{
+  tzArt = b.dataset.v; $('tzArt').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  $('tzBlock').classList.toggle('hidden', tzArt !== 'block'); $('tzWoche').classList.toggle('hidden', tzArt !== 'woche');
+});
+$('tzAdd').onclick = ()=>{
+  let t;
+  if(tzArt === 'block'){
+    if(!$('tzAb').value) return toast('Bitte ersten Arbeitstag wählen.');
+    t = {typ:'block', ab: $('tzAb').value, an: Math.max(1, +$('tzAn').value || 7), aus: Math.max(1, +$('tzAus').value || 7)};
+  }else{
+    const w = [...$('tzWoche').querySelectorAll('input:checked')].map(x => +x.value);
+    if(!w.length) return toast('Bitte Wochentage wählen.');
+    t = {typ:'woche', wt: w, ab: $('tzWAb').value || ''};
+  }
+  if($('tzBis').value) t.bis = $('tzBis').value;
+  personAendern(fuerK, 'Teilzeitmuster', q => (q.teilzeit ||= []).push(t));
+};
+
+function eintragDialog(p, s){
+  const e = eintrag(p.k, s) || {};
+  let typ = e.typ || 'wunsch', stufe = e.stufe || 'weich';
+  dialog(`<h3>${WTL[wt(s)]}, ${kurzDat(s)}${feiertag(s) ? ' · ' + esc(feiertag(s)) : ''}</h3>
+    <div class="unter">${esc(p.name || p.k)}${teilzeitFrei(p, s) ? ' · laut Teilzeitmuster frei' : ''}</div>
+    <div class="typwahl">${Object.entries(TYPEN).map(([k, t]) => `<button data-typ="${k}" class="${k === typ ? 'on' : ''}">${icon(t.icon)}${t.name}</button>`).join('')}</div>
+    <div id="stufeBox" style="margin-bottom:12px"><div class="seg"><button data-s="weich">weich</button><button data-s="hart">hart</button></div>
+      <span class="hint" style="margin-left:8px">hart = möglichst unbedingt</span></div>
+    <div class="reihe"><label class="f">bis einschließlich<input type="date" id="eBis" value="${s}" min="${s}"></label>
+      <label class="f" style="flex:1">Notiz<input type="text" id="eNotiz" value="${esc(e.notiz || '')}" placeholder="optional"></label></div>
+    <div class="fuss">${e.typ ? `<button class="btn out" id="eDel">${icon('trash')}Löschen</button>` : ''}<button class="btn gh" id="dlgZu">Abbrechen</button><button class="btn" id="eOk">${icon('check')}Speichern</button></div>`,
+  el => {
+    const upd = ()=>{
+      el.querySelectorAll('[data-typ]').forEach(b => b.classList.toggle('on', b.dataset.typ === typ));
+      el.querySelectorAll('[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === stufe));
+      $('stufeBox').style.display = TYPEN[typ].stufen ? '' : 'none';
+    };
+    el.querySelectorAll('[data-typ]').forEach(b => b.onclick = ()=>{ typ = b.dataset.typ; upd(); });
+    el.querySelectorAll('[data-s]').forEach(b => b.onclick = ()=>{ stufe = b.dataset.s; upd(); });
+    upd();
+    $('dlgZu').onclick = zu;
+    const setzen = wert => {
+      const bis = $('eBis').value && $('eBis').value >= s ? $('eBis').value : s;
+      if(tn(bis) - tn(s) > 62) return toast('Höchstens zwei Monate auf einmal.');
+      for(let x = s; x <= bis; x = plus(x, 1)){
+        const tag = x;
+        aendern(pfadWunsch(p.k, ymVon(tag)), {tage:{}}, `${p.k} ${wert ? TYPEN[wert.typ].name : 'Eintrag gelöscht'}`, d => {
+          d.tage ||= {};
+          if(wert) d.tage[tag] = {...wert, von: ichK, am: Date.now()}; else delete d.tage[tag];
+        });
+      }
+      zu();
+    };
+    $('eOk').onclick = ()=> setzen({typ, ...(TYPEN[typ].stufen ? {stufe} : {}), ...($('eNotiz').value.trim() ? {notiz: $('eNotiz').value.trim()} : {})});
+    if($('eDel')) $('eDel').onclick = ()=> setzen(null);
+  });
+}
+
+/* =================== Einstellungen =================== */
+const cfgAendern = (was, fn) => aendern(pfadCfg, CFG_LEER, was, d => { Object.keys(CFG_LEER).forEach(k => { if(d[k] === undefined) d[k] = clone(CFG_LEER[k]); }); fn(d); });
+const personAendern = (k, was, fn) => cfgAendern(`${k}: ${was}`, d => { const q = d.personen.find(x => x.k === k); if(q) fn(q); });
+
+function renderCfg(){
+  // Team
+  $('teamTab').innerHTML = `<tr><th></th><th>Kürzel</th><th>Name</th><th>Rolle</th><th>Teams</th><th>Planer</th><th>aktiv</th></tr>` +
+    cfg.personen.map(p => `<tr data-k="${esc(p.k)}"><td><input type="color" class="farbe" value="${farbe(p)}" data-f="farbe"></td>
+      <td><b>${esc(p.k)}</b>${p.k === ichK ? ' <span class="tag n">ich</span>' : ''}</td>
+      <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td>
+      <td><select data-f="rolle"><option value="oa" ${p.rolle !== 'chef' ? 'selected' : ''}>OA</option><option value="chef" ${p.rolle === 'chef' ? 'selected' : ''}>Chef</option></select></td>
+      <td>${cfg.teams.map(t => `<label class="chk"><input type="checkbox" data-team="${esc(t.id)}" ${(p.teams || []).includes(t.id) ? 'checked' : ''}>${esc(t.name)}</label>`).join('')}</td>
+      <td><input type="checkbox" data-f="planer" ${p.planer ? 'checked' : ''}></td>
+      <td><input type="checkbox" data-f="aktiv" ${p.aktiv !== false ? 'checked' : ''}></td></tr>`).join('');
+  $('teamTab').querySelectorAll('[data-f]').forEach(el => el.onchange = ()=>{
+    const k = el.closest('tr').dataset.k, f = el.dataset.f, v = el.type === 'checkbox' ? el.checked : el.value;
+    personAendern(k, f, q => { q[f] = v; });
+  });
+  $('teamTab').querySelectorAll('[data-team]').forEach(el => el.onchange = ()=>{
+    const k = el.closest('tr').dataset.k, t = el.dataset.team, an = el.checked;
+    personAendern(k, 'Team', q => { q.teams = (q.teams || []).filter(x => x !== t); if(an) q.teams.push(t); });
+  });
+  // Teams
+  $('teamsListe').innerHTML = cfg.teams.map(t => `<div class="lz">${icon('layers')}<span class="t"><b>${esc(t.name)}</b>
+    <span class="hint"> · ${cfg.personen.filter(p => (p.teams || []).includes(t.id)).map(p => p.k).join(', ') || 'niemand'}</span></span>
+    <button class="x" data-id="${esc(t.id)}">${icon('x')}</button></div>`).join('');
+  $('teamsListe').querySelectorAll('.x').forEach(b => b.onclick = ()=>{
+    if(confirm('Team entfernen?')) cfgAendern('Team entfernt', d => { d.teams = d.teams.filter(t => t.id !== b.dataset.id); d.personen.forEach(p => p.teams = (p.teams || []).filter(x => x !== b.dataset.id)); });
+  });
+  // Besetzung
+  $('besTab').innerHTML = `<tr><th></th>${FENSTER.map(f => `<th>${f}</th>`).join('')}</tr>` + [1,2,3,4,5].map(w => `<tr><td><b>${WT[w]}</b></td>${FENSTER.map((_, i) =>
+    `<td><input type="number" min="0" value="${cfg.besetzung[w].soll[i]}" data-w="${w}" data-i="${i}" data-a="soll" title="Soll"> / <input type="number" min="0" value="${cfg.besetzung[w].min[i]}" data-w="${w}" data-i="${i}" data-a="min" title="Minimum"></td>`).join('')}</tr>`).join('');
+  $('besTab').querySelectorAll('input').forEach(el => el.onchange = ()=> cfgAendern('Besetzung', d => { d.besetzung[el.dataset.w][el.dataset.a][+el.dataset.i] = Math.max(0, +el.value || 0); }));
+  // Hinweise
+  $('hwListe').innerHTML = (cfg.hinweise || []).map((h, i) => `<div class="lz">${icon('info')}<span class="t"><b>${esc(h.name)}</b><br>
+    <span class="hint">mind. ${h.min} aus ${h.personen.join(', ')} · ${h.tage.length === 5 ? 'Mo–Fr' : h.tage.map(x => WT[x]).join(', ')}</span></span>
+    <button class="x" data-i="${i}">${icon('x')}</button></div>`).join('') || '<div class="hint">Noch keine Hinweise, z. B. „Chef + leitende OA: mind. 1“.</div>';
+  $('hwListe').querySelectorAll('.x').forEach(b => b.onclick = ()=> cfgAendern('Hinweis entfernt', d => d.hinweise.splice(+b.dataset.i, 1)));
+  if(!$('hwPers').dataset.voll || $('hwPers').dataset.voll !== cfg.personen.map(p => p.k).join()){
+    $('hwPers').dataset.voll = cfg.personen.map(p => p.k).join();
+    $('hwPers').innerHTML = personen().map(p => `<label class="chk"><input type="checkbox" value="${esc(p.k)}">${esc(p.k)}</label>`).join('');
+    $('hwTage').innerHTML = WT.slice(1, 6).map((x, i) => `<label class="chk"><input type="checkbox" value="${i + 1}" checked>${x}</label>`).join('');
+  }
+  $('hwTeamBtns').innerHTML = cfg.teams.map(t => `<button class="btn gh" data-t="${esc(t.id)}">${esc(t.name)}</button>`).join('');
+  $('hwTeamBtns').querySelectorAll('button').forEach(b => b.onclick = ()=>{
+    const mitgl = cfg.personen.filter(p => (p.teams || []).includes(b.dataset.t)).map(p => p.k);
+    $('hwPers').querySelectorAll('input').forEach(x => x.checked = mitgl.includes(x.value));
+    if(!$('hwName').value) $('hwName').value = b.textContent;
+  });
+  // Feiertage
+  const y = +ym.slice(0,4);
+  $('ftListe').innerHTML = `<b>BW ${y}:</b> ` + Object.entries(feiertageBW(y)).sort().map(([s, n]) => `${kurzDat(s)} ${esc(n)}`).join(' · ');
+  $('ftExtra').innerHTML = (cfg.feiertage || []).map((f, i) => `<div class="lz">${icon('star')}<span class="t">${kurzDat(f.datum)}${f.datum.slice(0,4)} ${esc(f.name)}</span><button class="x" data-i="${i}">${icon('x')}</button></div>`).join('');
+  $('ftExtra').querySelectorAll('.x').forEach(b => b.onclick = ()=> cfgAendern('Feiertag entfernt', d => d.feiertage.splice(+b.dataset.i, 1)));
+  $('gMax').value = cfg.maxDienste; $('gWe').value = cfg.maxWeFolge;
+  // Zugang
+  const z = zugang();
+  $('zugInfo').innerHTML = z ? `Repo <b>${esc(z.repo)}</b> · Token aus ${esc(z.quelle || 'Einladung')}` : 'Kein Zugang.';
+}
+$('nAdd').onclick = ()=>{
+  const k = $('nK').value.trim().toUpperCase().replace(/[^A-ZÄÖÜ0-9]/g, '');
+  if(!k) return toast('Bitte Kürzel eingeben.');
+  if(person(k)) return toast('Kürzel gibt es schon.');
+  const neu = {k, name: $('nName').value.trim(), rolle: $('nRolle').value, teams: [], aktiv: true, farbe: FARBEN[cfg.personen.length % FARBEN.length]};
+  cfgAendern(`Person ${k}`, d => { if(!d.personen.some(p => p.k === k)) d.personen.push(neu); });
+  $('nK').value = ''; $('nName').value = '';
+};
+$('teamAdd').onclick = ()=>{
+  const n = $('neuTeam').value.trim(); if(!n) return;
+  const id = n.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) + '_' + Date.now().toString(36).slice(-3);
+  cfgAendern('Team ' + n, d => d.teams.push({id, name: n})); $('neuTeam').value = '';
+};
+$('hwAdd').onclick = ()=>{
+  const ps = [...$('hwPers').querySelectorAll('input:checked')].map(x => x.value), tage = [...$('hwTage').querySelectorAll('input:checked')].map(x => +x.value);
+  const name = $('hwName').value.trim();
+  if(!name || !ps.length || !tage.length) return toast('Bezeichnung, Personen und Tage wählen.');
+  cfgAendern('Hinweis ' + name, d => (d.hinweise ||= []).push({name, personen: ps, min: Math.max(1, +$('hwMin').value || 1), tage}));
+  $('hwName').value = '';
+};
+$('ftAdd').onclick = ()=>{
+  if(!$('ftDat').value || !$('ftName').value.trim()) return toast('Datum und Name eingeben.');
+  const f = {datum: $('ftDat').value, name: $('ftName').value.trim()};
+  cfgAendern('Feiertag ' + f.datum, d => (d.feiertage ||= []).push(f)); $('ftName').value = '';
+};
+$('gMax').onchange = ()=> cfgAendern('Grenzen', d => { d.maxDienste = Math.max(1, +$('gMax').value || 13); });
+$('gWe').onchange = ()=> cfgAendern('Grenzen', d => { d.maxWeFolge = Math.max(1, +$('gWe').value || 2); });
+$('ichWechsel').onclick = ()=> ichWaehlen();
+$('ichBtn').onclick = ()=> ichWaehlen();
+$('abmelden').onclick = ()=>{
+  if(!confirm('Zugang auf diesem Gerät entfernen? (Ein Tagesdoku-Zugang bleibt bestehen.)')) return;
+  localStorage.removeItem(LS_ZUGANG); localStorage.removeItem(LS_ICH); localStorage.removeItem(LS_CACHE); location.reload();
+};
+
+/* =================== Anmeldung =================== */
+/* Einladung wie in der Tagesdoku: #zugang2=<base64url(salt|iv|AES-GCM)> mit PIN
+   (PBKDF2 600k) oder #einladung=<gist-id>; Ablauf 'bis' steckt verschluesselt im Code. */
+const unb64url = s => Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
+async function zugangEntschluesseln(code, pin){
+  const u = unb64url(code);
+  const basis = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({name:'PBKDF2', salt: u.subarray(0, 16), iterations: 600000, hash:'SHA-256'}, basis, {name:'AES-GCM', length:256}, false, ['decrypt']);
+  const z = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM', iv: u.subarray(16, 28)}, key, u.subarray(28))));
+  if(!z || !z.r || !z.t) throw new Error('Code unvollständig.');
+  if(!z.bis || Date.now() > z.bis) throw new Error('Einladung abgelaufen – bitte neuen Code anfordern.');
+  return z;
+}
+async function gistCode(id){
+  const r = await fetch('https://api.github.com/gists/' + id, {cache:'no-store'}).catch(()=> null);
+  if(r && r.ok){ const f = Object.values((await r.json()).files || {})[0]; return String(f && f.content || '').trim(); }
+  const raw = await fetch(`https://gist.githubusercontent.com/${TEAM_REPO.split('/')[0]}/${id}/raw/einladung.txt?t=${Date.now()}`, {cache:'no-store'});
+  if(!raw.ok) throw new Error('Einladung abgelaufen oder gelöscht.');
+  return (await raw.text()).trim();
+}
+function anmelden(vorgabe){
+  dialog(`<h3>Zugang einrichten</h3>
+    <div class="unter">Wie in der Tagesdoku: Einladungs-Link oder -Code einfügen und PIN eingeben.
+      Ist die Tagesdoku auf diesem Gerät schon mit dem Team verbunden, passiert das automatisch.</div>
+    <label class="f">Einladungs-Link oder Code<input type="text" id="aCode" value="${esc(vorgabe || '')}"></label>
+    <label class="f" style="margin-top:10px">PIN<input type="password" id="aPin" inputmode="numeric"></label>
+    <details style="margin-top:12px"><summary class="hint">Admin: Repo und Token direkt</summary>
+      <div class="reihe" style="margin-top:8px"><label class="f">Repo<input type="text" id="aRepo" value="${TEAM_REPO}"></label>
+      <label class="f" style="flex:1">Token<input type="password" id="aTok"></label></div></details>
+    <div class="msg" id="aMsg"></div>
+    <div class="fuss"><button class="btn" id="aOk">${icon('key')}Verbinden</button></div>`, el => {
+    $('aOk').onclick = async ()=>{
+      $('aMsg').className = 'msg'; $('aMsg').textContent = 'Prüfe …';
+      try{
+        let z;
+        if($('aTok').value.trim()) z = {r: $('aRepo').value.trim(), t: $('aTok').value.trim()};
+        else{
+          const txt = $('aCode').value.trim();
+          const mg = txt.match(/einladung=([0-9a-f]{20,40})/), m2 = txt.match(/zugang2=([\w-]+)/);
+          const code = mg ? await gistCode(mg[1]) : m2 ? m2[1] : /^[\w-]{40,}$/.test(txt) ? txt : '';
+          if(!code) throw new Error('Kein gültiger Einladungs-Code.');
+          try{ z = await zugangEntschluesseln(code, $('aPin').value.trim()); }
+          catch(e){ throw new Error(/abgelaufen|unvollständig/.test(e.message) ? e.message : 'PIN falsch.'); }
+        }
+        localStorage.setItem(LS_ZUGANG, JSON.stringify({repo: z.r, token: z.t, quelle: 'Einladung'}));
+        await repoPruefen();
+        history.replaceState(null, '', location.pathname);
+        zu(); start();
+      }catch(e){ $('aMsg').className = 'msg err'; $('aMsg').textContent = e.message; }
+    };
+  });
+}
+function ichWaehlen(){
+  dialog(`<h3>Wer bist du?</h3><div class="unter">Einmalig auf diesem Gerät. Einträge werden mit deinem Kürzel protokolliert.</div>
+    ${personen().map(p => `<button class="kand ${p.k === ichK ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b><span class="hint">${p.rolle === 'chef' ? 'Chefarzt' : 'Oberarzt/-ärztin'}</span></span></button>`).join('')}
+    <div class="hint" style="margin-top:10px">Nicht in der Liste? Unten neu anlegen.</div>
+    <div class="reihe" style="margin-top:8px"><label class="f">Kürzel<input type="text" id="iK" maxlength="6" style="width:80px"></label>
+      <label class="f" style="flex:1">Name<input type="text" id="iName"></label>
+      <label class="f">Rolle<select id="iRolle"><option value="oa">OA</option><option value="chef">Chef</option></select></label>
+      <button class="btn out" id="iAdd">${icon('plus')}Anlegen</button></div>`, el => {
+    el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ ichK = b.dataset.k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render(); });
+    $('iAdd').onclick = ()=>{
+      const k = $('iK').value.trim().toUpperCase().replace(/[^A-ZÄÖÜ0-9]/g, '');
+      if(!k) return toast('Bitte Kürzel eingeben.');
+      if(!person(k)){
+        const neu = {k, name: $('iName').value.trim(), rolle: $('iRolle').value, teams: [], aktiv: true,
+          planer: cfg.personen.length === 0, farbe: FARBEN[cfg.personen.length % FARBEN.length]};
+        cfgAendern(`Person ${k}`, d => { if(!d.personen.some(p => p.k === k)) d.personen.push(neu); });
+      }
+      ichK = k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render();
+    };
+  });
+}
+
+async function start(){
+  const h = location.hash;
+  if(/zugang2=|einladung=/.test(h) && !load(LS_ZUGANG, null)){ anmelden(h.slice(1)); return; }
+  if(!zugang()){ anmelden(''); return; }
+  try{ await ladeAlles(); }
+  catch(e){ status('err', 'Fehler'); toast(e.message); if(/Token|Repo/.test(e.message)) anmelden(''); return; }
+  render();
+  if(!ich()) ichWaehlen();
+}
+render();
+start();
+</script>
+</body>
+</html>
