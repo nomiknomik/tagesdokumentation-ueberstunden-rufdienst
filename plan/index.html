@@ -44,6 +44,9 @@ nav.tabs .ic{width:16px;height:16px}
   display:flex;align-items:center;justify-content:center;cursor:pointer}
 .rund:hover{border-color:var(--primary)}
 .status{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.status{border:0;background:transparent;cursor:pointer;padding:4px 6px;border-radius:8px}
+.status:hover{background:var(--primary-soft)}
+.status[data-st=wait]{color:var(--warning);font-weight:700}
 .status[data-st=ok]{color:var(--success)} .status[data-st=busy]{color:var(--warning)} .status[data-st=err]{color:var(--danger)}
 .ich .pk{width:26px;height:26px;border-radius:999px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .ich{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:4px 10px 4px 4px;cursor:pointer}
@@ -153,12 +156,23 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 
 /* ---------- Meine Eintraege ---------- */
 .zwei{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
-.kal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.kal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .kal .kk{font-size:11px;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase}
 .kal button{min-height:74px;border:1px solid var(--border);background:#fff;border-radius:12px;padding:6px;display:flex;flex-direction:column;
   align-items:flex-start;gap:4px;cursor:pointer;text-align:left}
 .kal button:hover{border-color:var(--primary)}
 .kal button.we{background:var(--we)} .kal button.ft{background:var(--ft)}
+.kal button{position:relative;min-width:0;overflow:hidden}
+.kal button .chip{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.kal button .rm{position:absolute;bottom:6px;right:5px;display:flex}
+.kal button .rm .ic{width:12px;height:12px}
+.kal button.rkein{box-shadow:inset 0 -3px 0 rgba(194,73,46,.35)} .kal button.rkein .rm{color:rgba(194,73,46,.6)}
+.kal button.rpref{box-shadow:inset 0 -3px 0 rgba(21,143,71,.35)} .kal button.rpref .rm{color:rgba(21,143,71,.7)}
+.kal.malen{touch-action:none;user-select:none} .kal.malen button{cursor:crosshair}
+.pinsel{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:8px;border-radius:12px;background:var(--input)}
+.pinsel button{border:1.5px solid transparent;background:#fff;border-radius:999px;padding:5px 10px;display:inline-flex;gap:5px;align-items:center;cursor:pointer;font-weight:600;font-size:12.5px}
+.pinsel button.on{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-dark)}
+.pinsel button .ic{width:14px;height:14px}
 .kal button.tz{background:repeating-linear-gradient(135deg,#F3EEE7 0 6px,#fff 6px 12px)}
 .kal button .n{font-weight:800;font-size:14px}
 .kal button .fn{font-size:9.5px;color:var(--danger);font-weight:600;line-height:1.1}
@@ -253,7 +267,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
       <h2 id="mTitel">–</h2>
       <button class="rund" id="mVor" title="Nächster Monat"><span data-icon="chevronRight"></span></button>
     </div>
-    <div class="status" id="status" data-st="off" title="Speicherstand"><span data-icon="cloud"></span><span id="statusTxt">offline</span></div>
+    <button class="status" id="status" data-st="off" title="Jetzt speichern bzw. neu laden"><span data-icon="cloud"></span><span id="statusTxt">offline</span></button>
     <div class="ich" id="ichBtn" title="Angemeldet als"></div>
   </div>
 </header>
@@ -302,9 +316,11 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
           <h3 style="margin:0"><span data-icon="calendar"></span>Einträge</h3>
           <label class="f" style="flex-direction:row;align-items:center;gap:8px">für <select id="fuerSel"></select></label>
         </div>
+        <div class="pinsel" id="pinsel"></div>
         <div class="kal" id="kal"></div>
         <div class="hint" style="margin-top:10px">Tag antippen: Dienstwunsch, No-Go, Urlaub, Fortbildung oder frei eintragen.
-          Schraffierte Tage sind laut Teilzeitmuster frei.</div>
+          Mit dem Pinsel über mehrere Tage streichen; Anwesend, frei, Urlaub und Fortbildung lassen Wochenenden und Feiertage aus.
+          Schraffiert = laut Teilzeit frei, Linie unten = Tag mit Regel.</div>
       </div>
       <div>
         <div class="card">
@@ -325,13 +341,15 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
           </div>
           <div class="liste" id="tzListe"></div>
           <div class="hint" style="margin:12px 0 6px;font-weight:700">Muster hinzufügen</div>
-          <div class="seg" id="tzArt"><button data-v="block" class="on">Block im Wechsel</button><button data-v="woche">feste Wochentage frei</button></div>
+          <div class="seg" id="tzArt"><button data-v="block" class="on">Block im Wechsel</button><button data-v="woche">feste Wochentage frei</button><button data-v="manuell">nur gepinselte Tage da</button></div>
           <div class="reihe" id="tzBlock" style="margin-top:10px">
             <label class="f">erster Arbeitstag<input type="date" id="tzAb"></label>
             <label class="f">Tage da<input type="number" id="tzAn" value="7" min="1" style="width:70px"></label>
             <label class="f">Tage frei<input type="number" id="tzAus" value="7" min="1" style="width:70px"></label>
           </div>
           <div class="reihe hidden" id="tzWoche" style="margin-top:10px"></div>
+          <div class="reihe hidden" id="tzManuell" style="margin-top:10px"><label class="f">ab<input type="date" id="tzMAb"></label>
+            <span class="hint" style="padding-bottom:9px">Alle Werktage gelten als frei, außer die mit dem Pinsel „anwesend“ markierten.</span></div>
           <div class="reihe" style="margin-top:10px">
             <label class="f">gilt bis (optional)<input type="date" id="tzBis"></label>
             <button class="btn out" id="tzAdd"><span data-icon="plus"></span>Muster</button>
@@ -517,7 +535,7 @@ const TYPEN = {
   urlaub: {name:'Urlaub', icon:'sun', abw:true},
   fb:     {name:'Fortbildung', icon:'book', abw:true},
   frei:   {name:'frei', icon:'moon', abw:true},
-  da:     {name:'anwesend (Ausnahme)', icon:'check'}
+  da:     {name:'anwesend', icon:'check'}
 };
 const ABW_NAME = {urlaub:'Urlaub', fb:'Fortbildung', frei:'frei', tz:'Teilzeit frei'};
 const ABW_ICON = {urlaub:'sun', fb:'book', frei:'moon', tz:'clock'};
@@ -597,13 +615,26 @@ function aendern(pfad, leer, was, fn){
   fn(f.data, false);
   const q = queue[pfad] || (queue[pfad] = {fns: [], leer, was: new Set()});
   q.fns.push(fn); q.was.add(was);
-  status('busy', 'speichert …');
-  clearTimeout(flushTimer); flushTimer = setTimeout(flush, 1200);
+  ungespeichert();
+  if(!flushTimer) flushTimer = setTimeout(flush, SPEICHER_INTERVALL);
   render();
 }
+/* Gespeichert wird gesammelt: spaetestens nach 120 s, beim Verlassen von
+   Fenster/Tab oder per Klick auf die Wolke - nicht bei jeder Eingabe. */
+const SPEICHER_INTERVALL = 120000;
+const ungespeichert = ()=>{ const n = Object.values(queue).reduce((a, q) => a + q.fns.length, 0); status('wait', n + ' ungespeichert'); };
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'hidden' && Object.keys(queue).length) flush(); });
+window.addEventListener('blur', ()=>{ if(Object.keys(queue).length) flush(); });
+window.addEventListener('pagehide', ()=>{ if(Object.keys(queue).length) flush(); });
+$('status').onclick = ()=>{
+  if(Object.keys(queue).length) flush();
+  else if(!flushLaeuft && zugang() && !nurLesen) ladeAlles().then(render, e => toast(e.message));
+};
 async function flush(){
-  if(flushLaeuft){ clearTimeout(flushTimer); flushTimer = setTimeout(flush, 800); return; }
-  flushLaeuft = true;
+  clearTimeout(flushTimer); flushTimer = 0;
+  if(flushLaeuft){ flushTimer = setTimeout(flush, 800); return; }
+  if(!Object.keys(queue).length) return;
+  flushLaeuft = true; status('busy', 'speichert …');
   try{
     for(const pfad of Object.keys(queue)){
       const q = queue[pfad]; delete queue[pfad];
@@ -620,9 +651,9 @@ async function flush(){
       }
     }
     cacheSchreiben();
-    status('ok', 'gespeichert');
+    if(Object.keys(queue).length) ungespeichert(); else status('ok', 'gespeichert');
   }catch(e){
-    status('err', 'Fehler'); toast(e.message);
+    status('err', 'Fehler – Klick: erneut'); toast(e.message);
   }finally{
     flushLaeuft = false;
     render();
@@ -642,7 +673,7 @@ async function ladeAlles(){
     await Promise.all(pf.map(lesen));
     cacheSchreiben();
     nurLesen = false; $('banner').classList.add('hidden');
-    status(wartet() ? 'busy' : 'ok', wartet() ? 'speichert …' : 'aktuell');
+    if(Object.keys(queue).length) ungespeichert(); else if(!flushLaeuft) status('ok', 'aktuell');
     return !!c.data;
   }catch(e){
     const cache = load(LS_CACHE, null);
@@ -668,6 +699,7 @@ function teilzeitFrei(p, s){
   for(const t of p.teilzeit || []){
     if((t.ab && s < t.ab) || (t.bis && s > t.bis)) continue;
     if(t.typ === 'woche' && (t.wt || []).includes(wt(s))) return true;
+    if(t.typ === 'manuell' && werktag(s)) return true;   // nur mit Eintrag 'da' anwesend
     if(t.typ === 'block'){ const z = ((tn(s) - tn(t.ab)) % (t.an + t.aus) + (t.an + t.aus)) % (t.an + t.aus); if(z >= t.an) return true; }
   }
   return false;
@@ -934,10 +966,15 @@ function renderMeine(){
     let inh = '';
     if(e && TYPEN[e.typ]) inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''}">${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}</span></span>`;
     if(dienstVon(s) === p.k) inh += `<span class="mein-d">Dienst</span>`;
-    h += `<button data-tag="${s}" class="${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''} ${tz ? 'tz' : ''}"><span class="n">${d}</span>${ft ? `<span class="fn">${esc(ft)}</span>` : ''}${inh}</button>`;
+    const rg = (p.regeln || []).filter(r => r.wt === wt(s)), rk = rg.find(r => r.typ === 'kein'), rp = rg.find(r => r.typ === 'pref');
+    const rcls = rk ? 'rkein' : rp ? 'rpref' : '';
+    if(rcls) inh += `<span class="rm" title="${rk ? 'Regel: kein Dienst (' + rk.stufe + ')' : 'Regel: Dienst bevorzugt'}">${icon(rk ? 'ban' : 'heart')}</span>`;
+    h += `<button data-tag="${s}" class="${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''} ${tz ? 'tz' : ''} ${rcls}"><span class="n">${d}</span>${ft ? `<span class="fn">${esc(ft)}</span>` : ''}${inh}</button>`;
   }
   $('kal').innerHTML = h;
-  $('kal').querySelectorAll('button[data-tag]').forEach(b => b.onclick = ()=> eintragDialog(p, b.dataset.tag));
+  $('kal').querySelectorAll('button[data-tag]').forEach(b => b.onclick = ()=>{ if(!pinsel) eintragDialog(p, b.dataset.tag); });
+  $('kal').classList.toggle('malen', !!pinsel);
+  pinselLeiste();
   // Regeln
   $('regelListe').innerHTML = (p.regeln || []).map((r, i) => `<div class="lz"><span class="tag ${r.typ === 'kein' ? (r.stufe === 'hart' ? 'r' : 'o') : 'g'}">${r.stufe}</span>
     <span class="t">${r.typ === 'kein' ? 'Kein Dienst' : 'Dienst bevorzugt'} am ${WTL[r.wt]}</span><button class="x" data-i="${i}">${icon('x')}</button></div>`).join('')
@@ -948,6 +985,7 @@ function renderMeine(){
   $('maxInfo').textContent = `→ max. ${maxDienste(p)} Dienste im Monat`;
   $('tzListe').innerHTML = (p.teilzeit || []).map((t, i) => `<div class="lz">${icon('clock')}<span class="t">${t.typ === 'block'
       ? `${t.an} Tage da, ${t.aus} frei, ab ${kurzDat(t.ab)}${t.ab.slice(0,4)} (${WT[wt(t.ab)]}–${WT[wt(plus(t.ab, t.an - 1))]})`
+      : t.typ === 'manuell' ? `nur gepinselte Tage anwesend${t.ab ? ', ab ' + kurzDat(t.ab) + t.ab.slice(0,4) : ''}`
       : `frei: ${(t.wt || []).map(x => WT[x]).join(', ')}${t.ab ? ', ab ' + kurzDat(t.ab) + t.ab.slice(0,4) : ''}`}${t.bis ? ', bis ' + kurzDat(t.bis) + t.bis.slice(0,4) : ''}</span>
       <button class="x" data-i="${i}">${icon('x')}</button></div>`).join('') || '<div class="hint">Vollzeit – kein Muster.</div>';
   $('tzListe').querySelectorAll('.x').forEach(b => b.onclick = ()=> personAendern(p.k, 'Teilzeitmuster entfernt', q => q.teilzeit.splice(+b.dataset.i, 1)));
@@ -962,12 +1000,15 @@ let tzArt = 'block';
 $('tzArt').querySelectorAll('button').forEach(b => b.onclick = ()=>{
   tzArt = b.dataset.v; $('tzArt').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   $('tzBlock').classList.toggle('hidden', tzArt !== 'block'); $('tzWoche').classList.toggle('hidden', tzArt !== 'woche');
+  $('tzManuell').classList.toggle('hidden', tzArt !== 'manuell');
 });
 $('tzAdd').onclick = ()=>{
   let t;
   if(tzArt === 'block'){
     if(!$('tzAb').value) return toast('Bitte ersten Arbeitstag wählen.');
     t = {typ:'block', ab: $('tzAb').value, an: Math.max(1, +$('tzAn').value || 7), aus: Math.max(1, +$('tzAus').value || 7)};
+  }else if(tzArt === 'manuell'){
+    t = {typ:'manuell', ab: $('tzMAb').value || ''};
   }else{
     const w = [...$('tzWoche').querySelectorAll('input:checked')].map(x => +x.value);
     if(!w.length) return toast('Bitte Wochentage wählen.');
@@ -976,6 +1017,44 @@ $('tzAdd').onclick = ()=>{
   if($('tzBis').value) t.bis = $('tzBis').value;
   personAendern(fuerK, 'Teilzeitmuster', q => (q.teilzeit ||= []).push(t));
 };
+
+/* Pinsel: Typ waehlen, dann Tage antippen oder darueberstreichen. Beginnt der
+   Strich auf einem Tag mit genau diesem Eintrag, loescht der Strich. */
+const PINSEL = [['da','anwesend','check'], ['frei','frei','moon'], ['urlaub','Urlaub','sun'], ['fb','Fortbildung','book'],
+  ['wunsch','Wunsch','heart'], ['nogo','No-Go','ban'], ['weg','Radierer','x']];
+let pinsel = '', pinselStufe = 'weich', strich = null;
+function pinselLeiste(){
+  $('pinsel').innerHTML = `<span class="hint" style="font-weight:700">Pinsel:</span>`
+    + `<button data-p="" class="${pinsel ? '' : 'on'}">aus</button>`
+    + PINSEL.map(([k, n, ic]) => `<button data-p="${k}" class="${pinsel === k ? 'on' : ''}">${icon(ic)}${n}</button>`).join('')
+    + (pinsel === 'wunsch' || pinsel === 'nogo' ? `<span class="seg"><button data-st="weich" class="${pinselStufe === 'weich' ? 'on' : ''}">weich</button><button data-st="hart" class="${pinselStufe === 'hart' ? 'on' : ''}">hart</button></span>` : '');
+  $('pinsel').querySelectorAll('[data-p]').forEach(b => b.onclick = ()=>{ pinsel = b.dataset.p; renderMeine(); });
+  $('pinsel').querySelectorAll('[data-st]').forEach(b => b.onclick = ()=>{ pinselStufe = b.dataset.st; pinselLeiste(); });
+}
+function pinselTag(s){
+  const p = person(fuerK);
+  if(!p || !strich || strich.erledigt.has(s)) return;
+  strich.erledigt.add(s);
+  const typ = pinsel;
+  if(typ !== 'weg' && typ !== 'wunsch' && typ !== 'nogo' && !werktag(s)) return;   // Wochenende/Feiertag auslassen
+  const alt = eintrag(p.k, s);
+  if(strich.loeschen === undefined) strich.loeschen = typ === 'weg' || !!(alt && alt.typ === typ);
+  if(strich.loeschen && !(alt && (typ === 'weg' || alt.typ === typ))) return;
+  if(!strich.loeschen && alt && alt.typ === typ && (alt.stufe || 'weich') === (TYPEN[typ].stufen ? pinselStufe : 'weich')) return;
+  const wert = strich.loeschen ? null : {typ, ...(TYPEN[typ].stufen ? {stufe: pinselStufe} : {})};
+  aendern(pfadWunsch(p.k, ymVon(s)), {tage:{}}, `${p.k} ${wert ? TYPEN[typ].name : 'Eintrag gelöscht'}`, d => {
+    d.tage ||= {};
+    if(wert) d.tage[s] = {...wert, von: ichK, am: Date.now()}; else delete d.tage[s];
+  });
+}
+const tagUnter = e => { const el = document.elementFromPoint(e.clientX, e.clientY); const b = el && el.closest('#kal button[data-tag]'); return b && b.dataset.tag; };
+$('kal').addEventListener('pointerdown', e => {
+  if(!pinsel) return;
+  const s = tagUnter(e); if(!s) return;
+  e.preventDefault(); strich = {erledigt: new Set()}; pinselTag(s);
+});
+$('kal').addEventListener('pointermove', e => { if(strich){ const s = tagUnter(e); if(s) pinselTag(s); } });
+['pointerup','pointercancel'].forEach(t => window.addEventListener(t, ()=>{ strich = null; }));
 
 function eintragDialog(p, s){
   const e = eintrag(p.k, s) || {};
