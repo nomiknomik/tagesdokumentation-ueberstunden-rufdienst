@@ -43,6 +43,12 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Plan als Liste oder Matrix (1 Zeile = 1 KW, `matrixHtml()`, nur > 760 px,
   Wahl in `planung_ansicht`); beide aus denselben Tagesdaten (`info`). Letzter
   Monat/Reiter je Gerät in `planung_monat`/`planung_tab` (Start/Update dort).
+  Anzeige Besetzung nur vor 11 / ab 11 (`zweiFenster()`), keine Dienstart (ZD1…)
+  in der Oberfläche – Funktionen statt Abrechnungsart folgen später.
+  Reiter Urlaub: Jahresmatrix, scrollend; lädt Wunschdateien des Jahres über
+  `git/trees` (`ladeJahr()`); Zähler = Urlaub an Werktagen vs. `cfg.urlaubPlan`
+  (25) von `cfg.urlaubAnspruch` (31). Schnellwahl Dienst: 1. Buchstabe Nachname,
+  ab 2. auch Initialen (Nachname+Vorname) oder Kürzel.
   Besetzung je Zeitfenster bis 11 / 11–13 / ab 13, Diensthabender ab 11, Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
 - `add_fields.py`, `build_html.py` (veraltet, erzeugt die heutige HTML nicht

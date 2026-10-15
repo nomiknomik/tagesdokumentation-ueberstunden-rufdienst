@@ -185,7 +185,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-dienst{position:absolute;left:8px;right:8px;top:36px;height:32px;border-radius:9px;display:flex;align-items:center;gap:7px;padding:0 7px 0 4px;
   border:1px solid;font-size:13px}
 .mx-dienst .pk{width:22px;height:22px;border-radius:7px;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.mx-dienst small{margin-left:auto;font-size:9.5px;font-weight:700;opacity:.7}
+.mx-dienst .nn{overflow:hidden;text-overflow:ellipsis}
 .mx-dienst .warn,.mx-dienst .warno{display:flex} .mx-dienst .warn{color:var(--danger)} .mx-dienst .warno{color:var(--warning)}
 .mx-dienst .ic{width:13px;height:13px}
 .mx-dienst{white-space:nowrap;overflow:hidden}
@@ -202,6 +202,20 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-wu .ic{width:10px;height:10px}
 .mx-wu.wunsch{color:#2F7D4A;border-color:#A8D8B8;background:#F3FAF5} .mx-wu.nogo{color:#A6543F;border-color:#EBC2B6;background:#FCF3F0}
 .mx-wu.hart{border-style:solid}
+
+/* ---------- Urlaub ---------- */
+.ur-monat{font-weight:800;font-size:15px;margin:14px 0 6px 47px;color:var(--primary-dark)}
+.mx-box.ur{min-height:62px;cursor:pointer;user-select:none;touch-action:none}
+.mx-box.ur:hover{border-color:var(--primary)}
+.ur-dat{position:absolute;top:5px;left:8px;right:8px;font-weight:800;font-size:12px;line-height:1.1}
+.ur-dat small{display:block;font-size:8.5px;color:var(--danger);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ur-st{position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:9px}
+.ur-st.kn{background:#E9A55A} .ur-st.rot{background:var(--danger)}
+.ur-chips{position:absolute;left:6px;right:6px;bottom:5px;display:flex;flex-wrap:wrap;gap:2px}
+.ur-chip{font-size:9px;font-weight:800;border-radius:5px;padding:1px 4px;color:#fff;background:var(--f);opacity:.8}
+.ur-chip.fb{background:#fff;color:var(--f);border:1px solid var(--f)}
+.ur-chip.tz{background:transparent;color:var(--muted);border:1px dashed var(--muted);opacity:1}
+.ur-chip.meins{opacity:1;box-shadow:0 0 0 1.5px #fff,0 0 0 3px var(--f)}
 
 /* ---------- Meine Eintraege ---------- */
 .zwei{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
@@ -273,6 +287,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .msg.err{color:var(--danger)} .msg.ok{color:var(--success)}
 
 /* ---------- Schmal (Handy) ---------- */
+@media (max-width:1560px){ .ich b{display:none} .ich{padding:4px} .logo small{display:none} }
 @media (max-width:1000px){
   .planwrap{grid-template-columns:1fr}
   .seite{position:static}
@@ -309,6 +324,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
     <nav class="tabs">
       <button data-tab="plan" class="on"><span data-icon="grid"></span><span class="txt">Plan</span></button>
       <button data-tab="meine"><span data-icon="heart"></span><span class="txt">Wünsche</span></button>
+      <button data-tab="urlaub"><span data-icon="sun"></span><span class="txt">Urlaub</span></button>
       <button data-tab="cfg"><span data-icon="settings"></span><span class="txt">Einstellungen</span></button>
     </nav>
     <div class="monat">
@@ -347,8 +363,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
         <div class="card">
           <h3><span data-icon="info"></span>Legende</h3>
           <div class="legende">
-            <div><span class="ampel"><span class="ok">2<small>bis 11</small></span></span>Besetzung: sicher anwesend je Zeitfenster</div>
-            <div><span class="chip gef"><span data-icon="moon"></span>XY</span>nach Dienst – fehlt evtl.</div>
+            <div><span class="ampel"><span class="ok">2<small>vor 11</small></span></span>Besetzung: sicher anwesend vor / ab 11 Uhr</div>
+            <div><span class="chip gef"><span data-icon="moon"></span>XY</span>nach Dienst – fehlt evtl. (nur Liste)</div>
             <div><span class="chip t-wunsch"><span data-icon="heart"></span>hart</span><span class="chip t-wunsch weich"><span data-icon="heart"></span>weich</span>Dienstwunsch</div>
             <div><span class="chip t-nogo"><span data-icon="ban"></span>hart</span><span class="chip t-nogo weich"><span data-icon="ban"></span>weich</span>No-Go</div>
             <div><span class="tausch"></span>&nbsp;nach Veröffentlichung getauscht</div>
@@ -413,6 +429,26 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
   </section>
 
   <!-- ===== Einstellungen ===== -->
+  <section id="tab-urlaub" class="hidden">
+    <div class="planwrap">
+      <div>
+        <div class="werkzeug">
+          <label class="f" style="flex-direction:row;align-items:center;gap:8px">Eintragen für <select id="urlSel"></select></label>
+          <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button></span>
+          <span class="hint">Antippen oder über Tage streichen; nochmal = löschen. Urlaub zählt nur an Werktagen.</span>
+        </div>
+        <div class="tabelle matrix" id="urlTab"></div>
+      </div>
+      <aside class="seite">
+        <div class="card">
+          <h3><span data-icon="sun"></span>Urlaub <span id="urlJahr"></span></h3>
+          <div id="urlZaehler"></div>
+          <div class="hint" style="margin-top:6px" id="urlInfo"></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
   <section id="tab-cfg" class="hidden">
     <div class="cfggrid">
       <div class="card" style="grid-column:1/-1">
@@ -463,6 +499,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
         <div class="reihe" style="margin-top:16px">
           <label class="f">max. Dienste / Monat (100 %)<input type="number" id="gMax" min="1" style="width:90px"></label>
           <label class="f">max. Wochenenden in Folge<input type="number" id="gWe" min="1" style="width:90px"></label>
+          <label class="f">Urlaubsanspruch / Jahr<input type="number" id="gUa" min="0" style="width:90px"></label>
+          <label class="f">davon zu verplanen<input type="number" id="gUp" min="0" style="width:90px"></label>
         </div>
         <div class="hint" style="margin-top:6px">Bei Teilzeit: max. Dienste × Arbeitsquote, abgerundet. Wochenende = Sa- oder So-Dienst.</div>
       </div>
@@ -490,7 +528,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.7';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.8';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -578,9 +616,13 @@ const CFG_LEER = {
   gruppen: {oa: {name:'Oberärzte', einteilen:'alle'}},   // spaeter Assistenten: einteilen 'planer'
   besetzung: {1:{soll:[2,2,2],min:[2,2,2]}, 2:{soll:[3,3,4],min:[3,3,3]}, 3:{soll:[2,2,2],min:[2,2,2]},
               4:{soll:[3,3,4],min:[3,3,3]}, 5:{soll:[2,2,2],min:[2,2,2]}},
-  hinweise: [], feiertage: [], maxDienste: 13, maxWeFolge: 2
+  hinweise: [], feiertage: [], maxDienste: 13, maxWeFolge: 2, urlaubAnspruch: 31, urlaubPlan: 25
 };
 const FENSTER = ['bis 11', '11–13', 'ab 13'];
+/* Anzeige: nur vor 11 / ab 11 (ab 11 = schlechteres der beiden spaeteren Fenster) */
+const schlechter = (a, b) => a === 'rot' || b === 'rot' ? 'rot' : a === 'kn' || b === 'kn' ? 'kn' : 'ok';
+const zweiFenster = b => [[b.w[0], b.st[0], 'vor 11'], [Math.min(b.w[1], b.w[2]), schlechter(b.st[1], b.st[2]), 'ab 11']];
+const nachn = p => p.name ? p.name.trim().split(/\s+/).pop() : p.k;
 const TYPEN = {
   wunsch: {name:'Dienstwunsch', icon:'heart', stufen:true},
   nogo:   {name:'No-Go', icon:'ban', stufen:true},
@@ -859,11 +901,13 @@ let tab = 'plan';
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = ()=>{
   tab = b.dataset.tab; merken('planung_tab', tab);
   document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['plan','meine','cfg'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
+  ['plan','meine','urlaub','cfg'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
   render();
 });
 async function monatWechseln(n){
-  ym = ymPlus(ym, n); merken('planung_monat', ym); render();
+  ym = ymPlus(ym, n); merken('planung_monat', ym);
+  if(tab === 'urlaub'){ urlScrollZiel = ym; render(); return; }
+  render();
   try{ await ladeAlles(); }catch(e){ toast(e.message); }
   render();
 }
@@ -879,6 +923,7 @@ function render(){
   if(tab === 'plan') renderPlan();
   if(tab === 'meine') renderMeine();
   if(tab === 'cfg') renderCfg();
+  if(tab === 'urlaub') renderUrlaub();
 }
 
 /* =================== Plan =================== */
@@ -902,7 +947,7 @@ function renderPlan(){
       getauscht = pub && stand[s] !== undefined && stand[s] !== dh;
       warn = schlimm ? 'r' : mittel ? 'o' : '';
       if(getauscht) tausche++;
-      dzelle = `<span class="dchip" title="${esc(b.tags.map(t => t[1]).join(' · '))}">${pk(dp)}${esc(dp.k)}`
+      dzelle = `<span class="dchip" title="${esc(b.tags.map(t => t[1]).join(' · '))}">${pk(dp)}${esc(nachn(dp))}`
         + (schlimm ? `<span class="warn">${icon('alert')}</span>` : mittel ? `<span class="warno">${icon('alert')}</span>` : '')
         + (getauscht ? `<span class="tausch" title="Getauscht – veröffentlicht war: ${esc(stand[s] || 'niemand')}"></span>` : '') + `</span>`;
     }else{
@@ -918,7 +963,7 @@ function renderPlan(){
     const b = besetzung(s);
     let bz = '';
     if(b) bz = `<div class="ampel" title="Soll ${b.regel.soll.join('/')} · Minimum ${b.regel.min.join('/')}${b.gef.length ? ' · nach Dienst: ' + b.gef.map(p => p.k).join(', ') : ''}">`
-      + b.w.map((x, i) => `<span class="${b.st[i]}">${x}${b.gef.length && i === 0 ? '<sup title="nach Dienst, fehlt evtl.">+' + b.gef.length + '</sup>' : ''}<small>${FENSTER[i]}</small></span>`).join('') + '</div>';
+      + zweiFenster(b).map(([x, st, l], i) => `<span class="${st}">${x}${b.gef.length && i === 0 ? '<sup title="nach Dienst, fehlt evtl.">+' + b.gef.length + '</sup>' : ''}<small>${l}</small></span>`).join('') + '</div>';
     // Abwesend + gefaehrdet
     let ab = '';
     for(const p of personen()){
@@ -945,7 +990,7 @@ function renderPlan(){
       wu: personen().map(p => [p, eintrag(p.k, s)]).filter(x => x[1] && (x[1].typ === 'wunsch' || x[1].typ === 'nogo')),
       tipp: dp ? bewerte(dp, s).tags.map(t => t[1]).join(' · ') : ''});
     h += `<div class="${cls}"><div class="tagzelle"><span class="wt">${WT[w]}</span><b>${d}.</b>${ft ? `<span class="ftn">${esc(ft)}</span>` : ''}</div>`
-      + `<div class="dzelle ${darfEinteilen() ? '' : 'gesperrt'}" data-tag="${s}">${dzelle}<span class="art">${dienstArt(s)}</span></div>`
+      + `<div class="dzelle ${darfEinteilen() ? '' : 'gesperrt'}" data-tag="${s}">${dzelle}</div>`
       + `<div>${bz}</div><div>${ab}</div><div>${wu}</div><div style="flex-direction:column;align-items:flex-start">${hw}</div></div>`;
   }
   const matrix = ansicht === 'matrix' && innerWidth > 760;
@@ -999,15 +1044,15 @@ function matrixHtml(info){
       const st = x.b ? (x.b.st.includes('rot') ? 'rot' : x.b.st.includes('kn') ? 'kn' : 'ok') : '';
       const cls = ['mx-box', x.ft ? 'ft' : x.w >= 6 ? 'we' : st, x.heute ? 'heute' : '', x.mark ? 'mark' : ''].join(' ');
       let z = '';
-      if(x.b) z = `<div class="mx-zahl" title="sicher anwesend ${FENSTER.join(' / ')} · Soll ${x.b.regel.soll.join('/')}${x.b.gef.length ? ' · nach Dienst: ' + x.b.gef.map(p => p.k).join(', ') : ''}">`
-        + x.b.w.map((n, j) => `<b class="${x.b.st[j]}">${n}</b>`).join('<i>·</i>') + (x.b.gef.length ? `<sup>+${x.b.gef.length}</sup>` : '') + '</div>';
+      if(x.b) z = `<div class="mx-zahl" title="sicher anwesend vor 11 / ab 11 · Soll ${x.b.regel.soll.join('/')}${x.b.gef.length ? ' · nach Dienst: ' + x.b.gef.map(p => p.k).join(', ') : ''}">`
+        + zweiFenster(x.b).map(([n, st]) => `<b class="${st}">${n}</b>`).join('<i>|</i>') + '</div>';
       const f = x.dp ? farbe(x.dp) : '';
       const dienst = x.dp
-        ? `<div class="mx-dienst" style="background:${tint(f, .13)};border-color:${tint(f, .45)};color:${f}" title="${esc(x.tipp)}">${pk(x.dp)}<b>${esc(x.dp.k)}</b>`
+        ? `<div class="mx-dienst" style="background:${tint(f, .13)};border-color:${tint(f, .45)};color:${f}" title="${esc(x.tipp)}">${pk(x.dp)}<b class="nn">${esc(nachn(x.dp))}</b>`
           + (x.warn ? `<span class="${x.warn === 'r' ? 'warn' : 'warno'}">${icon('alert')}</span>` : '')
-          + (x.getauscht ? '<span class="tausch" title="nach Veröffentlichung geändert"></span>' : '') + `<small>${dienstArt(x.s)}</small></div>`
-        : `<div class="mx-dienst leer">${x.partner ? `<span class="vorschlag" data-vorschlag="${x.s}|${x.partner}" title="wie ${x.w === 7 ? 'Freitag' : 'Sonntag'} übernehmen">${esc(x.partner)} wie ${x.w === 7 ? 'Fr' : 'So'}?</span>` : darfEinteilen() ? '+ einteilen' : '–'}<small>${dienstArt(x.s)}</small></div>`;
-      const abw = x.abw.map(([p, a, g]) => a
+          + (x.getauscht ? '<span class="tausch" title="nach Veröffentlichung geändert"></span>' : '') + `</div>`
+        : `<div class="mx-dienst leer">${x.partner ? `<span class="vorschlag" data-vorschlag="${x.s}|${x.partner}" title="wie ${x.w === 7 ? 'Freitag' : 'Sonntag'} übernehmen">${esc(x.partner)} wie ${x.w === 7 ? 'Fr' : 'So'}?</span>` : darfEinteilen() ? '+ einteilen' : '–'}</div>`;
+      const abw = x.abw.filter(([p, a]) => a).map(([p, a, g]) => a
         ? `<span class="mx-mini" style="background:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a])}">${esc(p.k)}</span>`
         : `<span class="mx-mini gef" style="color:${farbe(p)};border-color:${farbe(p)}" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('');
       const wu = x.wu.map(([p, e]) => `<span class="mx-wu ${e.typ} ${e.stufe === 'hart' ? 'hart' : ''}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + ' ' + (e.stufe || ''))}">${icon(TYPEN[e.typ].icon)}${esc(p.k)}</span>`).join('');
@@ -1026,7 +1071,7 @@ function waehlen(s){
   const liste = diensttauglich().map(p => ({p, ...bewerte(p, s)})).sort((a, b) => b.score - a.score);
   const ft = feiertag(s);
   dialog(`<h3>${WTL[wt(s)]}, ${kurzDat(s)}${ft ? ' · ' + esc(ft) : ''}</h3>
-    <div class="unter">Rufdienst ${dienstArt(s)} · sortiert nach Eignung, alles ist überschreibbar ·
+    <div class="unter">Sortiert nach Eignung, alles ist überschreibbar ·
       <b>Tippen:</b> Anfangsbuchstabe des Nachnamens <span id="tippAnz" class="tag n" style="display:none"></span></div>
     ${liste.map(x => `<button class="kand ${x.p.k === akt ? 'akt' : ''} ${x.score <= -50 ? 'schlecht' : ''}" data-k="${esc(x.p.k)}">
       ${pk(x.p)}<span class="mid"><b>${esc(x.p.name || x.p.k)}</b><span class="tags">${x.tags.map(t => `<span class="tag ${t[0]}">${esc(t[1])}</span>`).join('') || '<span class="tag n">keine Einträge</span>'}</span></span>
@@ -1042,7 +1087,11 @@ function waehlen(s){
       const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const nachname = p => norm(p.name ? p.name.trim().split(/\s+/).pop() : p.k);
       const knoepfe = [...el.querySelectorAll('.kand[data-k]')];
-      const treffer = ()=> knoepfe.filter(b => nachname(person(b.dataset.k)).startsWith(tipp));
+      /* 1. Buchstabe: Anfang des Nachnamens. Ab dem 2. auch: Nachname weiter, Initialen
+         (Nachname + Vorname) oder Kuerzel - so entscheidet der 2. Buchstabe. */
+      const passt = (p, t) => { const nn = nachname(p), w = norm(p.name || '').split(/\s+/), vn = w.length > 1 ? w[0] : '';
+        return nn.startsWith(t) || (t.length > 1 && (norm(p.k).startsWith(t) || (nn[0] + (vn[0] || '')).startsWith(t))); };
+      const treffer = ()=> knoepfe.filter(b => passt(person(b.dataset.k), tipp));
       const zeigen = ()=>{
         const t = treffer();
         knoepfe.forEach(b => { b.style.display = !tipp || t.includes(b) ? '' : 'none'; b.style.outline = ''; });
@@ -1058,7 +1107,7 @@ function waehlen(s){
         if(!/^\p{L}$/u.test(e.key)) return;
         e.preventDefault();
         const neu = tipp + norm(e.key);
-        const n = knoepfe.filter(b => nachname(person(b.dataset.k)).startsWith(neu));
+        const n = knoepfe.filter(b => passt(person(b.dataset.k), neu));
         if(!n.length){ toast('Kein Nachname mit „' + neu.toUpperCase() + '…“'); return; }
         tipp = neu; wahl = 0;
         if(n.length === 1){ n[0].click(); return; }
@@ -1171,11 +1220,10 @@ function pinselLeiste(){
   $('pinsel').querySelectorAll('[data-p]').forEach(b => b.onclick = ()=>{ pinsel = b.dataset.p; renderMeine(); });
   $('pinsel').querySelectorAll('[data-st]').forEach(b => b.onclick = ()=>{ pinselStufe = b.dataset.st; pinselLeiste(); });
 }
-function pinselTag(s){
-  const p = person(fuerK);
+function pinselTag(s, k = fuerK, typ = pinsel){
+  const p = person(k);
   if(!p || !strich || strich.erledigt.has(s)) return;
   strich.erledigt.add(s);
-  const typ = pinsel;
   if(['da','frei','fb'].includes(typ) && !werktag(s)) return;   // Wochenende/Feiertag auslassen (Urlaub nicht)
   const alt = eintrag(p.k, s);
   if(strich.loeschen === undefined) strich.loeschen = typ === 'weg' || !!(alt && alt.typ === typ);
@@ -1187,7 +1235,7 @@ function pinselTag(s){
     if(wert) d.tage[s] = {...wert, von: ichK, am: Date.now()}; else delete d.tage[s];
   });
 }
-const tagUnter = e => { const el = document.elementFromPoint(e.clientX, e.clientY); const b = el && el.closest('#kal button[data-tag]'); return b && b.dataset.tag; };
+const tagUnter = (e, sel = '#kal button[data-tag]') => { const el = document.elementFromPoint(e.clientX, e.clientY); const b = el && el.closest(sel); return b && b.dataset.tag; };
 $('kal').addEventListener('pointerdown', e => {
   if(!pinsel) return;
   const s = tagUnter(e); if(!s) return;
@@ -1195,6 +1243,96 @@ $('kal').addEventListener('pointerdown', e => {
 });
 $('kal').addEventListener('pointermove', e => { if(strich){ const s = tagUnter(e); if(s) pinselTag(s); } });
 ['pointerup','pointercancel'].forEach(t => window.addEventListener(t, ()=>{ strich = null; }));
+
+/* =================== Urlaub (Jahresmatrix) =================== */
+let urlK = '', urlTyp = 'urlaub', urlGeladen = {}, urlScrollZiel = '';
+const urlaubstage = (p, y) => {   // nur Werktage verbrauchen Urlaub
+  let n = 0, fb = 0;
+  for(let m = 1; m <= 12; m++){
+    const f = files[pfadWunsch(p.k, y + '-' + pad(m))];
+    for(const [s, e] of Object.entries((f && f.data && f.data.tage) || {})){
+      if(!werktag(s)) continue;
+      if(e.typ === 'urlaub') n++; else if(e.typ === 'fb') fb++;
+    }
+  }
+  return {n, fb};
+};
+/* Alle Wunschdateien eines Jahres: ein Verzeichnisbaum-Abruf, dann nur vorhandene Dateien */
+async function ladeJahr(y){
+  if(urlGeladen[y]) return;
+  const z = zugang();
+  const r = await fetch(`https://api.github.com/repos/${z.repo}/git/trees/HEAD?recursive=1&t=${Date.now()}`, {cache:'no-store',
+    headers:{Authorization:'Bearer ' + z.token, Accept:'application/vnd.github+json'}});
+  if(!r.ok) throw new Error('GitHub antwortet mit ' + r.status + '.');
+  const re = new RegExp('^plan/wuensche/[^/]+/' + y + '-\\d{2}\\.json$');
+  const pfade = ((await r.json()).tree || []).map(t => t.path).filter(x => re.test(x));
+  await Promise.all(pfade.filter(x => !files[x] || !files[x].data).map(lesen));
+  cacheSchreiben();
+  urlGeladen[y] = true;
+}
+function renderUrlaub(){
+  const y = +ym.slice(0, 4);
+  if(!urlK || !person(urlK)) urlK = ichK;
+  $('urlSel').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === urlK ? 'selected' : ''}>${esc(p.name || p.k)}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
+  $('urlTyp').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === urlTyp));
+  $('urlJahr').textContent = y;
+  if(!urlGeladen[y] && zugang() && !nurLesen){
+    $('urlTab').innerHTML = '<div class="hint" style="padding:20px">Lade Urlaube ' + y + ' …</div>';
+    ladeJahr(y).then(()=>{ if(tab === 'urlaub') renderUrlaub(); }, e => { urlGeladen[y] = true; toast(e.message); renderUrlaub(); });
+    return;
+  }
+  // Jahr: Montag vor dem 1.1. bis Sonntag nach dem 31.12.
+  const start = plus(y + '-01-01', 1 - wt(y + '-01-01')), ende = plus(y + '-12-31', 7 - wt(y + '-12-31'));
+  let h = `<div class="mx-kopf"><div>KW</div>${WT.slice(1).map(x => `<div>${x}</div>`).join('')}</div>`;
+  for(let s0 = start; s0 <= ende; s0 = plus(s0, 7)){
+    const tage = Array.from({length: 7}, (_, i) => plus(s0, i));
+    const neuM = tage.find(s => s.slice(8) === '01' && +s.slice(0, 4) === y);
+    if(neuM) h += `<div class="ur-monat" data-ym="${neuM.slice(0, 7)}">${monatName(neuM.slice(0, 7))}</div>`;
+    h += `<div class="mx-woche ur"><div class="mx-kw">KW<b>${kw(tage[3])}</b></div>`;
+    for(const s of tage){
+      if(+s.slice(0, 4) !== y){ h += '<div class="mx-box aus ur"></div>'; continue; }
+      const ft = feiertag(s), we = wt(s) >= 6;
+      const b = besetzung(s), st = b ? zweiFenster(b).map(x => x[1]).reduce(schlechter) : '';
+      let chips = '';
+      for(const p of personen()){
+        const e = eintrag(p.k, s);
+        if(e && (e.typ === 'urlaub' || e.typ === 'fb'))
+          chips += `<span class="ur-chip ${e.typ} ${p.k === urlK ? 'meins' : ''}" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name)}">${esc(p.k)}</span>`;
+        else if(!we && !ft && teilzeitFrei(p, s) && !(e && e.typ === 'da') && p.k === urlK)
+          chips += `<span class="ur-chip tz" title="Teilzeit frei">${esc(p.k)}</span>`;
+      }
+      h += `<div class="mx-box ur ${ft ? 'ft' : we ? 'we' : ''} ${s === heute() ? 'heute' : ''}" data-tag="${s}">`
+        + `<div class="ur-dat">${+s.slice(8)}${s.slice(8) === '01' ? '.' + +s.slice(5, 7) + '.' : '.'}${ft ? `<small title="${esc(ft)}">${esc(ft)}</small>` : ''}</div>`
+        + (b && st !== 'ok' ? `<span class="ur-st ${st}" title="Besetzung ${st === 'rot' ? 'unterschritten' : 'knapp'}"></span>` : '')
+        + `<div class="ur-chips">${chips}</div></div>`;
+    }
+    h += '</div>';
+  }
+  $('urlTab').innerHTML = h;
+  // Zaehler
+  const ziel = cfg.urlaubPlan ?? 25, anspruch = cfg.urlaubAnspruch ?? 31;
+  $('urlZaehler').innerHTML = personen().map(p => { const u = urlaubstage(p, y);
+    return `<div class="prow ${p.k === urlK ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${u.fb ? u.fb + ' Tage Fortbildung' : ''}</small></div>`
+      + `<div class="zahl">${u.n}<small> / ${ziel}</small></div></div><div class="balken"><i class="${u.n > anspruch ? 'voll' : ''}" style="width:${Math.min(100, u.n / Math.max(1, ziel) * 100)}%;${u.n >= ziel ? 'background:var(--success)' : ''}"></i></div>`; }).join('');
+  $('urlInfo').textContent = `Urlaubstage an Werktagen (ohne Wochenende/Feiertag). Ziel: ${ziel} von ${anspruch} verplanen.`;
+  $('urlZaehler').querySelectorAll('.prow').forEach(el => el.onclick = ()=>{ urlK = el.dataset.k; renderUrlaub(); });
+  if(urlScrollZiel){ const m = $('urlTab').querySelector(`.ur-monat[data-ym="${urlScrollZiel}"]`); urlScrollZiel = '';
+    if(m) window.scrollTo({top: m.getBoundingClientRect().top + scrollY - 130}); }
+}
+$('urlSel').onchange = e => { urlK = e.target.value; renderUrlaub(); };
+$('urlTyp').querySelectorAll('button').forEach(b => b.onclick = ()=>{ urlTyp = b.dataset.t; renderUrlaub(); });
+$('urlTab').addEventListener('pointerdown', e => {
+  const s = tagUnter(e, '#urlTab .mx-box[data-tag]'); if(!s || nurLesen) return;
+  e.preventDefault(); strich = {erledigt: new Set(), url: true}; pinselTag(s, urlK, urlTyp);
+});
+$('urlTab').addEventListener('pointermove', e => { if(strich && strich.url){ const s = tagUnter(e, '#urlTab .mx-box[data-tag]'); if(s) pinselTag(s, urlK, urlTyp); } });
+/* Beim Scrollen den Monat im Kopf mitfuehren */
+window.addEventListener('scroll', ()=>{
+  if(tab !== 'urlaub') return;
+  let akt = '';
+  $('urlTab').querySelectorAll('.ur-monat').forEach(m => { if(m.getBoundingClientRect().top < 200) akt = m.dataset.ym; });
+  if(akt && akt !== ym){ ym = akt; merken('planung_monat', ym); $('mTitel').textContent = monatName(ym); }
+}, {passive: true});
 
 function eintragDialog(p, s){
   const e = eintrag(p.k, s) || {};
@@ -1288,7 +1426,7 @@ function renderCfg(){
   $('ftListe').innerHTML = `<b>BW ${y}:</b> ` + Object.entries(feiertageBW(y)).sort().map(([s, n]) => `${kurzDat(s)} ${esc(n)}`).join(' · ');
   $('ftExtra').innerHTML = (cfg.feiertage || []).map((f, i) => `<div class="lz">${icon('star')}<span class="t">${kurzDat(f.datum)}${f.datum.slice(0,4)} ${esc(f.name)}</span><button class="x" data-i="${i}">${icon('x')}</button></div>`).join('');
   $('ftExtra').querySelectorAll('.x').forEach(b => b.onclick = ()=> cfgAendern('Feiertag entfernt', d => d.feiertage.splice(+b.dataset.i, 1)));
-  $('gMax').value = cfg.maxDienste; $('gWe').value = cfg.maxWeFolge;
+  $('gMax').value = cfg.maxDienste; $('gWe').value = cfg.maxWeFolge; $('gUa').value = cfg.urlaubAnspruch; $('gUp').value = cfg.urlaubPlan;
   // Zugang
   const z = zugang();
   $('zugInfo').innerHTML = z ? `Repo <b>${esc(z.repo)}</b> · Token aus ${esc(z.quelle || 'Einladung')}` : 'Kein Zugang.';
@@ -1320,6 +1458,8 @@ $('ftAdd').onclick = ()=>{
 };
 $('gMax').onchange = ()=> cfgAendern('Grenzen', d => { d.maxDienste = Math.max(1, +$('gMax').value || 13); });
 $('gWe').onchange = ()=> cfgAendern('Grenzen', d => { d.maxWeFolge = Math.max(1, +$('gWe').value || 2); });
+$('gUa').onchange = ()=> cfgAendern('Urlaubsanspruch', d => { d.urlaubAnspruch = Math.max(0, +$('gUa').value || 0); });
+$('gUp').onchange = ()=> cfgAendern('Urlaub zu verplanen', d => { d.urlaubPlan = Math.max(0, +$('gUp').value || 0); });
 $('ichWechsel').onclick = ()=> ichWaehlen();
 $('ichBtn').onclick = ()=> ichWaehlen();
 $('abmelden').onclick = ()=>{
@@ -1414,7 +1554,7 @@ async function start(){
 $('verBtn').textContent = 'v' + PLAN_VERSION;
 { const t = load('planung_tab', 'plan'); const b = document.querySelector(`nav.tabs button[data-tab="${t}"]`);
   if(b && t !== 'plan'){ tab = t; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
-    ['plan','meine','cfg'].forEach(x => $('tab-' + x).classList.toggle('hidden', x !== tab)); } }
+    ['plan','meine','urlaub','cfg'].forEach(x => $('tab-' + x).classList.toggle('hidden', x !== tab)); } }
 $('verBtn').onclick = async ()=>{
   if(Object.keys(queue).length || flushLaeuft){ toast('Speichere zuerst …'); await flush(); }
   let neu = '';
