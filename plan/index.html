@@ -568,7 +568,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.16';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.17';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1421,14 +1421,16 @@ async function ladeJahr(y){
   cacheSchreiben();
   urlGeladen[y] = true;
 }
-/* Besetzung fuer den Urlaubsplan: ohne eingeteilten Dienst wird angenommen, dass einer
-   der Anwesenden Dienst hat (vormittags also einer weniger). Tooltip: wer da ist. */
+/* Besetzung fuer den Urlaubsplan: einer der Anwesenden hat Dienst (vormittags also
+   einer weniger); der Vortags-Dienst zaehlt als anwesend. Tooltip: wer da ist. */
 function urlBesetzung(s){
   if(!werktag(s)) return null;
   const da = [], weg = [], dh = dienstVon(s);
   for(const p of personen()){ const a = abwesend(p, s); if(a) weg.push(`${p.name || p.k} (${ABW_NAME[a]})`); else da.push(p); }
-  const r = besRegel(wt(s)), b = dh ? besetzung(s) : null;
-  const w = b ? b.w : [Math.max(0, da.length - 1), da.length];
+  /* Wer am Vortag Dienst hatte, zaehlt hier als anwesend (Annahme: kommt).
+     Der heutige Diensthabende - eingeteilt oder noch offen - kommt erst um 11. */
+  const r = besRegel(wt(s)), dhDa = dh ? da.some(p => p.k === dh) : da.length > 0;
+  const w = [da.length - (dhDa ? 1 : 0), da.length];
   const st = w.map((n, i) => n >= r.soll[i] ? 'ok' : n >= r.min[i] ? 'kn' : 'rot');
   const tip = 'Anwesend:\n' + (da.map(p => (p.name || p.k) + (p.k === dh ? ' (Dienst ab 11)' : '')).join('\n') || '–');
   return {w, st, tip};

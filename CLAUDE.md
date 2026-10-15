@@ -57,7 +57,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (aus schulferien.org-
   ICS bis 01/2028), weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv);
   Winterferien legt jede Schule selbst fest → von Hand. Urlaub-Kacheln: Besetzung
-  vorm.|nachm. (`urlBesetzung()`; ohne eingeteilten Dienst vormittags einer weniger),
+  vorm.|nachm. (`urlBesetzung()`; Vortags-Dienst zählt als da, heutiger Dienst –
+  auch noch offen – erst nachmittags),
   Tooltip = nur Anwesende (eine pro Zeile). Kongresse
   auch im Dienstplan.
   Diensthabender zählt ab 11 (Nachmittag), Vortags-
