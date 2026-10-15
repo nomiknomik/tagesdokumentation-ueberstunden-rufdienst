@@ -185,7 +185,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-dienst{position:absolute;left:8px;right:8px;top:36px;height:32px;border-radius:9px;display:flex;align-items:center;gap:7px;padding:0 7px 0 4px;
   border:1px solid;font-size:13px}
 .mx-dienst .pk{width:22px;height:22px;border-radius:7px;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.mx-dienst .nn{overflow:hidden;text-overflow:ellipsis}
+.mx-dienst .nn{overflow:hidden;text-overflow:ellipsis;padding-left:6px}
 .mx-dienst .warn,.mx-dienst .warno{display:flex} .mx-dienst .warn{color:var(--danger)} .mx-dienst .warno{color:var(--warning)}
 .mx-dienst .ic{width:13px;height:13px}
 .mx-dienst{white-space:nowrap;overflow:hidden}
@@ -563,7 +563,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.11';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.12';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1075,7 +1075,7 @@ function nachbarBox(s){
   const p = person(dienstVon(s)), ft = feiertag(s);
   return `<div class="mx-box nachbar ${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''}" data-nachbar="${s < ym ? -1 : 1}" title="${monatName(ymVon(s))} öffnen">`
     + `<div class="mx-dat">${+s.slice(8)}.${s.slice(8) === '01' ? +s.slice(5, 7) + '.' : ''}</div>`
-    + (p ? `<div class="mx-dienst" style="background:${tint(farbe(p), .1)};border-color:${tint(farbe(p), .3)};color:${farbe(p)}">${pk(p)}<b class="nn">${esc(nachn(p))}</b></div>` : '')
+    + (p ? `<div class="mx-dienst" style="background:${tint(farbe(p), .1)};border-color:${tint(farbe(p), .3)};color:${farbe(p)}"><b class="nn">${esc(nachn(p))}</b></div>` : '')
     + '</div>';
 }
 function matrixHtml(info){
@@ -1097,7 +1097,7 @@ function matrixHtml(info){
         + zweiFenster(x.b).map(([n, st]) => `<b class="${st}">${n}</b>`).join('<i>|</i>') + '</div>';
       const f = x.dp ? farbe(x.dp) : '';
       const dienst = x.dp
-        ? `<div class="mx-dienst" style="background:${tint(f, .13)};border-color:${tint(f, .45)};color:${f}" title="${esc(x.tipp)}">${pk(x.dp)}<b class="nn">${esc(nachn(x.dp))}</b>`
+        ? `<div class="mx-dienst" style="background:${tint(f, .13)};border-color:${tint(f, .45)};color:${f}" title="${esc((x.dp.name || x.dp.k) + (x.tipp ? ' · ' + x.tipp : ''))}"><b class="nn">${esc(nachn(x.dp))}</b>`
           + (x.warn ? `<span class="${x.warn === 'r' ? 'warn' : 'warno'}">${icon('alert')}</span>` : '')
           + (x.getauscht ? '<span class="tausch" title="nach Veröffentlichung geändert"></span>' : '') + `</div>`
         : `<div class="mx-dienst leer">${x.partner ? `<span class="vorschlag" data-vorschlag="${x.s}|${x.partner}" title="wie ${x.w === 7 ? 'Freitag' : 'Sonntag'} übernehmen">${esc(x.partner)} wie ${x.w === 7 ? 'Fr' : 'So'}?</span>` : darfEinteilen() ? '+ einteilen' : '–'}</div>`;
