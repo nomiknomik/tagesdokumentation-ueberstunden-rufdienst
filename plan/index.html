@@ -489,7 +489,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.5';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.6';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -593,7 +593,9 @@ const ABW_ICON = {urlaub:'sun', fb:'book', frei:'moon', tz:'clock'};
 
 let cfg = clone(CFG_LEER);
 const files = {};            // pfad -> {data, sha}
-let ym = ymPlus(heute().slice(0, 7), 1);   // geplant wird meist der naechste Monat
+/* Letzte Ansicht (Monat, Reiter) je Geraet merken; erster Start: naechster Monat */
+const merken = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+let ym = /^\d{4}-\d{2}$/.test(load('planung_monat', '')) ? load('planung_monat', '') : ymPlus(heute().slice(0, 7), 1);
 let ichK = load(LS_ICH, '');
 let markK = '';              // hervorgehobene Person
 let nurLesen = false;
@@ -854,13 +856,13 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') zu(); else if
 
 let tab = 'plan';
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = ()=>{
-  tab = b.dataset.tab;
+  tab = b.dataset.tab; merken('planung_tab', tab);
   document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
   ['plan','meine','cfg'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
   render();
 });
 async function monatWechseln(n){
-  ym = ymPlus(ym, n); render();
+  ym = ymPlus(ym, n); merken('planung_monat', ym); render();
   try{ await ladeAlles(); }catch(e){ toast(e.message); }
   render();
 }
@@ -1409,6 +1411,9 @@ async function start(){
 }
 /* Version + Update: ausstehende Aenderungen speichern, dann ohne Cache neu laden */
 $('verBtn').textContent = 'v' + PLAN_VERSION;
+{ const t = load('planung_tab', 'plan'); const b = document.querySelector(`nav.tabs button[data-tab="${t}"]`);
+  if(b && t !== 'plan'){ tab = t; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    ['plan','meine','cfg'].forEach(x => $('tab-' + x).classList.toggle('hidden', x !== tab)); } }
 $('verBtn').onclick = async ()=>{
   if(Object.keys(queue).length || flushLaeuft){ toast('Speichere zuerst …'); await flush(); }
   let neu = '';
