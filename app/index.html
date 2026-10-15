@@ -539,10 +539,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="row" id="syncTokenZeile"><label>Token</label><input id="sync_token" type="text" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
     <div class="row"><label>Personalnummer</label><input id="sync_pnr" inputmode="numeric" placeholder="wie in den Kopfdaten – steht nicht im Repo" autocomplete="off" autocorrect="off" spellcheck="false"></div>
     <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" name="password" placeholder="eigenes, auf allen Geräten gleich" autocomplete="current-password"></div>
-    <div class="row2">
-      <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
-      <button class="btn outline" id="syncNow" style="font-size:14px;min-height:44px">Jetzt abgleichen</button>
-    </div>
+    <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
     <button class="btn outline" id="zugangScannen" style="font-size:14px;min-height:44px;margin-top:8px">QR-Code scannen (Zugang übernehmen)</button>
     <button class="btn outline" id="zugangTeilen" style="font-size:14px;min-height:44px;margin-top:8px">Zugang per QR-Code weitergeben</button>
       </div>
@@ -1740,7 +1737,6 @@ $('syncSave').onclick = ()=>{
   saveSync();
   abgleichen(true);
 };
-$('syncNow').onclick = ()=> abgleichen(true);
 
 /* --- Zugang (Repo + Token) per QR-Code an Kollegen weitergeben ---
    Link mit #zugang2=<base64url(salt|iv|AES-GCM)>, Schluessel aus einer PIN, die
@@ -3890,7 +3886,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.62';
+const APP_VERSION = '1.63';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){

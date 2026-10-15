@@ -1,4 +1,4 @@
-const CACHE = 'tagesdoku-v68';
+const CACHE = 'tagesdoku-v69';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf',
