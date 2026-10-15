@@ -214,6 +214,18 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-box.fremd{opacity:.45;filter:saturate(.35)}
 .mx-box.fremd .ur-chip{opacity:.7}
 
+/* ---------- Termine ---------- */
+#termName{width:100%} #termArt{display:flex;flex-wrap:wrap} #termArt button{padding:5px 10px;font-size:12.5px}
+#termAdd{width:100%} #termVon,#termBis{width:118px;font-size:12.5px;padding:7px}
+.seite{max-height:calc(100vh - 90px);overflow:auto}
+.term-dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.mx-box.ur.ferien:not(.we):not(.ft){background:#F1F6FC}
+.ur-band{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;gap:1px;border-radius:14px 14px 0 0;overflow:hidden}
+.ur-band i{display:block;height:3px;opacity:.75}
+.ur-dat small.tn{color:var(--text2)} .ur-dat small.tn span{font-weight:800}
+.hinw.kongr{color:#7A5AA6;font-weight:700} .hinw.kongr .ic{color:#7A5AA6}
+.mx-hw .k{color:#7A5AA6;font-weight:800}
+
 /* ---------- Urlaub ---------- */
 .ur-monat{font-weight:800;font-size:15px;margin:14px 0 6px 47px;color:var(--primary-dark)}
 .mx-box.ur{min-height:62px;cursor:pointer;user-select:none;touch-action:none}
@@ -457,6 +469,17 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
           <div id="urlZaehler"></div>
           <div class="hint" style="margin-top:6px" id="urlInfo"></div>
         </div>
+        <div class="card">
+          <h3><span data-icon="star"></span>Termine</h3>
+          <div class="liste" id="termListe"></div>
+          <div style="display:grid;gap:8px;margin-top:10px">
+            <div class="seg" id="termArt"><button data-a="ferien" class="on">Ferien</button><button data-a="kongress">Kongress</button><button data-a="sonst">Sonstiges</button></div>
+            <input type="text" id="termName" placeholder="Bezeichnung, z. B. Herbstferien / DGCH">
+            <div class="reihe"><label class="f">von<input type="date" id="termVon"></label><label class="f">bis<input type="date" id="termBis"></label></div>
+            <button class="btn out" id="termAdd"><span data-icon="plus"></span>Termin</button>
+          </div>
+          <div class="hint" style="margin-top:6px">Kongresse erscheinen auch im Dienstplan.</div>
+        </div>
       </aside>
     </div>
   </section>
@@ -540,7 +563,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.10';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.11';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -628,7 +651,7 @@ const CFG_LEER = {
   gruppen: {oa: {name:'Oberärzte', einteilen:'alle'}},   // spaeter Assistenten: einteilen 'planer'
   besetzung: {1:{soll:[2,2,2],min:[2,2,2]}, 2:{soll:[3,3,4],min:[3,3,3]}, 3:{soll:[2,2,2],min:[2,2,2]},
               4:{soll:[3,3,4],min:[3,3,3]}, 5:{soll:[2,2,2],min:[2,2,2]}},
-  hinweise: [], feiertage: [], maxDienste: 13, maxWeFolge: 2, urlaubAnspruch: 31, urlaubPlan: 25
+  hinweise: [], feiertage: [], maxDienste: 13, maxWeFolge: 2, urlaubAnspruch: 31, urlaubPlan: 25, termine: []
 };
 const FENSTER = ['bis 11', '11–13', 'ab 13'];
 /* Anzeige: nur vor 11 / ab 11 (ab 11 = schlechteres der beiden spaeteren Fenster) */
@@ -996,10 +1019,11 @@ function renderPlan(){
     let hw = '';
     if(b && b.w[0] === 0) hw += `<div class="hinw rot">${icon('alert')}bis 11 Uhr evtl. kein OA</div>`;
     else if(b && b.st.includes('rot')) hw += `<div class="hinw rot">${icon('alert')}Unterbesetzt ${b.st.map((x, i) => x === 'rot' ? FENSTER[i] : '').filter(Boolean).join(', ')}</div>`;
+    kongresse(s).forEach(n => hw += `<div class="hinw kongr">${icon('star')}${esc(n)}</div>`);
     hinweise(s).forEach(x => hw += `<div class="hinw">${icon('info')}${esc(x.text)}</div>`);
     info.push({s, d, w, ft, dp, b, getauscht, partner, warn,
       hwRot: b && b.w[0] === 0 ? 'bis 11 Uhr evtl. kein OA' : b && b.st.includes('rot') ? 'unterbesetzt ' + b.st.map((x, i) => x === 'rot' ? FENSTER[i] : '').filter(Boolean).join(', ') : '',
-      hwGrau: hinweise(s).map(x => x.text), mark: cls.includes('mark'), heute: s === hz,
+      hwGrau: hinweise(s).map(x => x.text), kongr: kongresse(s), mark: cls.includes('mark'), heute: s === hz,
       abw: personen().map(p => [p, abwesend(p, s), gefaehrdet(p, s)]).filter(x => x[1] || x[2]),
       wu: personen().map(p => [p, eintrag(p.k, s)]).filter(x => x[1] && (x[1].typ === 'wunsch' || x[1].typ === 'nogo')),
       tipp: dp ? bewerte(dp, s).tags.map(t => t[1]).join(' · ') : ''});
@@ -1081,7 +1105,7 @@ function matrixHtml(info){
         ? `<span class="mx-mini" style="background:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a])}">${esc(p.k)}</span>`
         : `<span class="mx-mini gef" style="color:${farbe(p)};border-color:${farbe(p)}" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('');
       const wu = x.wu.map(([p, e]) => `<span class="mx-wu ${e.typ} ${e.stufe === 'hart' ? 'hart' : ''}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + ' ' + (e.stufe || ''))}">${icon(TYPEN[e.typ].icon)}${esc(p.k)}</span>`).join('');
-      const hw = x.hwRot || x.hwGrau.length ? `<div class="mx-hw">${x.hwRot ? `<span class="r">⚠ ${esc(x.hwRot)}</span> ` : ''}${x.hwGrau.map(esc).join(' · ')}</div>` : '';
+      const hw = x.hwRot || x.hwGrau.length || x.kongr.length ? `<div class="mx-hw">${x.kongr.map(n => `<span class="k">★ ${esc(n)}</span> `).join('')}${x.hwRot ? `<span class="r">⚠ ${esc(x.hwRot)}</span> ` : ''}${x.hwGrau.map(esc).join(' · ')}</div>` : '';
       h += `<div class="${cls}"><div class="dzelle" data-tag="${x.s}">`
         + `<div class="mx-dat">${x.d}.${x.ft ? `<small title="${esc(x.ft)}">${esc(x.ft)}</small>` : ''}</div>${z}${dienst}${hw}`
         + `<div class="mx-bl">${abw}</div><div class="mx-br">${wu}</div></div></div>`;
@@ -1276,6 +1300,29 @@ $('kal').addEventListener('pointerdown', e => {
 $('kal').addEventListener('pointermove', e => { if(strich){ const s = tagUnter(e); if(s) pinselTag(s); } });
 ['pointerup','pointercancel'].forEach(t => window.addEventListener(t, ()=>{ strich = null; }));
 
+/* =================== Termine (Ferien, Kongresse) =================== */
+const TERMIN = {ferien: {name: 'Ferien', farbe: '#5B9BD5'}, kongress: {name: 'Kongress', farbe: '#7A5AA6'}, sonst: {name: 'Termin', farbe: '#8A7F72'}};
+const termineAm = s => (cfg.termine || []).filter(t => t.von <= s && s <= (t.bis || t.von));
+let termArt = 'ferien';
+$('termArt').querySelectorAll('button').forEach(b => b.onclick = ()=>{ termArt = b.dataset.a; $('termArt').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
+$('termAdd').onclick = ()=>{
+  const name = $('termName').value.trim(), von = $('termVon').value, bis = $('termBis').value || von;
+  if(!name || !von) return toast('Bezeichnung und Datum eingeben.');
+  if(bis < von) return toast('„bis“ liegt vor „von“.');
+  const t = {id: Date.now().toString(36), art: termArt, name, von, bis, von_k: ichK};
+  cfgAendern('Termin ' + name, d => (d.termine ||= []).push(t));
+  $('termName').value = ''; $('termVon').value = ''; $('termBis').value = '';
+};
+function renderTermine(y){
+  const l = (cfg.termine || []).filter(t => (t.bis || t.von) >= y + '-01-01' && t.von <= y + '-12-31').sort((a, b) => a.von < b.von ? -1 : 1);
+  $('termListe').innerHTML = l.map(t => `<div class="lz"><span class="term-dot" style="background:${TERMIN[t.art].farbe}"></span><span class="t"><b>${esc(t.name)}</b><br>
+    <span class="hint">${TERMIN[t.art].name} · ${kurzDat(t.von)}${t.bis && t.bis !== t.von ? '–' + kurzDat(t.bis) : ''}</span></span><button class="x" data-id="${esc(t.id)}">${icon('x')}</button></div>`).join('')
+    || '<div class="hint">Keine Termine in diesem Jahr.</div>';
+  $('termListe').querySelectorAll('.x').forEach(b => b.onclick = ()=>{ if(confirm('Termin löschen?')) cfgAendern('Termin gelöscht', d => { d.termine = (d.termine || []).filter(t => t.id !== b.dataset.id); }); });
+}
+/* Kongress-Hinweis fuer den Dienstplan */
+const kongresse = s => termineAm(s).filter(t => t.art === 'kongress').map(t => t.name);
+
 /* =================== Urlaub (Jahresmatrix) =================== */
 let urlK = '', urlTyp = 'urlaub', urlGeladen = {}, urlScrollZiel = '';
 const urlaubstage = (p, y) => {   // nur Werktage verbrauchen Urlaub
@@ -1333,14 +1380,17 @@ function renderUrlaub(){
         else if(!we && !ft && teilzeitFrei(p, s) && !(e && e.typ === 'da') && p.k === urlK)
           chips += `<span class="ur-chip tz" title="Teilzeit frei">${esc(p.k)}</span>`;
       }
-      h += `<div class="mx-box ur ${ft ? 'ft' : we ? 'we' : ''} ${s === heute() ? 'heute' : ''}" data-tag="${s}">`
-        + `<div class="ur-dat">${+s.slice(8)}${s.slice(8) === '01' ? '.' + +s.slice(5, 7) + '.' : '.'}${ft ? `<small title="${esc(ft)}">${esc(ft)}</small>` : ''}</div>`
+      const tm = termineAm(s);
+      const band = tm.length ? `<div class="ur-band">${tm.map(t => `<i style="background:${TERMIN[t.art].farbe}" title="${esc(TERMIN[t.art].name + ': ' + t.name)}"></i>`).join('')}</div>` : '';
+      const tname = tm.filter(t => t.von === s || wt(s) === 1 || s.slice(8) === '01').map(t => `<span style="color:${TERMIN[t.art].farbe}" title="${esc(t.name)}">${esc(t.name)}</span>`).join(' · ');
+      h += `<div class="mx-box ur ${ft ? 'ft' : we ? 'we' : ''} ${tm.some(t => t.art === 'ferien') ? 'ferien' : ''} ${s === heute() ? 'heute' : ''}" data-tag="${s}">${band}`
+        + `<div class="ur-dat">${+s.slice(8)}${s.slice(8) === '01' ? '.' + +s.slice(5, 7) + '.' : '.'}${ft ? `<small title="${esc(ft)}">${esc(ft)}</small>` : ''}${tname ? `<small class="tn">${tname}</small>` : ''}</div>`
         + (b && st !== 'ok' ? `<span class="ur-st ${st}" title="Besetzung ${st === 'rot' ? 'unterschritten' : 'knapp'}"></span>` : '')
         + `<div class="ur-chips">${chips}</div></div>`;
     }
     h += '</div>';
   }
-  $('urlTab').innerHTML = h; urlFremd();
+  $('urlTab').innerHTML = h; urlFremd(); renderTermine(y);
   // Zaehler
   const ziel = cfg.urlaubPlan ?? 25, anspruch = cfg.urlaubAnspruch ?? 31;
   $('urlZaehler').innerHTML = personen().map(p => { const u = urlaubstage(p, y);

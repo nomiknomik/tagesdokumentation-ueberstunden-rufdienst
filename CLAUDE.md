@@ -51,6 +51,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   ab 2. auch Initialen (Nachname+Vorname) oder Kürzel. Matrix zeigt Nachbarmonate
   blass + je eine angeschnittene Woche; Mausrad über das Ende wechselt Monat (Plan)
   bzw. Jahr (Urlaub). Veröffentlichung zurücknehmen: Planer oder `tagesdoku_admin`.
+  Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, von, bis}]`) im
+  Urlaub-Reiter; Kongresse auch im Dienstplan (Liste + Matrix).
   Besetzung je Zeitfenster bis 11 / 11–13 / ab 13, Diensthabender ab 11, Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
 - `add_fields.py`, `build_html.py` (veraltet, erzeugt die heutige HTML nicht
