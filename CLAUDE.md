@@ -43,17 +43,21 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Plan als Liste oder Matrix (1 Zeile = 1 KW, `matrixHtml()`, nur > 760 px,
   Wahl in `planung_ansicht`); beide aus denselben Tagesdaten (`info`). Letzter
   Monat/Reiter je Gerät in `planung_monat`/`planung_tab` (Start/Update dort).
-  Anzeige Besetzung nur vor 11 / ab 11 (`zweiFenster()`), keine Dienstart (ZD1…)
+  Besetzung nur Vormittag / Nachmittag (vor/ab 11; `besRegel()` fasst alte 3-Fenster-
+  Konfiguration zusammen), keine Dienstart (ZD1…)
   in der Oberfläche – Funktionen statt Abrechnungsart folgen später.
-  Reiter Urlaub: Jahresmatrix, scrollend; lädt Wunschdateien des Jahres über
+  Reiter Urlaub: durchgehend scrollend (lädt an den Enden je ein Jahr nach,
+  `urlVon`/`urlBis`), Kopf = Monat in Bildschirmmitte; Wunschdateien je Jahr über
   `git/trees` (`ladeJahr()`); Zähler = Urlaub an Werktagen vs. `cfg.urlaubPlan`
   (25) von `cfg.urlaubAnspruch` (31). Schnellwahl Dienst: 1. Buchstabe Nachname,
   ab 2. auch Initialen (Nachname+Vorname) oder Kürzel. Matrix zeigt Nachbarmonate
   blass + je eine angeschnittene Woche; Mausrad über das Ende wechselt Monat (Plan)
-  bzw. Jahr (Urlaub). Veröffentlichung zurücknehmen: Planer oder `tagesdoku_admin`.
-  Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, von, bis}]`) im
-  Urlaub-Reiter; Kongresse auch im Dienstplan (Liste + Matrix).
-  Besetzung je Zeitfenster bis 11 / 11–13 / ab 13, Diensthabender ab 11, Vortags-
+  im Plan. Veröffentlichung zurücknehmen: Planer oder `tagesdoku_admin`.
+  Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, tage[]}]`, alt:
+  `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (bis Sommer 2028,
+  teils „unsicher“ – jährlich gegen Kultusministerium prüfen/ergänzen). Kongresse
+  auch im Dienstplan.
+  Diensthabender zählt ab 11 (Nachmittag), Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
 - `add_fields.py`, `build_html.py` (veraltet, erzeugt die heutige HTML nicht
   mehr), `make_icons.py` (App-Icon, Pillow).

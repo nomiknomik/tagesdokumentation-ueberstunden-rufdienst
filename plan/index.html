@@ -211,10 +211,10 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-woche.rand.oben{align-items:end;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 85%);mask-image:linear-gradient(to bottom,transparent,#000 85%)}
 .mx-woche.rand.unten{-webkit-mask-image:linear-gradient(to top,transparent,#000 85%);mask-image:linear-gradient(to top,transparent,#000 85%)}
 .mx-woche.rand.oben .mx-box{min-height:118px}
-.mx-box.fremd{opacity:.45;filter:saturate(.35)}
-.mx-box.fremd .ur-chip{opacity:.7}
 
 /* ---------- Termine ---------- */
+.lz.term-akt{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
+.x.pin:hover{color:var(--primary)}
 #termName{width:100%} #termArt{display:flex;flex-wrap:wrap} #termArt button{padding:5px 10px;font-size:12.5px}
 #termAdd{width:100%} #termVon,#termBis{width:118px;font-size:12.5px;padding:7px}
 .seite{max-height:calc(100vh - 90px);overflow:auto}
@@ -387,7 +387,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
         <div class="card">
           <h3><span data-icon="info"></span>Legende</h3>
           <div class="legende">
-            <div><span class="ampel"><span class="ok">2<small>vor 11</small></span></span>Besetzung: sicher anwesend vor / ab 11 Uhr</div>
+            <div><span class="ampel"><span class="ok">2<small>vorm.</small></span></span>Besetzung: sicher anwesend vormittags / nachmittags</div>
             <div><span class="chip gef"><span data-icon="moon"></span>XY</span>nach Dienst – fehlt evtl. (nur Liste)</div>
             <div><span class="chip t-wunsch"><span data-icon="heart"></span>hart</span><span class="chip t-wunsch weich"><span data-icon="heart"></span>weich</span>Dienstwunsch</div>
             <div><span class="chip t-nogo"><span data-icon="ban"></span>hart</span><span class="chip t-nogo weich"><span data-icon="ban"></span>weich</span>No-Go</div>
@@ -458,7 +458,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
       <div>
         <div class="werkzeug">
           <label class="f" style="flex-direction:row;align-items:center;gap:8px">Eintragen für <select id="urlSel"></select></label>
-          <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button></span>
+          <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button><button data-t="termin">Termin</button></span>
+          <span class="hint" id="urlTermInfo"></span>
           <span class="hint">Antippen oder über Tage streichen; nochmal = löschen. Urlaub zählt nur an Werktagen.</span>
         </div>
         <div class="tabelle matrix" id="urlTab"></div>
@@ -475,10 +476,10 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
           <div style="display:grid;gap:8px;margin-top:10px">
             <div class="seg" id="termArt"><button data-a="ferien" class="on">Ferien</button><button data-a="kongress">Kongress</button><button data-a="sonst">Sonstiges</button></div>
             <input type="text" id="termName" placeholder="Bezeichnung, z. B. Herbstferien / DGCH">
-            <div class="reihe"><label class="f">von<input type="date" id="termVon"></label><label class="f">bis<input type="date" id="termBis"></label></div>
+            <div class="reihe"><label class="f">von (optional)<input type="date" id="termVon"></label><label class="f">bis<input type="date" id="termBis"></label></div>
             <button class="btn out" id="termAdd"><span data-icon="plus"></span>Termin</button>
           </div>
-          <div class="hint" style="margin-top:6px">Kongresse erscheinen auch im Dienstplan.</div>
+          <div class="hint" style="margin-top:6px">Ohne Datum anlegen und dann im Kalender einpinseln (✎ wählt den Termin). BW-Schulferien sind fest hinterlegt. Kongresse erscheinen auch im Dienstplan.</div>
         </div>
       </aside>
     </div>
@@ -506,7 +507,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
       <div class="card">
         <h3><span data-icon="activity"></span>Mindestbesetzung (Chef + OA)</h3>
         <table class="raster" id="besTab"></table>
-        <div class="hint" style="margin-top:8px">Soll / Minimum je Zeitfenster. Der Diensthabende zählt ab 11 Uhr.
+        <div class="hint" style="margin-top:8px">Soll / Minimum für Vormittag (bis 11 Uhr) und Nachmittag (ab 11 Uhr). Der Diensthabende zählt ab 11 Uhr.
           Wer am Vortag Dienst hatte, gilt als „fehlt evtl.“ und zählt nicht sicher.</div>
       </div>
       <div class="card">
@@ -563,7 +564,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.12';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.13';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -600,6 +601,7 @@ const ICONS = {
   key:'<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
   logOut:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
   refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>'
 };
 const icon = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]||''}</svg>`;
@@ -649,14 +651,17 @@ const CFG_LEER = {
   version: 1, personen: [],
   teams: [{id:'bar', name:'Bariatrie'}, {id:'kol', name:'Kolonchirurgie'}],
   gruppen: {oa: {name:'Oberärzte', einteilen:'alle'}},   // spaeter Assistenten: einteilen 'planer'
-  besetzung: {1:{soll:[2,2,2],min:[2,2,2]}, 2:{soll:[3,3,4],min:[3,3,3]}, 3:{soll:[2,2,2],min:[2,2,2]},
-              4:{soll:[3,3,4],min:[3,3,3]}, 5:{soll:[2,2,2],min:[2,2,2]}},
+  besetzung: {1:{soll:[2,2],min:[2,2]}, 2:{soll:[3,4],min:[3,3]}, 3:{soll:[2,2],min:[2,2]},
+              4:{soll:[3,4],min:[3,3]}, 5:{soll:[2,2],min:[2,2]}},
   hinweise: [], feiertage: [], maxDienste: 13, maxWeFolge: 2, urlaubAnspruch: 31, urlaubPlan: 25, termine: []
 };
-const FENSTER = ['bis 11', '11–13', 'ab 13'];
+const FENSTER = ['Vormittag', 'Nachmittag'];   // vor / ab 11 Uhr (Diensthabender kommt um 11)
+/* Regel eines Wochentags; alte Konfiguration mit 3 Fenstern (bis 11/11–13/ab 13) wird auf 2 zusammengefasst */
+const zwei = a => !a ? [0, 0] : a.length > 2 ? [a[0], Math.max(a[1], a[2])] : a;
+const besRegel = w => { const r = cfg.besetzung[w]; return r ? {soll: zwei(r.soll), min: zwei(r.min)} : {soll: [0, 0], min: [0, 0]}; };
 /* Anzeige: nur vor 11 / ab 11 (ab 11 = schlechteres der beiden spaeteren Fenster) */
 const schlechter = (a, b) => a === 'rot' || b === 'rot' ? 'rot' : a === 'kn' || b === 'kn' ? 'kn' : 'ok';
-const zweiFenster = b => [[b.w[0], b.st[0], 'vor 11'], [Math.min(b.w[1], b.w[2]), schlechter(b.st[1], b.st[2]), 'ab 11']];
+const zweiFenster = b => [[b.w[0], b.st[0], 'vorm.'], [b.w[1], b.st[1], 'nachm.']];
 const nachn = p => p.name ? p.name.trim().split(/\s+/).pop() : p.k;
 const TYPEN = {
   wunsch: {name:'Dienstwunsch', icon:'heart', stufen:true},
@@ -850,7 +855,7 @@ const diensteIm = (k, m) => { const d = dienstDaten(m); return d && d.tage ? Obj
    ab 11 Uhr), dazu die nach Dienst evtl. Fehlenden */
 function besetzung(s, ohneDienstVortag){
   if(!werktag(s)) return null;
-  const dh = dienstVon(s), regel = cfg.besetzung[wt(s)] || {soll:[0,0,0], min:[0,0,0]};
+  const dh = dienstVon(s), regel = besRegel(wt(s));
   let sicher = 0, dhDa = 0, gef = [];
   for(const p of personen()){
     if(abwesend(p, s)) continue;
@@ -858,7 +863,7 @@ function besetzung(s, ohneDienstVortag){
     if(p.k !== ohneDienstVortag && gefaehrdet(p, s)){ gef.push(p); continue; }
     sicher++;
   }
-  const w = [sicher, sicher + dhDa, sicher + dhDa];
+  const w = [sicher, sicher + dhDa];
   const st = w.map((n, i) => n >= regel.soll[i] ? 'ok' : n >= regel.min[i] ? 'kn' : (n + gef.length >= regel.min[i] && n > 0) ? 'kn' : 'rot');
   return {w, st, gef, regel, dh};
 }
@@ -942,7 +947,7 @@ document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = ()=>{
 });
 async function monatWechseln(n){
   ym = ymPlus(ym, n); merken('planung_monat', ym);
-  if(tab === 'urlaub'){ urlScrollZiel = ym; render(); return; }
+  if(tab === 'urlaub'){ urlScrollZiel = ym; renderUrlaub(); return; }
   render();
   try{ await ladeAlles(); }catch(e){ toast(e.message); }
   render();
@@ -1093,7 +1098,7 @@ function matrixHtml(info){
       const st = x.b ? (x.b.st.includes('rot') ? 'rot' : x.b.st.includes('kn') ? 'kn' : 'ok') : '';
       const cls = ['mx-box', x.ft ? 'ft' : x.w >= 6 ? 'we' : st, x.heute ? 'heute' : '', x.mark ? 'mark' : ''].join(' ');
       let z = '';
-      if(x.b) z = `<div class="mx-zahl" title="sicher anwesend vor 11 / ab 11 · Soll ${x.b.regel.soll.join('/')}${x.b.gef.length ? ' · nach Dienst: ' + x.b.gef.map(p => p.k).join(', ') : ''}">`
+      if(x.b) z = `<div class="mx-zahl" title="sicher anwesend Vormittag / Nachmittag · Soll ${x.b.regel.soll.join('/')}${x.b.gef.length ? ' · nach Dienst: ' + x.b.gef.map(p => p.k).join(', ') : ''}">`
         + zweiFenster(x.b).map(([n, st]) => `<b class="${st}">${n}</b>`).join('<i>|</i>') + '</div>';
       const f = x.dp ? farbe(x.dp) : '';
       const dienst = x.dp
@@ -1302,29 +1307,68 @@ $('kal').addEventListener('pointermove', e => { if(strich){ const s = tagUnter(e
 
 /* =================== Termine (Ferien, Kongresse) =================== */
 const TERMIN = {ferien: {name: 'Ferien', farbe: '#5B9BD5'}, kongress: {name: 'Kongress', farbe: '#7A5AA6'}, sonst: {name: 'Termin', farbe: '#8A7F72'}};
-const termineAm = s => (cfg.termine || []).filter(t => t.von <= s && s <= (t.bis || t.von));
-let termArt = 'ferien';
+/* Schulferien BW (Quellen: KMK/Kultusministerium laut Ferienportalen, Stand 10/2026).
+   Mit "unsicher" markierte Termine widersprechen sich in den Quellen - pruefen! */
+const BW_FERIEN = [
+  ['2025-12-22', '2026-01-05', 'Weihnachtsferien'], ['2026-03-30', '2026-04-11', 'Osterferien', 1],
+  ['2026-05-26', '2026-06-05', 'Pfingstferien'], ['2026-07-30', '2026-09-12', 'Sommerferien'],
+  ['2026-10-26', '2026-10-30', 'Herbstferien'], ['2026-12-23', '2027-01-09', 'Weihnachtsferien'],
+  ['2027-03-30', '2027-04-03', 'Osterferien', 1], ['2027-05-18', '2027-05-29', 'Pfingstferien'],
+  ['2027-07-29', '2027-09-11', 'Sommerferien'], ['2027-11-02', '2027-11-06', 'Herbstferien'],
+  ['2027-12-23', '2028-01-08', 'Weihnachtsferien'], ['2028-04-18', '2028-04-22', 'Osterferien', 1],
+  ['2028-06-06', '2028-06-17', 'Pfingstferien', 1], ['2028-07-27', '2028-09-09', 'Sommerferien', 1]
+].map(([von, bis, name, u]) => ({id: 'bw' + von, art: 'ferien', name, von, bis, bw: true, unsicher: !!u}));
+const tageVon = t => t.tage ? t.tage : null;
+const imTermin = (t, s) => t.tage ? t.tage.includes(s) : (t.von <= s && s <= (t.bis || t.von));
+const terminSpanne = t => t.tage ? (t.tage.length ? [t.tage.reduce((a, b) => a < b ? a : b), t.tage.reduce((a, b) => a > b ? a : b)] : ['', '']) : [t.von, t.bis || t.von];
+const alleTermine = () => BW_FERIEN.concat(cfg.termine || []);
+const termineAm = s => alleTermine().filter(t => imTermin(t, s));
+let termArt = 'ferien', termId = '';
 $('termArt').querySelectorAll('button').forEach(b => b.onclick = ()=>{ termArt = b.dataset.a; $('termArt').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
 $('termAdd').onclick = ()=>{
   const name = $('termName').value.trim(), von = $('termVon').value, bis = $('termBis').value || von;
-  if(!name || !von) return toast('Bezeichnung und Datum eingeben.');
-  if(bis < von) return toast('„bis“ liegt vor „von“.');
-  const t = {id: Date.now().toString(36), art: termArt, name, von, bis, von_k: ichK};
+  if(!name) return toast('Bitte eine Bezeichnung eingeben.');
+  if(von && bis < von) return toast('„bis“ liegt vor „von“.');
+  const tage = [];
+  if(von) for(let x = von; x <= bis && tage.length < 400; x = plus(x, 1)) tage.push(x);
+  const t = {id: Date.now().toString(36), art: termArt, name, tage, von_k: ichK};
   cfgAendern('Termin ' + name, d => (d.termine ||= []).push(t));
   $('termName').value = ''; $('termVon').value = ''; $('termBis').value = '';
+  if(!von){ termId = t.id; urlTyp = 'termin'; toast('Jetzt die Tage für „' + name + '“ einpinseln.'); }
+  renderUrlaub();
 };
 function renderTermine(y){
-  const l = (cfg.termine || []).filter(t => (t.bis || t.von) >= y + '-01-01' && t.von <= y + '-12-31').sort((a, b) => a.von < b.von ? -1 : 1);
-  $('termListe').innerHTML = l.map(t => `<div class="lz"><span class="term-dot" style="background:${TERMIN[t.art].farbe}"></span><span class="t"><b>${esc(t.name)}</b><br>
-    <span class="hint">${TERMIN[t.art].name} · ${kurzDat(t.von)}${t.bis && t.bis !== t.von ? '–' + kurzDat(t.bis) : ''}</span></span><button class="x" data-id="${esc(t.id)}">${icon('x')}</button></div>`).join('')
+  const im = t => { const [a, b] = terminSpanne(t); return !a || (b >= y + '-01-01' && a <= y + '-12-31'); };
+  const l = alleTermine().filter(im).sort((a, b) => (terminSpanne(a)[0] || '9') < (terminSpanne(b)[0] || '9') ? -1 : 1);
+  $('termListe').innerHTML = l.map(t => { const [a, b] = terminSpanne(t);
+    return `<div class="lz ${t.id === termId && urlTyp === 'termin' ? 'term-akt' : ''}"><span class="term-dot" style="background:${TERMIN[t.art].farbe}"></span><span class="t"><b>${esc(t.name)}</b>${t.bw ? ' <span class="tag n">BW</span>' : ''}${t.unsicher ? ' <span class="tag o" title="Quellen widersprechen sich – bitte prüfen">⚠ prüfen</span>' : ''}<br>
+    <span class="hint">${TERMIN[t.art].name} · ${a ? kurzDat(a) + (b !== a ? '–' + kurzDat(b) : '') : 'noch keine Tage'}${t.tage ? ' (' + t.tage.length + ' Tage)' : ''}</span></span>`
+    + (t.bw ? '' : `<button class="x pin" data-pin="${esc(t.id)}" title="Tage einpinseln">${icon('edit')}</button><button class="x" data-id="${esc(t.id)}" title="Löschen">${icon('x')}</button>`) + '</div>'; }).join('')
     || '<div class="hint">Keine Termine in diesem Jahr.</div>';
-  $('termListe').querySelectorAll('.x').forEach(b => b.onclick = ()=>{ if(confirm('Termin löschen?')) cfgAendern('Termin gelöscht', d => { d.termine = (d.termine || []).filter(t => t.id !== b.dataset.id); }); });
+  $('termListe').querySelectorAll('[data-id]').forEach(b => b.onclick = ()=>{ if(confirm('Termin löschen?')) cfgAendern('Termin gelöscht', d => { d.termine = (d.termine || []).filter(t => t.id !== b.dataset.id); }); });
+  $('termListe').querySelectorAll('[data-pin]').forEach(b => b.onclick = ()=>{
+    const aus = urlTyp === 'termin' && termId === b.dataset.pin;
+    termId = aus ? '' : b.dataset.pin; urlTyp = aus ? 'urlaub' : 'termin'; renderUrlaub(); });
+}
+/* Termin-Pinsel: Tag an/aus; der erste Tag des Strichs entscheidet */
+function terminTag(s){
+  if(!strich || strich.erledigt.has(s)) return;
+  strich.erledigt.add(s);
+  const t = (cfg.termine || []).find(x => x.id === termId); if(!t) return;
+  if(strich.loeschen === undefined) strich.loeschen = imTermin(t, s);
+  if(strich.loeschen !== imTermin(t, s)) return;
+  const weg = strich.loeschen, id = termId;
+  cfgAendern(`Termin ${t.name} ${kurzDat(s)}`, d => {
+    const x = (d.termine || []).find(q => q.id === id); if(!x) return;
+    if(!x.tage){ x.tage = []; if(x.von) for(let y = x.von; y <= (x.bis || x.von); y = plus(y, 1)) x.tage.push(y); delete x.von; delete x.bis; }
+    x.tage = x.tage.filter(q => q !== s); if(!weg) x.tage.push(s); x.tage.sort();
+  });
 }
 /* Kongress-Hinweis fuer den Dienstplan */
 const kongresse = s => termineAm(s).filter(t => t.art === 'kongress').map(t => t.name);
 
-/* =================== Urlaub (Jahresmatrix) =================== */
-let urlK = '', urlTyp = 'urlaub', urlGeladen = {}, urlScrollZiel = '';
+/* =================== Urlaub (durchgehend scrollend) =================== */
+let urlK = '', urlTyp = 'urlaub', urlGeladen = {}, urlScrollZiel = '', urlVon = 0, urlBis = 0, urlJahrSeite = 0;
 const urlaubstage = (p, y) => {   // nur Werktage verbrauchen Urlaub
   let n = 0, fb = 0;
   for(let m = 1; m <= 12; m++){
@@ -1336,105 +1380,129 @@ const urlaubstage = (p, y) => {   // nur Werktage verbrauchen Urlaub
   }
   return {n, fb};
 };
-/* Alle Wunschdateien eines Jahres: ein Verzeichnisbaum-Abruf, dann nur vorhandene Dateien */
+/* Wunschdateien eines Jahres: Verzeichnisbaum (1 Abruf, 1 min gemerkt), dann nur vorhandene Dateien */
+let baum = null, baumT = 0;
 async function ladeJahr(y){
   if(urlGeladen[y]) return;
-  const z = zugang();
-  const r = await fetch(`https://api.github.com/repos/${z.repo}/git/trees/HEAD?recursive=1&t=${Date.now()}`, {cache:'no-store',
-    headers:{Authorization:'Bearer ' + z.token, Accept:'application/vnd.github+json'}});
-  if(!r.ok) throw new Error('GitHub antwortet mit ' + r.status + '.');
+  if(!baum || Date.now() - baumT > 60000){
+    const z = zugang();
+    const r = await fetch(`https://api.github.com/repos/${z.repo}/git/trees/HEAD?recursive=1&t=${Date.now()}`, {cache:'no-store',
+      headers:{Authorization:'Bearer ' + z.token, Accept:'application/vnd.github+json'}});
+    if(!r.ok) throw new Error('GitHub antwortet mit ' + r.status + '.');
+    baum = ((await r.json()).tree || []).map(t => t.path); baumT = Date.now();
+  }
   const re = new RegExp('^plan/wuensche/[^/]+/' + y + '-\\d{2}\\.json$');
-  const pfade = ((await r.json()).tree || []).map(t => t.path).filter(x => re.test(x));
-  await Promise.all(pfade.filter(x => !files[x] || !files[x].data).map(lesen));
+  await Promise.all(baum.filter(x => re.test(x) && (!files[x] || !files[x].data)).map(lesen));
   cacheSchreiben();
   urlGeladen[y] = true;
 }
+function urlTagHtml(s){
+  const ft = feiertag(s), we = wt(s) >= 6;
+  const b = besetzung(s), st = b ? zweiFenster(b).map(x => x[1]).reduce(schlechter) : '';
+  let chips = '';
+  for(const p of personen()){
+    const e = eintrag(p.k, s);
+    if(e && (e.typ === 'urlaub' || e.typ === 'fb'))
+      chips += `<span class="ur-chip ${e.typ} ${p.k === urlK ? 'meins' : ''}" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name)}">${esc(p.k)}</span>`;
+    else if(!we && !ft && teilzeitFrei(p, s) && !(e && e.typ === 'da') && p.k === urlK)
+      chips += `<span class="ur-chip tz" title="Teilzeit frei">${esc(p.k)}</span>`;
+  }
+  const tm = termineAm(s);
+  const band = tm.length ? `<div class="ur-band">${tm.map(t => `<i style="background:${TERMIN[t.art].farbe}" title="${esc(TERMIN[t.art].name + ': ' + t.name)}"></i>`).join('')}</div>` : '';
+  const tname = tm.filter(t => terminSpanne(t)[0] === s || !imTermin(t, plus(s, -1)) || wt(s) === 1)
+    .map(t => `<span style="color:${TERMIN[t.art].farbe}" title="${esc(t.name)}">${esc(t.name)}</span>`).join(' · ');
+  return `<div class="mx-box ur ${ft ? 'ft' : we ? 'we' : ''} ${tm.some(t => t.art === 'ferien') ? 'ferien' : ''} ${s === heute() ? 'heute' : ''}" data-tag="${s}">${band}`
+    + `<div class="ur-dat">${+s.slice(8)}${s.slice(8) === '01' ? '.' + +s.slice(5, 7) + '.' : '.'}${ft ? `<small title="${esc(ft)}">${esc(ft)}</small>` : ''}${tname ? `<small class="tn">${tname}</small>` : ''}</div>`
+    + (b && st !== 'ok' ? `<span class="ur-st ${st}" title="Besetzung ${st === 'rot' ? 'unterschritten' : 'knapp'}"></span>` : '')
+    + `<div class="ur-chips">${chips}</div></div>`;
+}
 function renderUrlaub(){
   const y = +ym.slice(0, 4);
+  if(!urlVon || y < urlVon - 1 || y > urlBis + 1){ urlVon = urlBis = y; }
+  urlVon = Math.min(urlVon, y); urlBis = Math.max(urlBis, y);
   if(!urlK || !person(urlK)) urlK = ichK;
   $('urlSel').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === urlK ? 'selected' : ''}>${esc(p.name || p.k)}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
   $('urlTyp').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === urlTyp));
-  $('urlJahr').textContent = y;
-  if(!urlGeladen[y] && zugang() && !nurLesen){
-    $('urlTab').innerHTML = '<div class="hint" style="padding:20px">Lade Urlaube ' + y + ' …</div>';
-    ladeJahr(y).then(()=>{ if(tab === 'urlaub'){ urlScrollZiel ||= ym; renderUrlaub(); } }, e => { urlGeladen[y] = true; toast(e.message); renderUrlaub(); });
-    return;
+  const t = urlTyp === 'termin' && alleTermine().find(x => x.id === termId);
+  $('urlTermInfo').innerHTML = urlTyp === 'termin' ? (t ? `Pinsel: <b style="color:${TERMIN[t.art].farbe}">${esc(t.name)}</b>` : 'Rechts bei „Termine“ einen Termin zum Pinseln wählen (✎) oder neu anlegen.') : '';
+  $('urlSel').disabled = urlTyp === 'termin';
+  const fehlt = [];
+  for(let j = urlVon; j <= urlBis; j++) if(!urlGeladen[j]) fehlt.push(j);
+  if(fehlt.length && zugang() && !nurLesen){
+    if(!$('urlTab').children.length) $('urlTab').innerHTML = '<div class="hint" style="padding:20px">Lade Urlaube …</div>';
+    Promise.all(fehlt.map(ladeJahr)).then(()=>{ if(tab === 'urlaub'){ urlScrollZiel ||= ''; renderUrlaub(); } },
+      e => { fehlt.forEach(j => urlGeladen[j] = true); toast(e.message); renderUrlaub(); });
+    if($('urlTab').querySelector('.mx-box')) return; else return;
   }
-  // Jahr: Montag vor dem 1.1. bis Sonntag nach dem 31.12.
-  const start = plus(y + '-01-01', 1 - wt(y + '-01-01')), ende = plus(y + '-12-31', 7 - wt(y + '-12-31'));
-  let h = `<div class="mx-kopf"><div>KW</div>${WT.slice(1).map(x => `<div>${x}</div>`).join('')}</div>`;
+  // durchgehend: Montag vor dem 1.1. urlVon bis Sonntag nach dem 31.12. urlBis
+  const start = plus(urlVon + '-01-01', 1 - wt(urlVon + '-01-01')), ende = plus(urlBis + '-12-31', 7 - wt(urlBis + '-12-31'));
+  let h = `<div class="mx-kopf ur-kopf"><div>KW</div>${WT.slice(1).map(x => `<div>${x}</div>`).join('')}</div>`;
   for(let s0 = start; s0 <= ende; s0 = plus(s0, 7)){
     const tage = Array.from({length: 7}, (_, i) => plus(s0, i));
-    const neuM = tage.find(s => s.slice(8) === '01' && +s.slice(0, 4) === y);
+    const neuM = tage.find(s => s.slice(8) === '01');
     if(neuM) h += `<div class="ur-monat" data-ym="${neuM.slice(0, 7)}">${monatName(neuM.slice(0, 7))}</div>`;
-    h += `<div class="mx-woche ur"><div class="mx-kw">KW<b>${kw(tage[3])}</b></div>`;
-    for(const s of tage){
-      if(+s.slice(0, 4) !== y){ h += '<div class="mx-box aus ur"></div>'; continue; }
-      const ft = feiertag(s), we = wt(s) >= 6;
-      const b = besetzung(s), st = b ? zweiFenster(b).map(x => x[1]).reduce(schlechter) : '';
-      let chips = '';
-      for(const p of personen()){
-        const e = eintrag(p.k, s);
-        if(e && (e.typ === 'urlaub' || e.typ === 'fb'))
-          chips += `<span class="ur-chip ${e.typ} ${p.k === urlK ? 'meins' : ''}" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name)}">${esc(p.k)}</span>`;
-        else if(!we && !ft && teilzeitFrei(p, s) && !(e && e.typ === 'da') && p.k === urlK)
-          chips += `<span class="ur-chip tz" title="Teilzeit frei">${esc(p.k)}</span>`;
-      }
-      const tm = termineAm(s);
-      const band = tm.length ? `<div class="ur-band">${tm.map(t => `<i style="background:${TERMIN[t.art].farbe}" title="${esc(TERMIN[t.art].name + ': ' + t.name)}"></i>`).join('')}</div>` : '';
-      const tname = tm.filter(t => t.von === s || wt(s) === 1 || s.slice(8) === '01').map(t => `<span style="color:${TERMIN[t.art].farbe}" title="${esc(t.name)}">${esc(t.name)}</span>`).join(' · ');
-      h += `<div class="mx-box ur ${ft ? 'ft' : we ? 'we' : ''} ${tm.some(t => t.art === 'ferien') ? 'ferien' : ''} ${s === heute() ? 'heute' : ''}" data-tag="${s}">${band}`
-        + `<div class="ur-dat">${+s.slice(8)}${s.slice(8) === '01' ? '.' + +s.slice(5, 7) + '.' : '.'}${ft ? `<small title="${esc(ft)}">${esc(ft)}</small>` : ''}${tname ? `<small class="tn">${tname}</small>` : ''}</div>`
-        + (b && st !== 'ok' ? `<span class="ur-st ${st}" title="Besetzung ${st === 'rot' ? 'unterschritten' : 'knapp'}"></span>` : '')
-        + `<div class="ur-chips">${chips}</div></div>`;
-    }
-    h += '</div>';
+    h += `<div class="mx-woche ur"><div class="mx-kw">KW<b>${kw(tage[3])}</b></div>${tage.map(urlTagHtml).join('')}</div>`;
   }
-  $('urlTab').innerHTML = h; urlFremd(); renderTermine(y);
-  // Zaehler
+  const vorher = document.documentElement.scrollHeight, oben = scrollY;
+  $('urlTab').innerHTML = h;
+  if(urlVorne){ window.scrollTo({top: oben + document.documentElement.scrollHeight - vorher}); urlVorne = false; }
+  urlSeite(true);
+  if(urlScrollZiel){ const m = $('urlTab').querySelector(`.ur-monat[data-ym="${urlScrollZiel}"]`); urlScrollZiel = '';
+    if(m) window.scrollTo({top: m.getBoundingClientRect().top + scrollY - 130}); }
+}
+let urlVorne = false;
+/* Seitenleiste: Jahr des Monats in Bildschirmmitte */
+function urlSeite(immer){
+  const y = +ym.slice(0, 4);
+  if(!immer && y === urlJahrSeite) return;
+  urlJahrSeite = y;
+  $('urlJahr').textContent = y;
+  renderTermine(y);
   const ziel = cfg.urlaubPlan ?? 25, anspruch = cfg.urlaubAnspruch ?? 31;
   $('urlZaehler').innerHTML = personen().map(p => { const u = urlaubstage(p, y);
     return `<div class="prow ${p.k === urlK ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${u.fb ? u.fb + ' Tage Fortbildung' : ''}</small></div>`
       + `<div class="zahl">${u.n}<small> / ${ziel}</small></div></div><div class="balken"><i class="${u.n > anspruch ? 'voll' : ''}" style="width:${Math.min(100, u.n / Math.max(1, ziel) * 100)}%;${u.n >= ziel ? 'background:var(--success)' : ''}"></i></div>`; }).join('');
-  $('urlInfo').textContent = `Urlaubstage an Werktagen (ohne Wochenende/Feiertag). Ziel: ${ziel} von ${anspruch} verplanen.`;
-  $('urlZaehler').querySelectorAll('.prow').forEach(el => el.onclick = ()=>{ urlK = el.dataset.k; renderUrlaub(); });
-  if(urlScrollZiel){ const m = $('urlTab').querySelector(`.ur-monat[data-ym="${urlScrollZiel}"]`); urlScrollZiel = '';
-    if(m) window.scrollTo({top: m.getBoundingClientRect().top + scrollY - 130}); }
+  $('urlInfo').textContent = `Urlaubstage ${y} an Werktagen (ohne Wochenende/Feiertag). Ziel: ${ziel} von ${anspruch} verplanen.`;
+  $('urlZaehler').querySelectorAll('.prow').forEach(el => el.onclick = ()=>{ urlK = el.dataset.k; if(urlTyp === 'termin') urlTyp = 'urlaub'; renderUrlaub(); });
 }
 $('urlSel').onchange = e => { urlK = e.target.value; renderUrlaub(); };
 $('urlTyp').querySelectorAll('button').forEach(b => b.onclick = ()=>{ urlTyp = b.dataset.t; renderUrlaub(); });
+const urlMalen = s => urlTyp === 'termin' ? terminTag(s) : pinselTag(s, urlK, urlTyp);
 $('urlTab').addEventListener('pointerdown', e => {
   const s = tagUnter(e, '#urlTab .mx-box[data-tag]'); if(!s || nurLesen) return;
-  e.preventDefault(); strich = {erledigt: new Set(), url: true}; pinselTag(s, urlK, urlTyp);
+  if(urlTyp === 'termin' && !termId) return toast('Erst rechts einen Termin zum Pinseln wählen (✎).');
+  e.preventDefault(); strich = {erledigt: new Set(), url: true}; urlMalen(s);
 });
-$('urlTab').addEventListener('pointermove', e => { if(strich && strich.url){ const s = tagUnter(e, '#urlTab .mx-box[data-tag]'); if(s) pinselTag(s, urlK, urlTyp); } });
-/* Matrix: ueber das Ende hinaus scrollen wechselt den Monat */
+$('urlTab').addEventListener('pointermove', e => { if(strich && strich.url){ const s = tagUnter(e, '#urlTab .mx-box[data-tag]'); if(s) urlMalen(s); } });
+/* Matrix im Plan: ueber das Ende hinaus scrollen wechselt den Monat */
 let ueber = 0, ueberT = 0, wechselt = false;
 window.addEventListener('wheel', e => {
-  const url = tab === 'urlaub';
-  if(!(url || (tab === 'plan' && $('planTab').classList.contains('matrix'))) || $('dlg').innerHTML || wechselt) return;
+  if(tab !== 'plan' || !$('planTab').classList.contains('matrix') || $('dlg').innerHTML || wechselt) return;
   const el = document.documentElement, unten = innerHeight + scrollY >= el.scrollHeight - 2, oben = scrollY <= 0;
   if(!((e.deltaY > 0 && unten) || (e.deltaY < 0 && oben))){ ueber = 0; return; }
   if(Date.now() - ueberT > 700) ueber = 0;
   ueberT = Date.now(); ueber += e.deltaY;
-  if(Math.abs(ueber) < (url ? 500 : 260)) return;
+  if(Math.abs(ueber) < 260) return;
   const n = ueber > 0 ? 1 : -1; ueber = 0; wechselt = true;
-  if(url){   // Urlaub: ins naechste/vorige Jahr
-    ym = n > 0 ? (+ym.slice(0, 4) + 1) + '-01' : (+ym.slice(0, 4) - 1) + '-12'; merken('planung_monat', ym);
-    urlScrollZiel = ym; render(); setTimeout(()=> wechselt = false, 1500); return;
-  }
   const ziel = ()=> window.scrollTo({top: n > 0 ? 0 : el.scrollHeight});
   monatWechseln(n).then(()=>{ ziel(); setTimeout(()=> wechselt = false, 500); });
   ziel();
 }, {passive: true});
-/* Urlaub: Tage ausserhalb des aktuellen Monats blass */
-const urlFremd = ()=> $('urlTab').querySelectorAll('.mx-box[data-tag]').forEach(b => b.classList.toggle('fremd', b.dataset.tag.slice(0, 7) !== ym));
-/* Beim Scrollen den Monat im Kopf mitfuehren */
+/* Urlaub: Monat in Bildschirmmitte in den Kopf; an den Enden ein Jahr nachladen */
+let urlScrollT = 0;
 window.addEventListener('scroll', ()=>{
-  if(tab !== 'urlaub') return;
-  let akt = '';
-  $('urlTab').querySelectorAll('.ur-monat').forEach(m => { if(m.getBoundingClientRect().top < 200) akt = m.dataset.ym; });
-  if(akt && akt !== ym){ ym = akt; merken('planung_monat', ym); $('mTitel').textContent = monatName(ym); urlFremd(); }
+  if(tab !== 'urlaub' || !$('urlTab').querySelector('.mx-box')) return;
+  const r = $('urlTab').getBoundingClientRect();
+  const el = document.elementFromPoint(r.left + r.width / 2, innerHeight / 2);
+  const b = el && el.closest('#urlTab [data-tag], #urlTab .ur-monat');
+  const akt = b ? (b.dataset.tag || b.dataset.ym + '-01').slice(0, 7) : '';
+  if(akt && akt !== ym){ ym = akt; merken('planung_monat', ym); $('mTitel').textContent = monatName(ym); urlSeite(false); }
+  clearTimeout(urlScrollT);
+  urlScrollT = setTimeout(()=>{
+    const h = document.documentElement.scrollHeight;
+    if(scrollY + innerHeight > h - 900){ urlBis++; renderUrlaub(); }
+    else if(scrollY < 500 && urlVon > 2020){ urlVon--; urlVorne = true; renderUrlaub(); }
+  }, 150);
 }, {passive: true});
 
 function eintragDialog(p, s){
@@ -1505,9 +1573,13 @@ function renderCfg(){
     if(confirm('Team entfernen?')) cfgAendern('Team entfernt', d => { d.teams = d.teams.filter(t => t.id !== b.dataset.id); d.personen.forEach(p => p.teams = (p.teams || []).filter(x => x !== b.dataset.id)); });
   });
   // Besetzung
-  $('besTab').innerHTML = `<tr><th></th>${FENSTER.map(f => `<th>${f}</th>`).join('')}</tr>` + [1,2,3,4,5].map(w => `<tr><td><b>${WT[w]}</b></td>${FENSTER.map((_, i) =>
-    `<td><input type="number" min="0" value="${cfg.besetzung[w].soll[i]}" data-w="${w}" data-i="${i}" data-a="soll" title="Soll"> / <input type="number" min="0" value="${cfg.besetzung[w].min[i]}" data-w="${w}" data-i="${i}" data-a="min" title="Minimum"></td>`).join('')}</tr>`).join('');
-  $('besTab').querySelectorAll('input').forEach(el => el.onchange = ()=> cfgAendern('Besetzung', d => { d.besetzung[el.dataset.w][el.dataset.a][+el.dataset.i] = Math.max(0, +el.value || 0); }));
+  $('besTab').innerHTML = `<tr><th></th>${FENSTER.map(f => `<th>${f}</th>`).join('')}</tr>` + [1,2,3,4,5].map(w => { const r = besRegel(w);
+    return `<tr><td><b>${WT[w]}</b></td>${FENSTER.map((_, i) =>
+    `<td><input type="number" min="0" value="${r.soll[i]}" data-w="${w}" data-i="${i}" data-a="soll" title="Soll"> / <input type="number" min="0" value="${r.min[i]}" data-w="${w}" data-i="${i}" data-a="min" title="Minimum"></td>`).join('')}</tr>`; }).join('');
+  $('besTab').querySelectorAll('input').forEach(el => el.onchange = ()=> cfgAendern('Besetzung', d => {
+    const r = d.besetzung[el.dataset.w] ||= {soll: [0, 0], min: [0, 0]};
+    r.soll = zwei(r.soll); r.min = zwei(r.min);
+    r[el.dataset.a][+el.dataset.i] = Math.max(0, +el.value || 0); }));
   // Hinweise
   $('hwListe').innerHTML = (cfg.hinweise || []).map((h, i) => `<div class="lz">${icon('info')}<span class="t"><b>${esc(h.name)}</b><br>
     <span class="hint">mind. ${h.min} aus ${h.personen.join(', ')} · ${h.tage.length === 5 ? 'Mo–Fr' : h.tage.map(x => WT[x]).join(', ')}</span></span>
