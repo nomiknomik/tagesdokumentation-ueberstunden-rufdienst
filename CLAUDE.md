@@ -113,11 +113,13 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   `gistsAufraeumen()` löscht beim Start Gists älter als 24 h.
 - Timer-ID 1 ist frei: `HIST.timer = -1` beim Start (mit 1 löschte
   `clearTimeout` den ersten echten Timer).
-  Per QR/Link eingerichtet (`sync.qr`) = Nutzer: Repo, Token und „Zugang
-  weitergeben“ ausgeblendet (`zugangAnsicht()`), nur Personalnummer
-  (`sync.kennung`, füllt leere Kopfdaten-`cfg.pnr`) + Passwort. Von Hand
-  eingetragen = Admin: sieht den Token im Klartext, PIN wird in
-  `tagesdoku_teilen` gemerkt. Nur Anzeige – der Token liegt technisch im Browser. „Lokal geändert“
+  Standard ist die Nutzer-Ansicht: Repo, Token und „Zugang weitergeben“
+  ausgeblendet (`zugangAnsicht()`), nur Personalnummer (`sync.kennung`, füllt
+  leere Kopfdaten-`cfg.pnr`) + Passwort. Admin nur mit `tagesdoku_admin`='1'
+  (Gerät): Migration = hat `tagesdoku_teilen` oder synct von Hand mit eigenem
+  Repo (≠ `TEAM_REPO`); sonst „Admin-Anmeldung“ mit Gist-Token, geprüft über
+  `GET /user` = Besitzer des Team-Repos. Admin sieht den Token im Klartext,
+  PIN wird in `tagesdoku_teilen` gemerkt. Nur Anzeige – der Token liegt technisch im Browser. „Lokal geändert“
   heißt Prüfsumme ≠ `sync.hash` (Dirty-Flag allein ist nur ein Vorfilter).
   Haben beide Seiten geändert: Drei-Wege-Abgleich je Eintrag gegen die Basis
   (IndexedDB `kv/basis`), Rückfrage nur bei echten Kollisionen; vor jeder

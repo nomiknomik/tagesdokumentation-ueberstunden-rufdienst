@@ -534,7 +534,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <details class="monthgroup" id="syncFelder">
       <summary><span>Zugangsdaten<span class="cnt" id="syncFelderCnt">Repo, Token, Personalnr., Passwort</span></span><span data-icon="chevronRight"></span></summary>
       <div style="padding:0 14px 12px">
-    <div class="hint" id="syncQrInfo" style="display:none;margin-top:0">Zugang über QR-Code eingerichtet. Du trägst nur deine Personalnummer und dein eigenes Backup-Passwort ein.</div>
+    <div class="hint" id="syncQrInfo" style="display:none;margin-top:0">Zugang per QR-Code oder Link übernehmen, dann nur deine Personalnummer und dein eigenes Backup-Passwort eintragen.</div>
     <div class="row" id="syncRepoZeile"><label>Repo (Besitzer/Name)</label><input id="sync_repo" name="username" autocomplete="username" placeholder="mustermann/tagesdoku-backup" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     <div class="row" id="syncTokenZeile"><label>Token</label><input id="sync_token" type="text" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
     <div class="row"><label>Personalnummer</label><input id="sync_pnr" inputmode="numeric" placeholder="wie in den Kopfdaten – steht nicht im Repo" autocomplete="off" autocorrect="off" spellcheck="false"></div>
@@ -542,6 +542,12 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
     <button class="btn outline" id="zugangScannen" style="font-size:14px;min-height:44px;margin-top:8px">QR-Code scannen (Zugang übernehmen)</button>
     <button class="btn outline" id="zugangTeilen" style="font-size:14px;min-height:44px;margin-top:8px">Zugang per QR-Code weitergeben</button>
+    <button class="btn ghost" id="adminAuf" style="font-size:13px;min-height:36px;margin-top:4px">Admin-Anmeldung</button>
+    <div id="adminBox" style="display:none">
+      <div class="row"><label>Gist-Token (Admin)</label><input id="admin_token" class="maskiert" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
+      <button class="btn outline" id="adminOk" style="font-size:14px;min-height:44px">Als Admin anmelden</button>
+      <div class="hint" id="adminMsg"></div>
+    </div>
       </div>
     </details>
     <div class="hint" id="syncMsg"></div>
@@ -1722,9 +1728,9 @@ if(syncAktiv() && sync.zuletzt) $('syncMsg').innerHTML = `<span class="ok">Onlin
 $('syncSave').onclick = ()=>{
   const repo = $('sync_repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$|\/$/g,'');
   const token = $('sync_token').value.trim(), pw = $('sync_pw').value, pnr = $('sync_pnr').value.replace(/\s+/g,'');
+  if(!token || !repo){ $('syncMsg').innerHTML = '<span class="note">Kein Zugang – QR-Code scannen oder den Link öffnen.</span>'; return; }
   if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ $('syncMsg').innerHTML = '<span class="note">Repo bitte als „besitzer/name“ angeben.</span>'; return; }
-  if(!token){ $('syncMsg').innerHTML = '<span class="note">Kein Zugang – QR-Code scannen oder den Link öffnen.</span>'; return; }
-  const qr = zugangQr || !!sync.qr;
+  const qr = !istAdmin();
   if(qr && !pnr){ $('syncMsg').innerHTML = '<span class="note">Bitte deine Personalnummer eintragen.</span>'; return; }
   if(!pw){ $('syncMsg').innerHTML = '<span class="note">Backup-Passwort eintragen.</span>'; return; }
   // Neues Ziel oder Passwort: Abgleich beginnt von vorn (sha vergessen -> Rueckfrage statt stillem Ueberschreiben)
@@ -1814,18 +1820,45 @@ function zugangUebernehmen(z, kopieZeigen){
    Zugang nicht weitergeben. Nur wer die Zugangsdaten von Hand eintraegt
    (Admin), sieht alles. Reine Anzeige: technisch liegt der Token im Browser. */
 let zugangQr = false;
+/* Admin nur ausdruecklich (LS_ADMIN): sonst Nutzer-Ansicht, auch ohne Sync oder
+   nach abgebrochener PIN-Eingabe. Freischalten ueber den Gist-Token des Kontos,
+   dem das Team-Repo gehoert. Reine Anzeige-Sperre. */
+const LS_ADMIN = 'tagesdoku_admin';   // nur Geraet, nicht im Backup
+const istAdmin = ()=> localStorage.getItem(LS_ADMIN) === '1';
 function zugangAnsicht(){
-  const qr = zugangQr || !!sync.qr;
+  const qr = !istAdmin();
   ['syncRepoZeile','syncTokenZeile','zugangTeilen','syncTokenHint'].forEach(id => $(id).style.display = qr ? 'none' : '');
   $('syncQrInfo').style.display = qr ? '' : 'none';
   ['sync_token','qr_token'].forEach(id => $(id).classList.toggle('maskiert', qr));   // Admin sieht den Token im Klartext
   $('syncFelderCnt').textContent = qr ? 'Personalnr., Passwort' : 'Repo, Token, Personalnr., Passwort';
+  $('adminAuf').style.display = qr ? '' : 'none'; if(!qr) $('adminBox').style.display = 'none';
 }
+$('adminAuf').onclick = ()=>{ $('adminBox').style.display = $('adminBox').style.display === 'none' ? '' : 'none'; $('adminMsg').textContent = ''; };
+$('adminOk').onclick = async ()=>{
+  const t = $('admin_token').value.trim(), msg = $('adminMsg');
+  if(!t) return;
+  if(t === sync.token){ msg.innerHTML = '<span class="note">Das ist der Team-Zugang, nicht der Admin-Token.</span>'; return; }
+  msg.textContent = 'Prüfe …';
+  try{
+    const r = await fetch('https://api.github.com/user', {cache:'no-store', headers:{Authorization:'Bearer ' + t, Accept:'application/vnd.github+json'}});
+    const u = r.ok ? await r.json() : null;
+    if(!u || String(u.login).toLowerCase() !== TEAM_REPO.split('/')[0]){ msg.innerHTML = '<span class="note">Token ungültig oder nicht vom Admin-Konto.</span>'; return; }
+    localStorage.setItem(LS_ADMIN, '1');
+    localStorage.setItem(LS_TEILEN, JSON.stringify({...load(LS_TEILEN, {}), gist: t}));
+    $('admin_token').value = ''; zugangQr = false; zugangAnsicht();
+    $('syncMsg').innerHTML = '<span class="ok">Als Admin angemeldet.</span>';
+  }catch(e){ msg.innerHTML = '<span class="note">Keine Verbindung (' + e.message + ').</span>'; }
+};
 /* Vor 1.52 eingerichtet (QR ab 1.42): Team-Nutzer hatten einen Namen bzw. das
    Team-Repo (1.51 hat den Namen geloescht) und nie selbst einen Code erzeugt. */
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 if(sync.repo && !sync.qr && !localStorage.getItem(LS_TEILEN)
    && (sync.name || sync.repo.toLowerCase() === TEAM_REPO)){ sync.qr = true; saveSync(); }
+/* Bis 1.63 war Admin, wer nicht per QR kam. Admin bleibt nur, wer schon
+   Einladungen erzeugt hat oder von Hand mit einem eigenen Repo synchronisiert. */
+if(localStorage.getItem(LS_ADMIN) === null)
+  localStorage.setItem(LS_ADMIN, localStorage.getItem(LS_TEILEN)
+    || (sync.repo && !sync.qr && sync.repo.toLowerCase() !== TEAM_REPO) ? '1' : '0');
 zugangAnsicht();
 $('qrPinOk').onclick = async ()=>{
   const pin = $('qrPinIn').value.trim(); if(!pin) return;
@@ -3886,7 +3919,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.63';
+const APP_VERSION = '1.64';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
