@@ -110,7 +110,9 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   `#zugang=`-Links sind gesperrt. Reine App-Prüfung, der Token selbst bleibt gültig.
   Mit Gist-Token (nur Admin, `tagesdoku_teilen.gist`) liegt der verschlüsselte
   Code als geheimer Gist (`GIST_BESCHR`), der Link trägt nur `#einladung=<id>`;
-  `gistsAufraeumen()` löscht beim Start Gists älter als 24 h.
+  `gistsAufraeumen()` löscht beim Start Gists älter als 24 h. Laden: API, bei Fehler Rohdatei
+  `gist.githubusercontent.com/<owner>/<id>/raw/einladung.txt` (API ohne Anmeldung
+  ~60/h je IP, Klinik-WLAN). Fehler im PIN-Fenster anzeigen, nicht per Toast.
 - Timer-ID 1 ist frei: `HIST.timer = -1` beim Start (mit 1 löschte
   `clearTimeout` den ersten echten Timer).
   Standard ist die Nutzer-Ansicht: Repo, Token und „Zugang weitergeben“

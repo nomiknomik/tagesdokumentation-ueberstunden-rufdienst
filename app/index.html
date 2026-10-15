@@ -1786,11 +1786,17 @@ function zugangLesen(txt){
 let pinCode = '';
 /* Einladung als geheimer Gist: verschluesselten Code laden; geloescht = abgelaufen */
 async function gistEinladung(id){
-  const r = await fetch('https://api.github.com/gists/' + id, {cache:'no-store', headers:{Accept:'application/vnd.github+json'}});
-  if(r.status === 404) throw new Error('weg');
-  if(!r.ok) throw new Error('GitHub antwortet mit ' + r.status + '.');
-  const f = Object.values((await r.json()).files || {})[0];
-  const code = f && String(f.content || '').trim();
+  let code = '';
+  const r = await fetch('https://api.github.com/gists/' + id, {cache:'no-store', headers:{Accept:'application/vnd.github+json'}}).catch(()=> null);
+  if(r && r.status === 404) throw new Error('weg');
+  if(r && r.ok){ const f = Object.values((await r.json()).files || {})[0]; code = f && String(f.content || '').trim(); }
+  else{   // API ohne Anmeldung: ~60 Abrufe/h je Anschluss (Klinik-WLAN!) -> Rohdatei, ohne dieses Limit
+    const raw = await fetch(`https://gist.githubusercontent.com/${TEAM_REPO.split('/')[0]}/${id}/raw/einladung.txt?t=${Date.now()}`, {cache:'no-store'})
+      .catch(()=>{ throw new Error('Keine Verbindung zu GitHub.'); });
+    if(raw.status === 404) throw new Error('weg');
+    if(!raw.ok) throw new Error('GitHub antwortet mit ' + (r ? r.status : '–') + '/' + raw.status + '.');
+    code = (await raw.text()).trim();
+  }
   if(!/^[\w-]+$/.test(code || '')) throw new Error('Einladung beschädigt.');
   return code;
 }
@@ -1805,13 +1811,17 @@ function zugangUebernehmen(z, kopieZeigen){
     $('syncMsg').innerHTML = '<span class="ok">Als Admin-Gerät eingerichtet. Für dein eigenes Backup hier Repo, Token und Passwort eintragen.</span>';
     return;
   }
-  if(z.gist){
+  if(z.gist){   // sichtbar laden; Fehler bleiben im Fenster stehen (Toast war zu fluechtig)
+    pinCode = ''; $('qrPinIn').value = ''; $('qrPinKopie').style.display = 'none';
+    $('qrPinMsg').textContent = 'Einladung wird geladen …'; qrZeigen('qrPin');
     gistEinladung(z.gist).then(code => { zugangUebernehmen({code}, kopieZeigen); pinGist = z.gist; },
-      e => setTimeout(()=> toast(e.message === 'weg' ? 'Diese Einladung ist abgelaufen oder gelöscht – bitte einen neuen Code anfordern.'
-                                                    : 'Einladung nicht geladen: ' + e.message)));
+      e => { $('qrPinMsg').innerHTML = '<span class="note">' + (e.message === 'weg'
+        ? 'Diese Einladung ist abgelaufen oder gelöscht – bitte einen neuen Code anfordern.'
+        : 'Einladung nicht geladen: ' + e.message + ' Bitte später erneut öffnen.') + '</span>'; });
     return;
   }
-  if(z.alt){ setTimeout(()=> toast('Dieser alte Zugangs-Code gilt nicht mehr – bitte einen neuen anfordern.')); return; }   // auch beim Start (toast erst danach bereit)
+  if(z.alt){ $('qrPinMsg').innerHTML = '<span class="note">Dieser alte Zugangs-Code gilt nicht mehr – bitte einen neuen anfordern.</span>';
+             pinCode = ''; $('qrPinKopie').style.display = 'none'; qrZeigen('qrPin'); return; }
   if(z.code){   // verschluesselt: erst PIN abfragen
     pinCode = z.code; pinGist = ''; $('qrPinIn').value = ''; $('qrPinMsg').textContent = '';
     $('qrPinKopie').style.display = kopieZeigen ? 'block' : 'none';
@@ -1871,7 +1881,7 @@ if(localStorage.getItem(LS_ADMIN) === null)
     || (sync.repo && !sync.qr && sync.repo.toLowerCase() !== TEAM_REPO) ? '1' : '0');
 zugangAnsicht();
 $('qrPinOk').onclick = async ()=>{
-  const pin = $('qrPinIn').value.trim(); if(!pin) return;
+  const pin = $('qrPinIn').value.trim(); if(!pin || !pinCode) return;
   $('qrPinMsg').textContent = 'Prüfe …';
   try{
     const z = await zugangEntschluesseln(pinCode, pin);
@@ -3943,7 +3953,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.65';
+const APP_VERSION = '1.66';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
