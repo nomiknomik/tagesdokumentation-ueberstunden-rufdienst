@@ -38,7 +38,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   als Funktion, auf frischen Repo-Stand neu angewandt (SHA-Konflikt → wiederholen).
   Hochladen gesammelt (Wunsch): alle 120 s, beim Verlassen von Fenster/Tab oder per
   Klick auf die Wolke (`#status`), nie je Eingabe. Pinsel im Wunsch-Kalender;
-  Teilzeit-Muster `manuell` = Werktage frei außer Eintrag `da`.
+  Teilzeit-Muster `manuell` = Werktage frei außer Eintrag `da`. `PLAN_VERSION` bei
+  jeder Änderung hochzählen; Klick auf die Version speichert und lädt ohne Cache neu.
   Besetzung je Zeitfenster bis 11 / 11–13 / ab 13, Diensthabender ab 11, Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
 - `add_fields.py`, `build_html.py` (veraltet, erzeugt die heutige HTML nicht

@@ -32,6 +32,9 @@ header{position:sticky;top:0;z-index:20;background:rgba(250,245,236,.94);backdro
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
 .logo .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary-light,#0A7480),var(--primary-dark));
   color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,99,110,.25)}
+.version{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:999px;font-size:10.5px;font-weight:700;
+  padding:1px 7px;cursor:pointer;vertical-align:middle}
+.version:hover{color:var(--primary);border-color:var(--primary)}
 .logo small{display:block;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.02em}
 nav.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px}
 nav.tabs button{border:0;background:transparent;padding:7px 14px;border-radius:999px;display:flex;gap:6px;align-items:center;
@@ -256,7 +259,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 <body>
 <header>
   <div class="hd">
-    <div class="logo"><div class="mark"><span data-icon="calendar"></span></div><div>Dienstplanung<small>Oberärzte · Allgemein- und Viszeralchirurgie</small></div></div>
+    <div class="logo"><div class="mark"><span data-icon="calendar"></span></div><div>Dienstplanung <button class="version" id="verBtn" title="Auf Update prüfen und neu laden"></button><small>Oberärzte · Allgemein- und Viszeralchirurgie</small></div></div>
     <nav class="tabs">
       <button data-tab="plan" class="on"><span data-icon="grid"></span><span class="txt">Plan</span></button>
       <button data-tab="meine"><span data-icon="heart"></span><span class="txt">Wünsche</span></button>
@@ -320,7 +323,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
         <div class="kal" id="kal"></div>
         <div class="hint" style="margin-top:10px">Tag antippen: Dienstwunsch, No-Go, Urlaub, Fortbildung oder frei eintragen.
           Mit dem Pinsel über mehrere Tage streichen; Anwesend, frei, Urlaub und Fortbildung lassen Wochenenden und Feiertage aus.
-          Schraffiert = laut Teilzeit frei, Linie unten = Tag mit Regel.</div>
+          Schraffiert = laut Teilzeit frei, Linie unten = Tag mit Regel.
+          Abwesenheiten anderer (z. B. Chefarzt) oben bei „für“ die Person wählen.</div>
       </div>
       <div>
         <div class="card">
@@ -439,6 +443,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
+const PLAN_VERSION = '1.2';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -955,7 +960,7 @@ $('pubBtn').onclick = ()=>{
 let fuerK = '';
 function renderMeine(){
   if(!fuerK || !person(fuerK)) fuerK = ichK;
-  $('fuerSel').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === fuerK ? 'selected' : ''}>${esc(p.name || p.k)}${p.k === ichK ? ' (ich)' : ''}</option>`).join('');
+  $('fuerSel').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === fuerK ? 'selected' : ''}>${esc(p.name || p.k)}${p.k === ichK ? ' (ich)' : ''}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
   const p = person(fuerK);
   if(!p) return;
   const y = +ym.slice(0,4), mo = +ym.slice(5,7), n = tageIm(ym);
@@ -1270,6 +1275,16 @@ async function start(){
   render();
   if(!ich()) ichWaehlen();
 }
+/* Version + Update: ausstehende Aenderungen speichern, dann ohne Cache neu laden */
+$('verBtn').textContent = 'v' + PLAN_VERSION;
+$('verBtn').onclick = async ()=>{
+  if(Object.keys(queue).length || flushLaeuft){ toast('Speichere zuerst …'); await flush(); }
+  let neu = '';
+  try{ const t = await (await fetch(location.pathname + '?t=' + Date.now(), {cache:'no-store'})).text();
+       neu = (t.match(/PLAN_VERSION = '([\d.]+)'/) || [])[1] || ''; }catch(e){}
+  toast(neu && neu !== PLAN_VERSION ? 'Update auf v' + neu + ' …' : 'Neu laden …');
+  setTimeout(()=> location.replace(location.pathname + '?v=' + Date.now()), 600);
+};
 render();
 start();
 </script>
