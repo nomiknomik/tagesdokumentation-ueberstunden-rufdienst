@@ -91,7 +91,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   zusammengefasst; vor 1.51 nur Eintragszeit `am` am Eintrag).
   Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
   = Planer/Admin/niemand ist Planer; sonst nur eigene Einträge (`darfFuer()`), Einstellungen
-  nur lesen (`cfgSperren()`, Karte `.frei` ausgenommen), „Person wechseln“ gesperrt.
+  nur lesen (`cfgSperren()`, Karte `.frei` ausgenommen). Person wechseln (Kopf `#ichBtn`, `#ichWechsel`)
+  seit 1.61 nur auf dem Admin-Gerät (`adminGeraet()`), auch nicht der Planer; Häkchen „Ansicht wie diese
+  Person“ (`planung_sim`='1', `simuliert()`) schaltet `istAdmin()` ab – Rechte dann wie die gewählte Person,
+  der Personen-Dialog bleibt als Rückweg. Ohne gewählte Person darf jedes Gerät einmal wählen.
   Halber Tag weg (1.58, Typ `halb`, `zeit` 'vm'|'nm', `uhr` = freier Text): nicht `abw`, zählt nur im
   eigenen Besetzungsfenster (`halbWeg()` in `besetzung()`/`urlBesetzung()`); Pinsel „½ Tag“ im Urlaub-Reiter
   und im Wunsch-Dialog nur beim Chef (`rolle` 'chef'), Anzeige bei allen (halb gefüllter Chip). Keine Freigabe.

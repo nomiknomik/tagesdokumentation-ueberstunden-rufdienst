@@ -77,6 +77,7 @@ nav.tabs .ic{width:16px;height:16px}
 .status[data-st=wait]{color:var(--warning);font-weight:700}
 .status[data-st=ok]{color:var(--success)} .status[data-st=busy]{color:var(--warning)} .status[data-st=err]{color:var(--danger)}
 .ich .pk{width:26px;height:26px;border-radius:999px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.ich.sim{border:1.5px dashed var(--warning);background:var(--warning-soft)}
 .ich{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:4px 10px 4px 4px;cursor:pointer}
 
 main{max-width:1320px;margin:0 auto;padding:18px 20px 60px}
@@ -751,7 +752,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.60';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.61';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1315,6 +1316,9 @@ function render(){
   $('mTitel').textContent = monatName(ym);
   const p = ich();
   $('ichBtn').innerHTML = p ? `${pk(p)}<b>${esc(p.name || p.k)}</b>` : '<span class="hint">nicht angemeldet</span>';
+  $('ichBtn').classList.toggle('sim', simuliert());
+  $('ichBtn').title = simuliert() ? 'Ansicht wie diese Person (Admin-Rechte aus) – Klick zum Wechseln' : 'Angemeldet als';
+  $('ichWechsel').classList.toggle('hidden', !!ich() && !adminGeraet());   // Person wechseln nur Admin
   todoBadge();
   if(tab === 'plan') renderPlan();
   if(tab === 'meine') renderMeine();
@@ -1324,7 +1328,11 @@ function render(){
 
 /* =================== Plan =================== */
 const darfEinteilen = () => cfg.gruppen.oa.einteilen !== 'planer' || !!(ich() && ich().planer);
-const istAdmin = () => localStorage.getItem('tagesdoku_admin') === '1';
+/* Admin-Geraet (tagesdoku_admin). 1.61: nur der Admin wechselt die Person; „wie diese Person sehen“
+   (planung_sim='1') schaltet die Admin-Rechte ab – die Personenwahl bleibt als einziger Rueckweg. */
+const adminGeraet = () => localStorage.getItem('tagesdoku_admin') === '1';
+const simuliert = () => adminGeraet() && localStorage.getItem('planung_sim') === '1';
+const istAdmin = () => adminGeraet() && !simuliert();
 /* Rechte nur in der Oberflaeche: der Team-Token darf technisch alles im Repo.
    Planer/Admin verwalten (Team, Einstellungen, alle Personen, Urlaub genehmigen),
    alle anderen tragen nur fuer sich selbst ein. Ist niemand Planer, duerfen alle. */
@@ -2654,21 +2662,26 @@ function anmelden(vorgabe){
   });
 }
 function ichWaehlen(){
-  /* einmal gewaehlt, wechselt nur Planer/Admin (reine Oberflaechen-Sperre) */
-  if(ich() && !darfVerwalten()){
-    dialog(`<h3>Angemeldet als ${esc(ich().name || ich().k)}</h3><div class="unter">Dieses Gerät ist dir zugeordnet. Falsch gewählt? Bitte Planer:in oder Admin fragen.</div>
+  /* einmal gewaehlt, wechselt nur der Admin (reine Oberflaechen-Sperre, auch nicht der Planer) */
+  if(ich() && !adminGeraet()){
+    dialog(`<h3>Angemeldet als ${esc(ich().name || ich().k)}</h3><div class="unter">Dieses Gerät ist dir zugeordnet. Falsch gewählt? Bitte den Admin fragen.</div>
       <div class="fuss"><button class="btn" id="dlgZu">OK</button></div>`, ()=>{ $('dlgZu').onclick = zu; });
     return;
   }
-  const neuErlaubt = !cfg.personen.length || darfVerwalten();
-  dialog(`<h3>Wer bist du?</h3><div class="unter">Einmalig auf diesem Gerät. Einträge werden mit deinem Kürzel protokolliert.</div>
+  const neuErlaubt = !cfg.personen.length || adminGeraet();
+  dialog(`<h3>${adminGeraet() ? 'Person wählen (Admin)' : 'Wer bist du?'}</h3><div class="unter">${adminGeraet()
+      ? 'Nur auf diesem Admin-Gerät sichtbar. Einträge werden mit dem gewählten Kürzel protokolliert.'
+      : 'Einmalig auf diesem Gerät. Einträge werden mit deinem Kürzel protokolliert.'}</div>
+    ${adminGeraet() ? `<label class="f" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:10px;font-weight:600">
+      <input type="checkbox" id="iSim" ${simuliert() ? 'checked' : ''}> Ansicht wie diese Person (Admin-Rechte aus – zum Testen)</label>` : ''}
     ${personen().map(p => `<button class="kand ${p.k === ichK ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b><span class="hint">${p.rolle === 'chef' ? 'Chefarzt' : 'Oberarzt/-ärztin'}</span></span></button>`).join('')}
     ${neuErlaubt ? `<div class="hint" style="margin-top:10px">Nicht in der Liste? Unten neu anlegen.</div>
     <div class="reihe" style="margin-top:8px"><label class="f">Kürzel<input type="text" id="iK" maxlength="6" style="width:80px"></label>
       <label class="f" style="flex:1">Name<input type="text" id="iName"></label>
       <label class="f">Rolle<select id="iRolle"><option value="oa">OA</option><option value="chef">Chef</option></select></label>
       <button class="btn out" id="iAdd">${icon('plus')}Anlegen</button></div>` : '<div class="hint" style="margin-top:10px">Nicht in der Liste? Planer:in legt dich unter Einstellungen → Team an.</div>'}`, el => {
-    el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ ichK = b.dataset.k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render(); });
+    const simSetzen = ()=>{ if(adminGeraet()) localStorage.setItem('planung_sim', $('iSim').checked ? '1' : '0'); };
+    el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ simSetzen(); ichK = b.dataset.k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render(); });
     if($('iAdd')) $('iAdd').onclick = ()=>{
       const k = $('iK').value.trim().toUpperCase().replace(/[^A-ZÄÖÜ0-9]/g, '');
       if(!k) return toast('Bitte Kürzel eingeben.');
@@ -2677,7 +2690,7 @@ function ichWaehlen(){
           planer: cfg.personen.length === 0, farbe: FARBEN[cfg.personen.length % FARBEN.length]};
         cfgAendern(`Person ${k}`, d => { if(!d.personen.some(p => p.k === k)) d.personen.push(neu); });
       }
-      ichK = k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render();
+      simSetzen(); ichK = k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render();
     };
   });
 }
