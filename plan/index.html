@@ -739,7 +739,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.54';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.55';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -946,6 +946,14 @@ function aendern(pfad, leer, was, fn){
   q.fns.push(fn); q.was.add(was);
   ungespeichert();
   if(!flushTimer) flushTimer = setTimeout(flush, SPEICHER_INTERVALL);
+  /* Kongruenz: aendert sich An-/Abwesenheit eines Tages (egal in welcher Ansicht), gilt ein
+     TDA-Hand-Code dort nicht mehr - er wird geloescht statt nur verdeckt (kein Wiederauftauchen) */
+  const w = !imUndo && pfad.match(/^plan\/wuensche\/([^/]+)\//);
+  if(w){
+    const a = vor.tage || {}, b = f.data.tage || {}, rel = e => !!(e && (e.typ === 'da' || (TYPEN[e.typ] && TYPEN[e.typ].abw)));
+    for(const t of new Set([...Object.keys(a), ...Object.keys(b)]))
+      if((rel(a[t]) || rel(b[t])) && JSON.stringify(a[t]) !== JSON.stringify(b[t]) && tdaHand(w[1], t) !== undefined) tdaHandSetzen(w[1], t, undefined);
+  }
   render();
 }
 /* Rueckgaengig / Wiederholen (max. 10 Schritte, nur eigene Aenderungen dieser Sitzung).
@@ -1463,26 +1471,32 @@ function tdaHandSetzen(k, s, code){   // code undefined = Hand-Code entfernen
   });
 }
 function tdaSetzen(k, s, code){
-  const p = person(k), dienst = tdaDienst(s), alt = dienstVon(s);
-  const e = eintrag(k, s), weg = e && TYPEN[e.typ] && TYPEN[e.typ].abw;
+  const p = person(k), dienst = tdaDienst(s), alt = dienstVon(s), e = eintrag(k, s);
+  /* Eintrag im Wunschkalender setzen (null = loeschen) - das sehen alle Ansichten */
+  const wunsch = wert => {
+    if(JSON.stringify(e || null) === JSON.stringify(wert)) return;
+    aendern(pfadWunsch(k, ymVon(s)), {tage:{}}, `${k} ${wert ? TYPEN[wert.typ].name : 'Eintrag gelöscht'}`, d => {
+      d.tage ||= {}; if(wert) d.tage[s] = {...wert, von: ichK, am: Date.now()}; else delete d.tage[s];
+    });
+  };
+  const anAbw = e && (e.typ === 'da' || (TYPEN[e.typ] && TYPEN[e.typ].abw));   // An-/Abwesenheits-Eintrag
   if(code === dienst){
-    if(weg) aendern(pfadWunsch(k, ymVon(s)), {tage:{}}, `${k} Eintrag gelöscht`, d => { if(d.tage) delete d.tage[s]; });
+    if(e && TYPEN[e.typ] && TYPEN[e.typ].abw) wunsch(null);
     if(alt && alt !== k) tdaHandSetzen(alt, s, '');   // bisheriger Dienst bleibt leer, bis etwas gewaehlt ist
-    tdaHandSetzen(k, s, undefined);
     einteilen(s, k);
     return;
   }
   if(alt === k) einteilen(s, '');
-  if(TDA_TYP[code]){
-    const typ = TDA_TYP[code];
-    aendern(pfadWunsch(k, ymVon(s)), {tage:{}}, `${k} ${TYPEN[typ].name}`, d => {
-      d.tage ||= {}; d.tage[s] = {typ, von: ichK, am: Date.now(), ok: {von: ichK || 'Admin', am: Date.now()}};
-    });
-    tdaHandSetzen(k, s, undefined);
-    return;
-  }
-  if(weg) aendern(pfadWunsch(k, ymVon(s)), {tage:{}}, `${k} Eintrag gelöscht`, d => { if(d.tage) delete d.tage[s]; });
-  tdaHandSetzen(k, s, code);
+  if(TDA_TYP[code]){   // U/Fo/FZA: echter Eintrag, gleich genehmigt
+    wunsch({typ: TDA_TYP[code], ok: {von: ichK || 'Admin', am: Date.now()}});
+  }else if(code === '0'){   // frei: an Werktagen echter Eintrag 'frei' (bzw. Teilzeit-frei belassen)
+    if(werktag(s)) wunsch(teilzeitFrei(p, s) ? null : {typ: 'frei'}); else if(anAbw) wunsch(null);
+  }else if(code === 'Amb2' || code === 'Amb4'){   // anwesend: an Teilzeit-freien Tagen 'da', sonst Abwesenheit weg
+    if(werktag(s)) wunsch(teilzeitFrei(p, s) ? {typ: 'da'} : null); else if(anAbw) wunsch(null);
+  }else if(anAbw) wunsch(null);   // leer: anwesend, Code noch offen
+  /* Hand-Code nur, wo die Daten den Code nicht selbst ergeben: leer, Amb2/Amb4 abweichend vom Wochentag, Amb am WE */
+  const std = werktag(s) ? (wt(s) === 1 ? 'Amb2' : 'Amb4') : '0';
+  tdaHandSetzen(k, s, code === '' || ((code === 'Amb2' || code === 'Amb4') && code !== std) ? code : undefined);
 }
 function tdaWahl(k, s){
   if(!darfVeroeffentlichen()) return;
@@ -1612,6 +1626,7 @@ function waehlen(s){
 function einteilen(s, k, auto){
   const alt = dienstVon(s), m = ymVon(s);
   if(alt === k) return;
+  if(k && tdaHand(k, s) !== undefined) tdaHandSetzen(k, s, undefined);   // Dienst ersetzt einen TDA-Hand-Code endgueltig
   if(k && !auto) blockBruch(person(k), s, true);
   aendern(pfadDienst(m), {tage:{}, log:[]}, `Dienst ${kurzDat(s)}`, (d, remote) => {
     d.tage ||= {}; d.log ||= [];
