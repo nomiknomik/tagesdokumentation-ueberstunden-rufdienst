@@ -54,6 +54,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
   `files`), Einspielen ersetzt gleichnamige Dateien – in EINEM Commit über die
   Git-Data-API (Baum mit Inhalten → Commit → Ref), nicht Datei für Datei.
+  Personenauswahl beim Einteilen erscheint neben der Maus (`dialog(…, nahe)`, letzte
+  Klickposition `klickXY`, im Fenster gehalten, Zoom berücksichtigt).
   Tooltips sofort über `#tip` (global: `title` wird beim Überfahren zu `data-tip`).
   Besetzung nur Vormittag / Nachmittag (vor/ab 11; `besRegel()` fasst alte 3-Fenster-
   Konfiguration zusammen), keine Dienstart (ZD1…)

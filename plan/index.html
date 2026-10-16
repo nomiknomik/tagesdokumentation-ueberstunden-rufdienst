@@ -302,6 +302,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .schleier{position:fixed;inset:0;background:rgba(42,36,32,.35);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
 .dialog{background:var(--bg);border-radius:20px;width:min(520px,100%);max-height:88vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25);padding:18px}
 .dialog h3{margin:0 0 4px;font-size:17px}
+.schleier.nahe{background:rgba(42,36,32,.12);display:block}
+.schleier.nahe .dialog{position:fixed;width:min(440px,calc(100vw - 24px));max-height:calc(100vh - 24px)}
 .dialog .unter{color:var(--text2);font-size:12.5px;margin-bottom:14px}
 .kand{display:flex;align-items:center;gap:10px;width:100%;border:1px solid var(--border);background:#fff;border-radius:12px;padding:8px 10px;
   margin-bottom:6px;cursor:pointer;text-align:left}
@@ -598,7 +600,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.29';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.30';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -963,12 +965,24 @@ function bewerte(p, s){
 /* ---------- UI-Helfer ---------- */
 function toast(t){ const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(()=> el.remove(), 3200); }
 function status(st, txt){ $('status').dataset.st = st; $('statusTxt').textContent = txt; }
-function dialog(html, init){
-  $('dlg').innerHTML = `<div class="schleier"><div class="dialog">${html}</div></div>`;
+/* letzte Klickposition (fuer Dialoge neben der Maus) */
+let klickXY = null;
+document.addEventListener('pointerdown', e => { klickXY = {x: e.clientX, y: e.clientY, t: Date.now()}; }, true);
+function dialog(html, init, nahe){
+  $('dlg').innerHTML = `<div class="schleier ${nahe ? 'nahe' : ''}"><div class="dialog">${html}</div></div>`;
   icons($('dlg'));
   const s = $('dlg').firstChild;
   s.addEventListener('click', e => { if(e.target === s) zu(); });
-  if(init) init($('dlg').querySelector('.dialog'));
+  const d = $('dlg').querySelector('.dialog');
+  if(init) init(d);
+  if(nahe && klickXY && Date.now() - klickXY.t < 2000){
+    // neben dem Mauszeiger, im Fenster gehalten (Koordinaten im gezoomten #dlg teilen)
+    const r = d.getBoundingClientRect(), z = zoom || 1, rand = 12;
+    let x = klickXY.x + 16, y = klickXY.y - 40;
+    if(x + r.width > innerWidth - rand) x = klickXY.x - r.width - 16;
+    x = Math.max(rand, x); y = Math.max(rand, Math.min(y, innerHeight - r.height - rand));
+    d.style.left = x / z + 'px'; d.style.top = y / z + 'px';
+  }else s.classList.remove('nahe');
 }
 let dialogTaste = null;   // Tastatur-Handler des offenen Dialogs
 const zu = () => { $('dlg').innerHTML = ''; dialogTaste = null; };
@@ -1216,7 +1230,7 @@ function waehlen(s){
         if(n.length === 1){ n[0].click(); return; }
         zeigen();
       };
-    });
+    }, true);   // neben der Maus
 }
 function einteilen(s, k, auto){
   const alt = dienstVon(s), m = ymVon(s);
