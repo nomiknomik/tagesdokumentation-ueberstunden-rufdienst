@@ -652,7 +652,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <h3><span data-icon="star"></span>Termine</h3>
           <div class="liste" id="termListe"></div>
           <div style="display:grid;gap:8px;margin-top:10px">
-            <div class="seg" id="termArt"><button data-a="ferien" class="on">Ferien</button><button data-a="kongress">Kongress</button><button data-a="sonst">Sonstiges</button></div>
+            <div class="seg" id="termArt"><button data-a="ferien" class="on">Ferien</button><button data-a="kongress">Kongress</button><button data-a="sonst">Sonstiges</button><button data-a="feiertag" title="Arbeitsfrei – zählt wie ein gesetzlicher Feiertag (nur Planer)">Feiertag</button></div>
             <input type="text" id="termName" placeholder="Bezeichnung, z. B. Herbstferien / DGCH">
             <div class="reihe"><label class="f">von (optional)<input type="date" id="termVon"></label><label class="f">bis<input type="date" id="termBis"></label></div>
             <button class="btn out" id="termAdd"><span data-icon="plus"></span>Termin</button>
@@ -707,11 +707,8 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
       <div class="card">
         <h3><span data-icon="star"></span>Feiertage &amp; Grenzen</h3>
         <div class="hint" id="ftListe" style="margin-bottom:10px"></div>
-        <div class="liste" id="ftExtra"></div>
-        <div class="reihe" style="margin-top:10px">
-          <input type="date" id="ftDat"><input type="text" id="ftName" placeholder="Name, z. B. Heiligabend">
-          <button class="btn out" id="ftAdd"><span data-icon="plus"></span>Feiertag</button>
-        </div>
+        <div class="hint">Gesetzliche BW-Feiertage berechnet die App jedes Jahr selbst. Zusätzliche arbeitsfreie Tage (z. B. Heiligabend):
+          Reiter Urlaub → Termine → Art „Feiertag“ – dort auch Ferien und Kongresse.</div>
         <div class="reihe" style="margin-top:16px">
           <label class="f">max. Dienste / Monat (100 %)<input type="number" id="gMax" min="1" style="width:90px"></label>
           <label class="f">max. Wochenenden in Folge<input type="number" id="gWe" min="1" style="width:90px"></label>
@@ -768,7 +765,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.74';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.75';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -850,7 +847,15 @@ function feiertageBW(y){
     [ds(y,5,1)]:'Tag der Arbeit', [plus(o,39)]:'Christi Himmelfahrt', [plus(o,50)]:'Pfingstmontag', [plus(o,60)]:'Fronleichnam',
     [ds(y,10,3)]:'Tag der Deutschen Einheit', [ds(y,11,1)]:'Allerheiligen', [ds(y,12,25)]:'1. Weihnachtstag', [ds(y,12,26)]:'2. Weihnachtstag'};
 }
-const feiertag = s => { const e = (cfg.feiertage || []).find(x => x.datum === s); return e ? e.name : (feiertageBW(+s.slice(0,4))[s] || ''); };
+/* Zusaetzliche arbeitsfreie Tage (1.75): Termine der Art 'feiertag' (Urlaub-Reiter), alt: cfg.feiertage */
+let ftExtraCfg = null, ftExtraMap = {};
+const ftExtra = () => {
+  if(ftExtraCfg !== cfg){ ftExtraCfg = cfg; ftExtraMap = {};
+    (cfg.feiertage || []).forEach(f => ftExtraMap[f.datum] = f.name);
+    (cfg.termine || []).filter(t => t.art === 'feiertag').forEach(t => (t.tage || []).forEach(x => ftExtraMap[x] = t.name)); }
+  return ftExtraMap;
+};
+const feiertag = s => ftExtra()[s] || feiertageBW(+s.slice(0,4))[s] || '';
 const werktag = s => wt(s) <= 5 && !feiertag(s);
 /* Rufdienst-Art wie in der Tagesdoku (DUTY): Mo–Do ZD1, Fr ZD2, Sa RBD, So/Feiertag RBD2 */
 const dienstArt = s => feiertag(s) || wt(s) === 7 ? 'RBD2' : wt(s) === 6 ? 'RBD' : wt(s) === 5 ? 'ZD2' : 'ZD1';
@@ -1963,17 +1968,36 @@ $('kal').addEventListener('pointermove', e => { if(strich){ const s = tagUnter(e
 ['pointerup','pointercancel'].forEach(t => window.addEventListener(t, ()=>{ if(urlTouch && urlTouch.aktiv) return; if(strich) schritt = null; strich = null; }));
 
 /* =================== Termine (Ferien, Kongresse) =================== */
-const TERMIN = {ferien: {name: 'Ferien', farbe: '#5B9BD5'}, kongress: {name: 'Kongress', farbe: '#7A5AA6'}, sonst: {name: 'Termin', farbe: '#8A7F72'}};
+const TERMIN = {ferien: {name: 'Ferien', farbe: '#5B9BD5'}, kongress: {name: 'Kongress', farbe: '#7A5AA6'}, sonst: {name: 'Termin', farbe: '#8A7F72'},
+  feiertag: {name: 'Feiertag (arbeitsfrei)', farbe: '#C2492E'}};   // feiertag: zaehlt wie gesetzlicher Feiertag, nur Planer/Admin
 /* Schulferien BW laut schulferien.org-ICS (Stand 10/2026); Winterferien legt jede
    Schule selbst fest -> von Hand als Termin. Weitere Jahre per ICS-Import. */
+/* Ferien-Spanne ohne Wochenende an den Raendern (Sa/So vorn und hinten weg) */
+function werktagKern(von, bis){
+  const wtag = x => { const d = new Date(x + 'T12:00:00Z').getUTCDay(); return d === 0 ? 7 : d; };
+  const verschieb = (x, n) => { const d = new Date(x + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  while(von < bis && wtag(von) >= 6) von = verschieb(von, 1);
+  while(bis > von && wtag(bis) >= 6) bis = verschieb(bis, -1);
+  return [von, bis];
+}
+/* BW-Schulferien. Offizielle Angaben enden/beginnen oft am Samstag - fuer die Planung auf Mo-Fr
+   gekuerzt (werktagKern). 2028-2030 aus Drittquellen (KM-Seite nicht erreichbar), u = bitte pruefen. */
 const BW_FERIEN = [
   ['2025-12-22', '2026-01-05', 'Weihnachtsferien'], ['2026-03-30', '2026-04-11', 'Osterferien'],
   ['2026-05-26', '2026-06-05', 'Pfingstferien'], ['2026-07-30', '2026-09-12', 'Sommerferien'],
   ['2026-10-26', '2026-10-31', 'Herbstferien'], ['2026-12-23', '2027-01-09', 'Weihnachtsferien'],
   ['2027-03-25', '2027-04-03', 'Osterferien'], ['2027-05-18', '2027-05-29', 'Pfingstferien'],
   ['2027-07-29', '2027-09-11', 'Sommerferien'], ['2027-11-02', '2027-11-06', 'Herbstferien'],
-  ['2027-12-23', '2028-01-08', 'Weihnachtsferien']
-].map(([von, bis, name, u]) => ({id: 'bw' + von, art: 'ferien', name, von, bis, bw: true, unsicher: !!u}));
+  ['2027-12-23', '2028-01-08', 'Weihnachtsferien'],
+  ['2028-04-13', '2028-04-22', 'Osterferien', 1], ['2028-06-06', '2028-06-17', 'Pfingstferien'],
+  ['2028-07-27', '2028-09-09', 'Sommerferien'], ['2028-10-30', '2028-11-03', 'Herbstferien'],
+  ['2028-12-23', '2029-01-05', 'Weihnachtsferien'],
+  ['2029-03-26', '2029-04-07', 'Osterferien'], ['2029-05-22', '2029-06-01', 'Pfingstferien'],
+  ['2029-07-26', '2029-09-08', 'Sommerferien'], ['2029-10-29', '2029-11-02', 'Herbstferien'],
+  ['2029-12-22', '2030-01-05', 'Weihnachtsferien'],
+  ['2030-04-15', '2030-04-26', 'Osterferien', 1], ['2030-06-11', '2030-06-21', 'Pfingstferien', 1],
+  ['2030-07-25', '2030-09-07', 'Sommerferien', 1]
+].map(([von, bis, name, u]) => { [von, bis] = werktagKern(von, bis); return {id: 'bw' + von, art: 'ferien', name, von, bis, bw: true, unsicher: !!u}; });
 const tageVon = t => t.tage ? t.tage : null;
 const imTermin = (t, s) => t.tage ? t.tage.includes(s) : (t.von <= s && s <= (t.bis || t.von));
 const terminSpanne = t => t.tage ? (t.tage.length ? [t.tage.reduce((a, b) => a < b ? a : b), t.tage.reduce((a, b) => a > b ? a : b)] : ['', '']) : [t.von, t.bis || t.von];
@@ -1983,6 +2007,7 @@ let termArt = 'ferien', termId = '';
 $('termArt').querySelectorAll('button').forEach(b => b.onclick = ()=>{ termArt = b.dataset.a; $('termArt').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
 $('termAdd').onclick = ()=>{
   const name = $('termName').value.trim(), von = $('termVon').value, bis = $('termBis').value || von;
+  if(termArt === 'feiertag' && !darfVerwalten()) return toast('Arbeitsfreie Tage trägt der Planer ein.');
   if(!name) return toast('Bitte eine Bezeichnung eingeben.');
   if(von && bis < von) return toast('„bis“ liegt vor „von“.');
   const tage = [];
@@ -1994,12 +2019,17 @@ $('termAdd').onclick = ()=>{
   renderUrlaub();
 };
 function renderTermine(y){
+  $('termArt').querySelector('[data-a="feiertag"]').classList.toggle('hidden', !darfVerwalten());
+  if(termArt === 'feiertag' && !darfVerwalten()) $('termArt').querySelector('[data-a="ferien"]').click();
+  /* einmalig: alte Zusatz-Feiertage aus den Einstellungen in Termine (Art feiertag) uebernehmen */
+  if((cfg.feiertage || []).length && darfVerwalten() && !nurLesen)
+    cfgAendern('Feiertage zu Terminen', d => { (d.feiertage || []).forEach((f, i) => (d.termine ||= []).push({id: 'ft' + Date.now().toString(36) + i, art: 'feiertag', name: f.name, tage: [f.datum], von_k: ichK})); d.feiertage = []; });
   const im = t => { const [a, b] = terminSpanne(t); return !a || (b >= y + '-01-01' && a <= y + '-12-31'); };
   const l = alleTermine().filter(im).sort((a, b) => (terminSpanne(a)[0] || '9') < (terminSpanne(b)[0] || '9') ? -1 : 1);
   $('termListe').innerHTML = l.map(t => { const [a, b] = terminSpanne(t);
     return `<div class="lz ${t.id === termId && urlTyp === 'termin' ? 'term-akt' : ''}"><span class="term-dot" style="background:${TERMIN[t.art].farbe}"></span><span class="t"><b>${esc(t.name)}</b>${t.bw ? ' <span class="tag n">BW</span>' : ''}${t.unsicher ? ' <span class="tag o" title="Quellen widersprechen sich – bitte prüfen">⚠ prüfen</span>' : ''}<br>
     <span class="hint">${TERMIN[t.art].name} · ${a ? kurzDat(a) + (b !== a ? '–' + kurzDat(b) : '') : 'noch keine Tage'}${t.tage ? ' (' + t.tage.length + ' Tage)' : ''}</span></span>`
-    + (t.bw ? '' : `<button class="x pin" data-pin="${esc(t.id)}" title="Tage einpinseln">${icon('edit')}</button><button class="x" data-id="${esc(t.id)}" title="Löschen">${icon('x')}</button>`) + '</div>'; }).join('')
+    + (t.bw || (t.art === 'feiertag' && !darfVerwalten()) ? '' : `<button class="x pin" data-pin="${esc(t.id)}" title="Tage einpinseln">${icon('edit')}</button><button class="x" data-id="${esc(t.id)}" title="Löschen">${icon('x')}</button>`) + '</div>'; }).join('')
     || '<div class="hint">Keine Termine in diesem Jahr.</div>';
   $('termListe').querySelectorAll('[data-id]').forEach(b => b.onclick = ()=>{ if(confirm('Termin löschen?')) cfgAendern('Termin gelöscht', d => { d.termine = (d.termine || []).filter(t => t.id !== b.dataset.id); }); });
   $('termListe').querySelectorAll('[data-pin]').forEach(b => b.onclick = ()=>{
@@ -2017,7 +2047,8 @@ $('termIcs').onchange = async e => {
       const von = feld('DTSTART'), bis = feld('DTEND');
       if(!/^\d{8}/.test(von)) continue;
       const name = feld('SUMMARY').replace(/\s*\d{4}\s*Baden-W\S*$/, '').replace(/\\,/g, ',') || 'Ferien';
-      const tage = []; for(let x = d(von), ende = /^\d{8}/.test(bis) ? plus(d(bis), -1) : d(von); x <= ende && tage.length < 120; x = plus(x, 1)) tage.push(x);
+      const [v0, b0] = werktagKern(d(von), /^\d{8}/.test(bis) ? plus(d(bis), -1) : d(von));   // Sa/So an den Raendern weg
+      const tage = []; for(let x = v0; x <= b0 && tage.length < 120; x = plus(x, 1)) tage.push(x);
       const frei = tage.filter(x => !termineAm(x).some(t => t.art === 'ferien'));
       if(frei.length) neu.push({id: Date.now().toString(36) + neu.length, art: 'ferien', name, tage: frei, von_k: ichK, ics: true});
     }
@@ -2032,6 +2063,7 @@ function terminTag(s){
   if(!strich || strich.erledigt.has(s)) return;
   strich.erledigt.add(s);
   const t = (cfg.termine || []).find(x => x.id === termId); if(!t) return;
+  if(t.art === 'feiertag' && !darfVerwalten()){ if(!strich.gemeldet){ strich.gemeldet = true; toast('Arbeitsfreie Tage ändert der Planer.'); } return; }
   if(strich.loeschen === undefined) strich.loeschen = imTermin(t, s);
   if(strich.loeschen !== imTermin(t, s)) return;
   const weg = strich.loeschen, id = termId;
@@ -2647,8 +2679,6 @@ function renderCfg(){
   // Feiertage
   const y = +ym.slice(0,4);
   $('ftListe').innerHTML = `<b>BW ${y}:</b> ` + Object.entries(feiertageBW(y)).sort().map(([s, n]) => `${kurzDat(s)} ${esc(n)}`).join(' · ');
-  $('ftExtra').innerHTML = (cfg.feiertage || []).map((f, i) => `<div class="lz">${icon('star')}<span class="t">${kurzDat(f.datum)}${f.datum.slice(0,4)} ${esc(f.name)}</span><button class="x" data-i="${i}">${icon('x')}</button></div>`).join('');
-  $('ftExtra').querySelectorAll('.x').forEach(b => b.onclick = ()=> cfgAendern('Feiertag entfernt', d => d.feiertage.splice(+b.dataset.i, 1)));
   $('gMax').value = cfg.maxDienste; $('gWe').value = cfg.maxWeFolge; $('gUa').value = cfg.urlaubAnspruch; $('gUp').value = cfg.urlaubPlan;
   // Zugang
   const z = zugang();
@@ -2673,11 +2703,6 @@ $('hwAdd').onclick = ()=>{
   if(!name || !ps.length || !tage.length) return toast('Bezeichnung, Personen und Tage wählen.');
   cfgAendern('Hinweis ' + name, d => (d.hinweise ||= []).push({name, personen: ps, min: Math.max(1, +$('hwMin').value || 1), tage}));
   $('hwName').value = '';
-};
-$('ftAdd').onclick = ()=>{
-  if(!$('ftDat').value || !$('ftName').value.trim()) return toast('Datum und Name eingeben.');
-  const f = {datum: $('ftDat').value, name: $('ftName').value.trim()};
-  cfgAendern('Feiertag ' + f.datum, d => (d.feiertage ||= []).push(f)); $('ftName').value = '';
 };
 $('gMax').onchange = ()=> cfgAendern('Grenzen', d => { d.maxDienste = Math.max(1, +$('gMax').value || 13); });
 $('gWe').onchange = ()=> cfgAendern('Grenzen', d => { d.maxWeFolge = Math.max(1, +$('gWe').value || 2); });

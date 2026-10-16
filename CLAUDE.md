@@ -132,9 +132,12 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Design (1.39, zwischen alt und ruhig): Matrix-Dienst zart in Personenfarbe (`--f`, color-mix),
   ohne Farbstreifen, Kürzel farbig; Tage weiß, WE schlicht. FZA auch im Urlaub-Reiter (Chip + Pinsel). Icon `icon.svg`
   (+ PNG 180/192/512, `manifest.webmanifest`) – PNGs aus dem SVG per Playwright rendern. Kopf-Logo `logo.svg` = gleiches Motiv ohne Petrol-Kachel (Pfeile petrol).
-  Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, tage[]}]`, alt:
-  `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (aus schulferien.org-
-  ICS bis 01/2028), weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv);
+  Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst|feiertag, name, tage[]}]`, alt:
+  `von/bis`) tageweise pinselbar; Art `feiertag` (1.75, nur Planer) = arbeitsfrei wie gesetzlicher Feiertag
+  (`ftExtra()` in `feiertag()`; alte `cfg.feiertage` werden beim Planer einmal dorthin verschoben, Einstellungen
+  zeigen nur noch die automatischen BW-Feiertage). BW-Schulferien fest in `BW_FERIEN` bis Sommer 2030
+  (2028–2030 aus Drittquellen, `u` = ⚠ prüfen), immer über `werktagKern()` auf Mo–Fr gekürzt (offizielle
+  Angaben enden oft am Samstag); weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv, ebenfalls gekürzt);
   Winterferien legt jede Schule selbst fest → von Hand. Urlaub-Kacheln: Besetzung
   vorm.|nachm. (`urlBesetzung()`; Vortags-Dienst zählt als da, heutiger Dienst –
   auch noch offen – erst nachmittags),
