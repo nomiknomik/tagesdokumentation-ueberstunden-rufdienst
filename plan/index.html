@@ -588,7 +588,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
         <div class="pinsel" id="pinsel"></div>
         <div class="kal" id="kal"></div>
         <div class="hint" style="margin-top:10px">Tag antippen: Dienstwunsch, No-Go, Urlaub, Fortbildung, FZA (Freizeitausgleich) oder frei eintragen.
-          Mit dem Pinsel über mehrere Tage streichen; anwesend, frei, FZA und Fortbildung lassen Wochenenden und Feiertage aus, Urlaub nicht.
+          Mit dem Pinsel über mehrere Tage streichen; anwesend, frei und FZA lassen Wochenenden und Feiertage aus, Urlaub und Fortbildung nicht.
           Weiß = da, schraffiert = frei (Teilzeit oder gemalt) – Pinsel „anwesend“ und „frei“ schalten zwischen beidem. Linie unten = Tag mit Regel.
           Abwesenheiten anderer (z. B. Chefarzt) oben bei „für“ die Person wählen.</div>
       </div>
@@ -769,7 +769,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.81';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.82';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1512,8 +1512,8 @@ const tdaName = p => { const t = (p.name || p.k).trim().split(/\s+/); const n = 
   return n + (p.pnr ? ` (${p.pnr})` : ''); };
 function tdaCode(p, s){
   if(dienstVon(s) === p.k) return ['d', tdaDienst(s)];
-  if(!werktag(s)) return ['', '0'];   // wie TDA: Wochenende/Feiertag ohne Dienst = 0, auch im Urlaub
   const a = abwesend(p, s);
+  if(!werktag(s)) return a === 'fb' ? ['a', 'Fo'] : ['', '0'];   // WE/Feiertag ohne Dienst = 0 (auch im Urlaub), Fortbildung = Fo
   if(a) return ['a', TDA_ABW[a] || a];
   const h = halbWeg(p, s);
   if(h) return ['h', h === 'vm' ? 'Nachm.' : 'Vorm.'];   // 1.59: halber Tag = anwesende Haelfte
@@ -1545,9 +1545,9 @@ function tdaSetzen(k, s, code){
     });
   };
   const abw = e && TYPEN[e.typ] && TYPEN[e.typ].abw;
-  if(code === tdaDienst(s)){ if(abw && werktag(s)) wunsch(null); einteilen(s, k); return; }
+  if(code === tdaDienst(s)){ if(abw && (werktag(s) || e.typ === 'fb')) wunsch(null); einteilen(s, k); return; }
   if(alt === k) einteilen(s, '');
-  if(!werktag(s)) return;   // WE/Feiertag: ohne Dienst immer 0
+  if(!werktag(s)){ if(code === 'Fo') wunsch({typ: 'fb'}); else if(e && e.typ === 'fb') wunsch(null); return; }   // WE/Feiertag: nur Fo oder 0
   if(TDA_TYP[code]) wunsch({typ: TDA_TYP[code]});   // Antrag wie ueberall - genehmigt wird im Urlaub-Reiter/To-do
   else if(code === '0') wunsch(teilzeitFrei(p, s) ? null : {typ: 'frei'});
   else if(code === tdaRegel(s) || code === 'ganztags') wunsch(teilzeitFrei(p, s) ? {typ: 'da'} : null);
@@ -1557,8 +1557,8 @@ function tdaWahl(k, s){
   if(!darfVeroeffentlichen()) return;
   const p = person(k), dienst = tdaDienst(s), alt = dienstVon(s), chef = p.rolle === 'chef';
   const akt = tdaCode(p, s)[1] || 'ganztags';
-  const codes = chef ? (werktag(s) ? ['U', 'Fo', 'FZA', 'ganztags', 'Vorm.', 'Nachm.', '0'] : ['0'])   // Chef: keine Dienste, kein Amb
-    : werktag(s) ? [dienst, 'U', 'Fo', 'FZA', tdaRegel(s), '0'] : [dienst, '0'];
+  const codes = chef ? (werktag(s) ? ['U', 'Fo', 'FZA', 'ganztags', 'Vorm.', 'Nachm.', '0'] : ['Fo', '0'])   // Chef: keine Dienste, kein Amb
+    : werktag(s) ? [dienst, 'U', 'Fo', 'FZA', tdaRegel(s), '0'] : [dienst, 'Fo', '0'];
   dialog(`<h3>${esc(tdaName(p))}</h3><div class="unter">${WTL[wt(s)]}, ${kurzDat(s)}${feiertag(s) ? ' · ' + esc(feiertag(s)) : ''}${alt && alt !== k ? ` · Dienst hat bisher ${esc(alt)}` : ''}</div>
     <div class="tda-wahl" style="grid-template-columns:repeat(${codes.length > 2 ? 3 : 2},1fr)">${codes.map(c => `<button data-c="${c}" class="${c === akt ? 'on' : ''} ${c === dienst ? 'dienst' : ''}">${c}</button>`).join('')}</div>
     <div class="fuss"><button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
@@ -1950,7 +1950,7 @@ function pinselTag(s, k = fuerK, typ = pinsel){
   const p = person(k);
   if(!p || !strich || strich.erledigt.has(s)) return;
   strich.erledigt.add(s);
-  if(['da','frei','fza','fb','halb'].includes(typ) && !werktag(s)) return;   // Wochenende/Feiertag auslassen (Urlaub nicht)
+  if(['da','frei','fza','halb'].includes(typ) && !werktag(s)) return;   // Wochenende/Feiertag auslassen (Urlaub und Fortbildung nicht, 1.82)
   const alt = eintrag(p.k, s), sperre = gesperrtFuer(p.k, alt);
   if(sperre){ if(!strich.gemeldet){ strich.gemeldet = true; toast(sperre); } return; }
   if((typ === 'da' || typ === 'frei') && !(alt && alt.typ === typ)) blockBruch(p, s, typ === 'da');
@@ -2106,8 +2106,9 @@ const urlaubstage = (p, y) => {   // nur Werktage verbrauchen Urlaub
   for(let m = 1; m <= 12; m++){
     const f = files[pfadWunsch(p.k, y + '-' + pad(m))];
     for(const [s, e] of Object.entries((f && f.data && f.data.tage) || {})){
+      if(e.typ === 'fb'){ fb++; continue; }   // Fortbildung zaehlt auch am Wochenende (1.82)
       if(!werktag(s)) continue;
-      if(e.typ === 'urlaub'){ n++; if(!e.ok) offen++; } else if(e.typ === 'fb') fb++;
+      if(e.typ === 'urlaub'){ n++; if(!e.ok) offen++; }
     }
   }
   return {n, fb, offen};

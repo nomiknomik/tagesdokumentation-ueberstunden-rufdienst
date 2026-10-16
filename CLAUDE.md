@@ -140,6 +140,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Angaben enden oft am Samstag); weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv, ebenfalls gekürzt);
   Regel-Typ `nachFreiWE` (1.79): kein Dienst am Montag (nur Arbeits-Montag, nicht Feiertag; Ferien egal – 1.81), wenn Sa+So kein eigener Dienst (`regelFreiWE()`, in `bewerte()` und
   Wunschkalender), weich/hart wie andere Regeln; `wt` fest 1. Gegenstück `prefNachFreiWE` (1.80): Montag nach freiem Wochenende bevorzugt (wie `pref`).
+  Fortbildung (1.82) auch an Wochenenden/Feiertagen pinselbar, zählt dort im FB-Zähler und erscheint in TDA als „Fo“.
   Wunschkalender zeigt Termine seit 1.78 ebenso (Balken `terminBand()`, Name am 1. Tag/montags, Ferien hellblau).
   Doppelklick auf einen Termin rechts scrollt den Urlaub-Kalender zum ersten Tag (`urlZuTag()`, 1.77, Kachel blinkt).
   Winterferien legt jede Schule selbst fest → von Hand. Urlaub-Kacheln: Besetzung
