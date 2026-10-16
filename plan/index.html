@@ -314,11 +314,10 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 .ur-st.kn{background:#E9A55A} .ur-st.rot{background:var(--danger)}
 .ur-chips{position:absolute;left:6px;right:6px;bottom:5px;display:flex;flex-wrap:wrap;gap:3px}
 .ur-chip{font-size:11px;font-weight:600;letter-spacing:.03em;line-height:16px;border-radius:6px;padding:1px 6px;color:#fff;background:var(--f);opacity:.85}
-.ur-chip.offen{background:#fff;color:var(--f);border:1.5px dashed var(--f);padding:0 5px;opacity:1}
+.ur-chip.ur-chip.offen{background:#fff;color:var(--f);border:1.5px dashed var(--f);padding:0 5px;opacity:1}
 .ur-chip.fza{background:color-mix(in srgb,var(--f) 16%,#fff);color:var(--f);opacity:1}
 .ur-chip.fb{background:#fff;color:var(--f);border:1px solid var(--f)}
 .ur-chip.tz{background:transparent;color:var(--muted);border:1px dashed var(--muted);opacity:1}
-.ur-chip.meins{opacity:1;box-shadow:0 0 0 1.5px #fff,0 0 0 3px var(--f)}
 
 /* ---------- Meine Eintraege ---------- */
 .zwei{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
@@ -735,7 +734,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.51';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.52';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1256,7 +1255,7 @@ function wochenStatus(p, s){
   const dh = dienstVon(s) === p.k, a = abwesend(p, s), e = eintrag(p.k, s);
   if(dh) return ['dienst', 'Dienst'];
   if(a === 'urlaub') return ['abw', urlOk(e) ? 'Urlaub' : 'Urlaub (beantr.)'];
-  if(a) return ['abw', {fb:'Fortbildung', fza:'FZA', frei:'frei', tz:'frei (TZ)'}[a]];
+  if(a) return ['abw', {fb:'Fortbildung', fza:'FZA', frei:'frei', tz:'frei (TZ)'}[a] + (pflicht(a) && !urlOk(e) ? ' (beantr.)' : '')];
   if(!werktag(s)) return ['', ''];
   if(gefaehrdet(p, s)) return ['gef', 'nach Dienst'];
   return ['da', 'da'];
@@ -1306,9 +1305,11 @@ const istAdmin = () => localStorage.getItem('tagesdoku_admin') === '1';
 const darfVerwalten = () => !cfg.personen.some(p => p.planer) || !!(ich() && ich().planer) || istAdmin();
 const darfVeroeffentlichen = () => !!(ich() && ich().planer) || istAdmin();   // Signieren: nur Planer/Admin
 const darfFuer = k => k === ichK || darfVerwalten();
-const urlOk = e => !!(e && e.typ === 'urlaub' && e.ok);
+/* Freigabepflichtig (Antrag -> Planer genehmigt, ok:{von,am}): Urlaub, Fortbildung, FZA */
+const FREIGABE = ['urlaub', 'fb', 'fza'], pflicht = t => FREIGABE.includes(t);
+const urlOk = e => !!(e && pflicht(e.typ) && e.ok);
 const gesperrtFuer = (k, e) => !darfFuer(k) ? 'Nur für dich selbst – andere trägt der Planer ein.'
-  : urlOk(e) && !darfVerwalten() ? 'Genehmigter Urlaub – ändern nur über den Planer.' : '';
+  : urlOk(e) && !darfVerwalten() ? `${TYPEN[e.typ].name} ist genehmigt – ändern nur über den Planer.` : '';
 
 function renderPlan(){
   const D = dienstDaten(ym) || {tage:{}};
@@ -1348,7 +1349,7 @@ function renderPlan(){
     let ab = '';
     for(const p of personen()){
       const a = abwesend(p, s);
-      if(a) ab += `<span class="chip t-${a} ${a === 'urlaub' && !urlOk(eintrag(p.k, s)) ? 'offen' : ''}" title="${esc(ABW_NAME[a] + (a === 'urlaub' && !urlOk(eintrag(p.k, s)) ? ' (beantragt)' : ''))}">${pk(p)}${icon(ABW_ICON[a])}</span>`;
+      if(a) ab += `<span class="chip t-${a} ${pflicht(a) && !urlOk(eintrag(p.k, s)) ? 'offen' : ''}" title="${esc(ABW_NAME[a] + (pflicht(a) && !urlOk(eintrag(p.k, s)) ? ' (beantragt)' : ''))}">${pk(p)}${icon(ABW_ICON[a])}</span>`;
       else if(gefaehrdet(p, s)) ab += `<span class="chip gef" title="Dienst am Vortag – fehlt evtl.">${pk(p)}${icon('moon')}</span>`;
     }
     // Wuensche
@@ -1480,8 +1481,8 @@ function matrixHtml(info){
           + (x.getauscht ? '<span class="tausch" title="nach Signatur geändert"></span>' : '') + `</div>`
         : `<div class="mx-dienst leer">${x.partner ? `<span class="vorschlag" data-vorschlag="${x.s}|${x.partner}" title="wie ${x.w === 7 ? 'Freitag' : 'Sonntag'} übernehmen">${esc(x.partner)} wie ${x.w === 7 ? 'Fr' : 'So'}?</span>` : darfEinteilen() ? '+ einteilen' : '–'}</div>`;
       const abw = x.abw.filter(([p, a]) => a).map(([p, a, g]) => a
-        ? (a === 'urlaub' && !urlOk(eintrag(p.k, x.s))
-          ? `<span class="mx-mini offen" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': Urlaub (beantragt)')}">${esc(p.k)}</span>`
+        ? (pflicht(a) && !urlOk(eintrag(p.k, x.s))
+          ? `<span class="mx-mini offen" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a] + ' (beantragt)')}">${esc(p.k)}</span>`
           : `<span class="mx-mini" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a])}">${esc(p.k)}</span>`)
         : `<span class="mx-mini gef" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('');
       const wu = x.wu.map(([p, e]) => `<span class="mx-wu ${e.typ} ${e.stufe === 'hart' ? 'hart' : ''}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + ' ' + (e.stufe || ''))}">${icon(TYPEN[e.typ].icon)}${esc(p.k)}</span>`).join('');
@@ -1664,7 +1665,7 @@ function renderMeine(){
   for(let d = 1; d <= n; d++){
     const s = ds(y, mo, d), e = eintrag(p.k, s), ft = feiertag(s), tz = werktag(s) && ((teilzeitFrei(p, s) && !(e && e.typ === 'da')) || !!(e && TYPEN[e.typ] && TYPEN[e.typ].abw));   // abwesend = schraffiert, Wochenende/Feiertag nie
     let inh = '';
-    if(e && TYPEN[e.typ] && e.typ !== 'da' && e.typ !== 'frei') inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''} ${e.typ === 'urlaub' && !e.ok ? 'offen' : ''}"${e.typ === 'urlaub' ? ` title="${e.ok ? 'genehmigt' : 'beantragt – wartet auf Genehmigung'}"` : ''}>${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}${e.typ === 'urlaub' ? (e.ok ? ' ✓' : ' ?') : ''}</span></span>`;
+    if(e && TYPEN[e.typ] && e.typ !== 'da' && e.typ !== 'frei') inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''} ${pflicht(e.typ) && !e.ok ? 'offen' : ''}"${pflicht(e.typ) ? ` title="${e.ok ? 'genehmigt' : 'beantragt – wartet auf Genehmigung'}"` : ''}>${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}${pflicht(e.typ) ? (e.ok ? ' ✓' : ' ?') : ''}</span></span>`;
     if(dienstVon(s) === p.k) inh += `<span class="mein-d">Dienst</span>`;
     const rg = (p.regeln || []).filter(r => r.wt === wt(s)), rk = rg.find(r => r.typ === 'kein'), rp = rg.find(r => r.typ === 'pref');
     const rcls = rk ? 'rkein' : rp ? 'rpref' : '';
@@ -1935,7 +1936,7 @@ function urlTagHtml(s){
   for(const p of personen()){
     const e = eintrag(p.k, s);
     if(e && (e.typ === 'urlaub' || e.typ === 'fb' || e.typ === 'fza'))
-      chips += `<span class="ur-chip ${e.typ} ${e.typ === 'urlaub' && !e.ok ? 'offen' : ''} ${p.k === urlK ? 'meins' : ''}" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + (e.typ === 'urlaub' ? (e.ok ? ' (genehmigt)' : ' (beantragt)') : ''))}">${esc(p.k)}</span>`;
+      chips += `<span class="ur-chip ${e.typ} ${!e.ok ? 'offen' : ''}" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + (e.ok ? ' (genehmigt)' : ' (beantragt)'))}">${esc(p.k)}</span>`;
     else if(!we && !ft && teilzeitFrei(p, s) && !(e && e.typ === 'da') && p.k === urlK)
       chips += `<span class="ur-chip tz" title="Teilzeit frei">${esc(p.k)}</span>`;
   }
@@ -1995,14 +1996,14 @@ function offeneAntraege(){   // [{m, k, tage[]}]
   for(const [pfad, f] of Object.entries(files)){
     const m = pfad.match(/^plan\/wuensche\/([^/]+)\/(\d{4}-\d{2})\.json$/);
     if(!m || !person(m[1]) || !f || !f.data || !f.data.tage) continue;
-    for(const [s, e] of Object.entries(f.data.tage)) if(e.typ === 'urlaub' && !e.ok) (r[m[2] + '|' + m[1]] ||= {m: m[2], k: m[1], tage: []}).tage.push(s);
+    for(const [s, e] of Object.entries(f.data.tage)) if(pflicht(e.typ) && !e.ok) (r[m[2] + '|' + m[1] + '|' + e.typ] ||= {m: m[2], k: m[1], typ: e.typ, tage: []}).tage.push(s);
   }
   return Object.values(r).sort((a, b) => a.m < b.m ? -1 : a.m > b.m ? 1 : a.k < b.k ? -1 : 1);
 }
 function todoBadge(){
   const n = darfVerwalten() ? offeneAntraege().length : 0;
   $('todoZahl').textContent = n; $('todoZahl').classList.toggle('hidden', !n);
-  $('protoBtn').title = n ? `${n} offene Urlaubsanträge (Person je Monat) – Protokoll` : 'Protokoll';
+  $('protoBtn').title = n ? `${n} offene Anträge (Urlaub/FB/FZA, je Person und Monat) – Protokoll` : 'Protokoll';
 }
 function spannen(tage){   // sortierte Tage -> „6.–9.10., 13.10.“
   const t = [...new Set(tage)].sort(), r = [];
@@ -2022,7 +2023,7 @@ function protokollEintraege(){
       const erst = log.length ? Math.min(...log.map(x => x.am)) : Infinity;
       for(const [s, e] of Object.entries(f.data.tage || {})){
         if(e.am && e.am < erst) r.push({am: e.am, von: e.von || w[1], k: w[1], tag: s, alt: '?', neu: wCode(e).replace('✓', '')});
-        if(e.ok && e.ok.am < erst) r.push({am: e.ok.am, von: e.ok.von, k: w[1], tag: s, alt: 'urlaub', neu: 'urlaub✓'});
+        if(e.ok && e.ok.am < erst) r.push({am: e.ok.am, von: e.ok.von, k: w[1], tag: s, alt: e.typ, neu: e.typ + '✓'});
       }
     }
   }
@@ -2042,8 +2043,8 @@ function protokollText(x){
   if(x.alt === '?') return `${codeName(x.neu)} eingetragen <i class="hint">(vor dem Protokoll)</i>`;
   if(!x.alt) return `${codeName(x.neu)} eingetragen`;
   if(!x.neu) return `${codeName(x.alt)} gelöscht`;
-  if(x.alt === 'urlaub' && x.neu === 'urlaub✓') return 'Urlaub genehmigt';
-  if(x.alt === 'urlaub✓' && x.neu === 'urlaub') return 'Urlaub-Genehmigung zurückgenommen';
+  if(x.alt + '✓' === x.neu) return codeName(x.alt) + ' genehmigt';
+  if(x.neu + '✓' === x.alt) return codeName(x.neu) + ': Genehmigung zurückgenommen';
   return `${codeName(x.alt)} → ${codeName(x.neu)}`;
 }
 let protoFilter = '';
@@ -2065,8 +2066,8 @@ function zeigeProtokoll(reiter){
     const je = {}; offen.forEach(x => (je[x.m] ||= []).push(x));
     box.innerHTML = Object.keys(je).length ? Object.entries(je).map(([m, l]) => `<div class="todo-m"><h4><span>${monatName(m)}</span>
         <button class="btn gh" data-zeig="${m}">Ansehen</button>${nurLesen ? '' : `<button class="btn" data-gen="${m}">${icon('check')}Genehmigen</button>`}</h4>`
-        + l.map(x => `<div class="z">${pk(person(x.k))}<span>${esc(person(x.k).name || x.k)}: <b>${spannen(x.tage)}</b> <span class="hint">(${x.tage.filter(werktag).length} Werktage)</span></span></div>`).join('') + '</div>').join('')
-      : '<div class="hint" style="padding:10px 0">Keine offenen Urlaubsanträge (aktuelles und nächstes Jahr). ✓</div>';
+        + l.map(x => `<div class="z">${pk(person(x.k))}<span>${esc(person(x.k).name || x.k)}: ${TYPEN[x.typ].name} <b>${spannen(x.tage)}</b> <span class="hint">(${x.tage.filter(werktag).length} Werktage)</span></span></div>`).join('') + '</div>').join('')
+      : '<div class="hint" style="padding:10px 0">Keine offenen Anträge (Urlaub, Fortbildung, FZA – aktuelles und nächstes Jahr). ✓</div>';
   }else{
     const g = protokollEintraege().filter(x => !protoFilter || x.k === protoFilter || x.von === protoFilter).slice(0, 200);
     const zeit = am => new Date(am).toLocaleString('de-DE', {day: 'numeric', month: 'numeric', year: '2-digit', hour: '2-digit', minute: '2-digit'});
@@ -2088,7 +2089,7 @@ $('protoBtn').onclick = ()=> protokollDialog();
 function urlaubeIm(m){
   const r = [];
   for(const p of personen()){ const f = files[pfadWunsch(p.k, m)];
-    for(const [s, e] of Object.entries((f && f.data && f.data.tage) || {})) if(e.typ === 'urlaub') r.push([p, s, e]); }
+    for(const [s, e] of Object.entries((f && f.data && f.data.tage) || {})) if(pflicht(e.typ)) r.push([p, s, e]); }
   return r;
 }
 function genehmigKnopf(m){
@@ -2097,20 +2098,20 @@ function genehmigKnopf(m){
   if(!offen.length) return darfVerwalten() && !nurLesen
     ? `<button class="ur-gen fertig" data-gen="${m}" data-weg="1" title="Genehmigung zurücknehmen">${icon('check')}genehmigt</button>`
     : `<span class="ur-gen fertig">${icon('check')}genehmigt</span>`;
-  const n = new Set(offen.map(x => x[0].k)).size, wtg = offen.filter(x => werktag(x[1])).length;   // gezaehlt: Werktage
+  const n = new Set(offen.map(x => x[0].k)).size, wtg = offen.filter(x => werktag(x[1])).length || offen.length;   // gezaehlt: Werktage
   return darfVerwalten() && !nurLesen
-    ? `<button class="ur-gen" data-gen="${m}" title="${esc(wtg + ' Urlaubstage (Werktage) von ' + n + ' Person(en)')}">${icon('check')}Urlaub genehmigen (${wtg})</button>`
+    ? `<button class="ur-gen" data-gen="${m}" title="${esc(wtg + ' beantragte Tage Urlaub/FB/FZA (Werktage, Urlaub auch WE) von ' + n + ' Person(en)')}">${icon('check')}Genehmigen (${wtg})</button>`
     : `<span class="ur-gen wartet">${wtg} Tage beantragt</span>`;
 }
 function genehmigen(m, zurueck){
   const liste = urlaubeIm(m).filter(x => zurueck ? x[2].ok : !x[2].ok), je = {};
-  liste.forEach(([p, s]) => (je[p.k] ||= []).push(s));
+  liste.forEach(([p, s, e]) => (je[p.k] ||= []).push(s));
   const txt = Object.entries(je).map(([k, t]) => `${(person(k).name || k)}: ${t.filter(werktag).length} Tag(e), ${kurzDat(t.reduce((a, b) => a < b ? a : b))}–${kurzDat(t.reduce((a, b) => a > b ? a : b))}`).join('\n');
-  if(!liste.length || !confirm(`${monatName(m)} – Urlaub ${zurueck ? 'wieder auf „beantragt“ setzen' : 'genehmigen'}?\n\n${txt}`)) return;
+  if(!liste.length || !confirm(`${monatName(m)} – Urlaub/Fortbildung/FZA ${zurueck ? 'wieder auf „beantragt“ setzen' : 'genehmigen'}?\n\n${txt}`)) return;
   const ok = {von: ichK || 'Admin', am: Date.now()};
   for(const [k, tage] of Object.entries(je))
-    aendern(pfadWunsch(k, m), {tage:{}}, `${k} Urlaub ${zurueck ? 'Genehmigung zurück' : 'genehmigt'}`, d => {
-      for(const s of tage){ const e = d.tage && d.tage[s]; if(!e || e.typ !== 'urlaub') continue; if(zurueck) delete e.ok; else if(!e.ok) e.ok = ok; }
+    aendern(pfadWunsch(k, m), {tage:{}}, `${k} Anträge ${zurueck ? 'Genehmigung zurück' : 'genehmigt'}`, d => {
+      for(const s of tage){ const e = d.tage && d.tage[s]; if(!e || !pflicht(e.typ)) continue; if(zurueck) delete e.ok; else if(!e.ok) e.ok = ok; }
     });
   flush();
 }
@@ -2194,7 +2195,7 @@ function eintragDialog(p, s){
   if(sperre) return toast(sperre);
   let typ = e.typ || 'wunsch', stufe = e.stufe || 'weich';
   dialog(`<h3>${WTL[wt(s)]}, ${kurzDat(s)}${feiertag(s) ? ' · ' + esc(feiertag(s)) : ''}</h3>
-    <div class="unter">${esc(p.name || p.k)}${teilzeitFrei(p, s) ? ' · laut Teilzeitmuster frei' : ''}${e.typ === 'urlaub' ? (e.ok ? ` · Urlaub genehmigt (${esc(e.ok.von)}, ${new Date(e.ok.am).toLocaleDateString('de-DE')})` : ' · Urlaub beantragt') : ''}</div>
+    <div class="unter">${esc(p.name || p.k)}${teilzeitFrei(p, s) ? ' · laut Teilzeitmuster frei' : ''}${pflicht(e.typ) ? (e.ok ? ` · ${TYPEN[e.typ].name} genehmigt (${esc(e.ok.von)}, ${new Date(e.ok.am).toLocaleDateString('de-DE')})` : ` · ${TYPEN[e.typ].name} beantragt`) : ''}</div>
     <div class="typwahl">${Object.entries(TYPEN).map(([k, t]) => `<button data-typ="${k}" class="${k === typ ? 'on' : ''}">${icon(t.icon)}${t.name}</button>`).join('')}</div>
     <div id="stufeBox" style="margin-bottom:12px"><div class="seg"><button data-s="weich">weich</button><button data-s="hart">hart</button></div>
       <span class="hint" style="margin-left:8px">hart = möglichst unbedingt</span></div>
@@ -2221,7 +2222,7 @@ function eintragDialog(p, s){
         aendern(pfadWunsch(p.k, ymVon(tag)), {tage:{}}, `${p.k} ${wert ? TYPEN[wert.typ].name : 'Eintrag gelöscht'}`, d => {
           d.tage ||= {};
           const alt = d.tage[tag];
-          if(wert) d.tage[tag] = {...wert, von: ichK, am: Date.now(), ...(wert.typ === 'urlaub' && alt && alt.typ === 'urlaub' && alt.ok ? {ok: alt.ok} : {})};
+          if(wert) d.tage[tag] = {...wert, von: ichK, am: Date.now(), ...(pflicht(wert.typ) && alt && alt.typ === wert.typ && alt.ok ? {ok: alt.ok} : {})};
           else delete d.tage[tag];
         });
       }

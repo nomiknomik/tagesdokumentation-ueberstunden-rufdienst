@@ -82,15 +82,15 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   oder `tagesdoku_admin` (`darfVeroeffentlichen()`), auch Zurücknehmen.
   Protokoll (1.51): Wunschdateien führen `log` [{am,von,tag,alt,neu}] wie die Dienstdatei – über
   `mitLog()` in `aendern()` (Codes `wCode()`: Typ + ✓ genehmigt + ! hart); Rückgängig setzt `log`
-  nie zurück. Kopf-Knopf `#protoBtn`: Dialog „Offen“ (beantragter Urlaub, nur `darfVerwalten()`,
+  nie zurück. Kopf-Knopf `#protoBtn`: Dialog „Offen“ (beantragt: Urlaub/FB/FZA, nur `darfVerwalten()`,
   Zähler-Badge, `todoLaden()` = aktuelles + nächstes Jahr) und „Protokoll“ (Striche ≤ 2 min
   zusammengefasst; vor 1.51 nur Eintragszeit `am` am Eintrag).
   Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
   = Planer/Admin/niemand ist Planer; sonst nur eigene Einträge (`darfFuer()`), Einstellungen
   nur lesen (`cfgSperren()`, Karte `.frei` ausgenommen), „Person wechseln“ gesperrt.
-  Urlaub = Antrag; Planer genehmigt je Monat im Urlaub-Reiter (`genehmigKnopf()`/`genehmigen()`,
-  `ok:{von,am}` am Eintrag, genau der Stand beim Klick). Beantragt = gestrichelt; genehmigten
-  Urlaub ändert nur der Planer (`gesperrtFuer()`). Abwesend zählt er schon als Antrag.
+  Urlaub, FB und FZA (`FREIGABE`/`pflicht()`, seit 1.52) = Antrag; Planer genehmigt je Monat im Urlaub-Reiter (`genehmigKnopf()`/`genehmigen()`,
+  `ok:{von,am}` am Eintrag, genau der Stand beim Klick). Beantragt = gestrichelt; Genehmigtes
+  ändert nur der Planer (`gesperrtFuer()`). Abwesend zählt er schon als Antrag.
   TDA-Ansicht (1.46, intern `kompakt`, dritte Wahl neben Liste/Matrix, `kompaktHtml()`): Monat wie TDA – Zeilen
   „Nachname, Vorname (Pers.-Nr.)“ (`p.pnr`, Team-Tabelle), Spalten Tage, Sa gelb, So/Feiertag grün;
   Codes ZD1/ZD2/RBD1/RBD2, U, Fo, FZA, 0 (frei/WE), Regeldienst Amb2 (Mo)/Amb4 (wie Tagesdoku `derive()`). Ohne Seitenleiste; Drucken = A4 quer.
