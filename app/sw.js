@@ -1,4 +1,4 @@
-const CACHE = 'tagesdoku-v75';
+const CACHE = 'tagesdoku-v76';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf',
@@ -24,7 +24,7 @@ self.addEventListener('fetch', e => {
     // Network-first fuer die App-Seite selbst: Updates kommen sofort an,
     // ohne dass die Cache-Version manuell hochgezaehlt werden muss.
     e.respondWith(
-      fetch(e.request).then(res => {
+      fetch(e.request.url, {cache: 'no-cache', credentials: 'same-origin'}).then(res => {   // am HTTP-Cache vorbei (Pages: max-age 600)
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
         return res;

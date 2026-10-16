@@ -148,6 +148,10 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   speichern nur solche Tage (`echteTage()`).
 - Zeit-/Tagesrechnung über UTC-Tagesnummern (DST).
 - `clipboard.writeText` synchron am Anfang des Klick-Handlers (iOS-Geste).
+- Notausgang (eigenes `<script>` vor dem Hauptskript): bleibt die Version „v–“ und
+  fliegt ein Fehler, wird der Chip zu „⚠️ Fehler – hier tippen“ (`notUpdate()`:
+  `fetch(…, {cache:'reload'})`, SW-Update, neu laden). Update-Suche ebenfalls mit
+  `cache:'reload'`; SW holt die Seite mit `cache:'no-cache'` (Pages: max-age 600).
 - Service Worker: `index.html` network-first, Rest cache-first, `api.github.com`
   nie über den SW. Neu laden nach SW-Wechsel nur bei Update, nie beim ersten Besuch
   (`ersterBesuch`) – sonst geht ein per Link geöffneter Einladungs-Code verloren.

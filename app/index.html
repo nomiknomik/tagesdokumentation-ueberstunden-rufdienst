@@ -660,6 +660,19 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+/* Notausgang: bricht das Hauptskript ab (Version bleibt „v–“), laesst sich die App
+   trotzdem aktualisieren - frische Seite am HTTP-Cache vorbei, SW-Update, neu laden. */
+window.notUpdate = ()=> Promise.all([fetch('index.html', {cache:'reload'}).catch(()=>{}),
+  navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.update()))).catch(()=>{}) : 0])
+  .then(()=> location.reload());
+addEventListener('error', e=>{
+  const v = document.getElementById('appVersion');
+  if(!v || v.textContent !== 'v–') return;
+  v.textContent = '⚠️ Fehler – hier tippen'; v.title = String(e.message || e.error || '');
+  v.onclick = ()=>{ v.textContent = 'Lädt …'; notUpdate(); };
+});
+</script>
+<script>
 /* ---------- Icons (Lucide/Feather-Stil, inline SVG) ---------- */
 const ICONS = {
   cloudCheck:'<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path><polyline points="9 15 11.5 17.5 15.5 13"></polyline>',
@@ -4029,7 +4042,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.69';
+const APP_VERSION = '1.70';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
@@ -4090,7 +4103,7 @@ $('appVersion').onclick = async ()=>{
   const info = {set textContent(t){ toast(t); }};
   info.textContent = 'Suche nach Update …';
   try{
-    const res = await fetch('index.html?cb=' + Date.now(), {cache:'no-store'});
+    const res = await fetch('index.html', {cache:'reload'});   // holt frisch UND ersetzt den HTTP-Cache (sonst bis 10 min alte Seite)
     const txt = await res.text();
     const m = txt.match(/const APP_VERSION = '([^']+)'/);
     if(m && m[1] !== APP_VERSION){
