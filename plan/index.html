@@ -37,6 +37,7 @@ header{position:sticky;top:0;z-index:20;background:rgba(250,245,236,.94);backdro
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
 .logo .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary-light,#0A7480),var(--primary-dark));
   color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,99,110,.25)}
+.logo img.mark{background:none;box-shadow:none;border-radius:0;width:40px;height:40px}
 .version{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:999px;font-size:10.5px;font-weight:700;
   padding:1px 7px;cursor:pointer;vertical-align:middle}
 .version:hover{color:var(--primary);border-color:var(--primary)}
@@ -403,7 +404,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 <body>
 <header>
   <div class="hd">
-    <div class="logo"><img class="mark" src="icon.svg" alt=""><div>Dienstplanung <button class="version" id="verBtn" title="Auf Update prüfen und neu laden"></button><small>Oberärzte · Allgemein- und Viszeralchirurgie</small></div></div>
+    <div class="logo"><img class="mark" src="logo.svg" alt=""><div>Dienstplanung <button class="version" id="verBtn" title="Auf Update prüfen und neu laden"></button><small>Oberärzte · Allgemein- und Viszeralchirurgie</small></div></div>
     <nav class="tabs">
       <button data-tab="plan" class="on"><span data-icon="grid"></span><span class="txt">Plan</span></button>
       <button data-tab="meine"><span data-icon="heart"></span><span class="txt">Wünsche</span></button>
@@ -652,7 +653,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.39';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.40';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);

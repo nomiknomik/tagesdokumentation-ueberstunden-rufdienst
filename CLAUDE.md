@@ -86,7 +86,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Dienste einteilen/tauschen bleibt für alle offen (`darfEinteilen()`, `gruppen.oa.einteilen`).
   Design (1.39, zwischen alt und ruhig): Matrix-Dienst zart in Personenfarbe (`--f`, color-mix) mit
   Farbstreifen links, Kürzel farbig; Tage weiß, WE schlicht. FZA auch im Urlaub-Reiter (Chip + Pinsel). Icon `icon.svg`
-  (+ PNG 180/192/512, `manifest.webmanifest`) – PNGs aus dem SVG per Playwright rendern.
+  (+ PNG 180/192/512, `manifest.webmanifest`) – PNGs aus dem SVG per Playwright rendern. Kopf-Logo `logo.svg` = gleiches Motiv ohne Petrol-Kachel (Pfeile petrol).
   Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, tage[]}]`, alt:
   `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (aus schulferien.org-
   ICS bis 01/2028), weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv);
