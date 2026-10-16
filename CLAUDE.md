@@ -94,7 +94,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Rückmeldung (1.69, Kopf `#hilfeBtn` „@“): erst `appFoto()` (html2canvas-pro 1.5.11 von jsdelivr – 1.4.1 kann kein
   color-mix; `ignoreElements` #dlg/#tip/.toast), dann `meldeDialog()`; Häkchen „Screenshot anhängen“ Standard AUS
   (Wunsch, Vorschau erst nach Aktivieren). Ablage `plan/meldungen/<zeit>-<kürzel>.json` (+ `.jpg`) direkt per `gh('PUT')`;
-  Admin-Gerät: Reiter „Meldungen“, Zähler `hilfeBadge()`, Bild über `ghRoh()`, Status offen/erledigt.
+  Admin-Gerät: öffnet direkt „Meldungen“ (ohne Screenshot, 1.70), Zähler `hilfeBadge()`, Bild über `ghRoh()`,
+  Tippen = `bildGross()` (Ebene, Tippen = Originalgröße, statt Download), Status offen/erledigt.
   Test nur über http (file:// „tainted canvas“).
   Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
   = Planer/Admin/niemand ist Planer; Einträge darf seit 1.67 jede:r für alle (`darfFuer()` = true, Genehmigtes nur Planer), Einstellungen

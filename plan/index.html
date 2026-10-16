@@ -66,6 +66,10 @@ nav.tabs .ic{width:16px;height:16px}
 .hknopf .badge{position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font:700 11px/18px system-ui,sans-serif;font-style:normal;padding:0 5px;text-align:center}
 #meldText{font:inherit;font-size:14px;border:1px solid var(--border);border-radius:12px;padding:10px;resize:vertical}
 .meld-bild{width:100%;max-height:260px;object-fit:contain;object-position:top;border:1px solid var(--border);border-radius:10px;background:#fff}
+.bild-gross{position:fixed;inset:0;z-index:100;background:rgba(20,18,16,.88);overflow:auto;-webkit-overflow-scrolling:touch;text-align:center;padding:44px 8px 8px}
+.bild-gross img{max-width:100%;cursor:zoom-in;border-radius:6px;background:#fff}
+.bild-gross img.voll{max-width:none;cursor:zoom-out}
+.bild-gross .x{position:fixed;top:8px;right:10px;width:36px;height:36px;border-radius:50%;border:0;background:#fff;font-size:18px;cursor:pointer;z-index:1}
 .meld-z{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--card);font-size:13px}
 .meld-z.erledigt{opacity:.55}
 .meld-z .kopf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
@@ -764,7 +768,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.69';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.70';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2300,6 +2304,18 @@ function hilfeBadge(){
   const n = adminGeraet() ? meldungen().filter(m => m.status !== 'erledigt').length : 0;
   $('hilfeZahl').textContent = n; $('hilfeZahl').classList.toggle('hidden', !n);
 }
+/* Screenshot gross (1.70): Ebene ueber allem statt Download; Tippen wechselt
+   zwischen Fensterbreite und Originalgroesse, ✕ oder Esc schliesst */
+function bildGross(u){
+  const o = document.createElement('div'); o.className = 'bild-gross';
+  o.innerHTML = `<button class="x" title="Schließen">✕</button><img src="${u}" alt="Screenshot">`;
+  const weg = ()=>{ o.remove(); document.removeEventListener('keydown', esc_); };
+  const esc_ = e => { if(e.key === 'Escape'){ e.stopPropagation(); weg(); } };
+  o.querySelector('.x').onclick = weg;
+  o.querySelector('img').onclick = e => e.target.classList.toggle('voll');
+  document.addEventListener('keydown', esc_, true);
+  document.body.appendChild(o);
+}
 async function ghRoh(pfad){   // Datei als Blob (Screenshot ansehen)
   const z = zugang();
   const r = await fetch(`https://api.github.com/repos/${z.repo}/contents/${pfad}`, {cache: 'no-store', headers: {Authorization: 'Bearer ' + z.token, Accept: 'application/vnd.github.raw'}});
@@ -2309,6 +2325,7 @@ async function ghRoh(pfad){   // Datei als Blob (Screenshot ansehen)
 $('hilfeBtn').onclick = async ()=>{
   if(!zugang() || nurLesen) return toast('Melden geht nur mit Verbindung.');
   let bild = null, fehler = '';
+  if(adminGeraet()) return meldeDialog(null, '', 'liste');   // 1.70: Admin zuerst die Meldungen, ohne Screenshot
   $('hilfeBtn').disabled = true;
   try{ bild = await appFoto(); }catch(e){ fehler = e.message; }
   $('hilfeBtn').disabled = false;
@@ -2317,7 +2334,7 @@ $('hilfeBtn').onclick = async ()=>{
 function meldeDialog(bild, fehler, reiter = 'neu'){
   const adm = adminGeraet(), offen = meldungen().filter(m => m.status !== 'erledigt').length;
   dialog(`<h3>Rückmeldung an den Admin</h3>
-    ${adm ? `<div class="seg" id="meldReiter" style="margin-bottom:10px"><button data-r="neu" class="${reiter === 'neu' ? 'on' : ''}">Melden</button><button data-r="liste" class="${reiter === 'liste' ? 'on' : ''}">Meldungen (${offen})</button></div>` : ''}
+    ${adm ? `<div class="seg" id="meldReiter" style="margin-bottom:10px"><button data-r="liste" class="${reiter === 'liste' ? 'on' : ''}">Meldungen (${offen})</button><button data-r="neu" class="${reiter === 'neu' ? 'on' : ''}">Melden</button></div>` : ''}
     <div id="meldInhalt"></div>`, el => {
     const zeig = r => {
       reiter = r; el.querySelectorAll('#meldReiter button').forEach(b => b.classList.toggle('on', b.dataset.r === r));
@@ -2361,7 +2378,9 @@ function meldeDialog(bild, fehler, reiter = 'neu'){
           $('dlgZu').onclick = zu;
           box.querySelectorAll('[data-bild]').forEach(b => b.onclick = async ()=>{
             b.textContent = 'Lade …';
-            try{ const u = await ghRoh(b.dataset.bild); b.remove(); box.querySelector(`[data-platz="${b.dataset.bild.slice(MELD_DIR.length)}"]`).innerHTML = `<a href="${u}" target="_blank" rel="noopener"><img class="meld-bild" src="${u}" alt="Screenshot"></a>`; }
+            try{ const u = await ghRoh(b.dataset.bild); b.remove(); const pl = box.querySelector(`[data-platz="${b.dataset.bild.slice(MELD_DIR.length)}"]`);
+              pl.innerHTML = `<img class="meld-bild" src="${u}" alt="Screenshot" title="Tippen: groß anzeigen" style="cursor:zoom-in">`;
+              pl.querySelector('img').onclick = ()=> bildGross(u); }
             catch(e){ toast(e.message); b.textContent = 'Screenshot ansehen'; }
           });
           box.querySelectorAll('[data-erl]').forEach(b => b.onclick = async ()=>{
