@@ -89,7 +89,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   nie zurück. Kopf-Knopf `#protoBtn`: Dialog „Offen“ (beantragt: Urlaub/FB/FZA, nur `darfVerwalten()`,
   Zähler-Badge, `todoLaden()` = aktuelles + nächstes Jahr) und „Protokoll“ (Striche ≤ 2 min
   zusammengefasst; vor 1.51 nur Eintragszeit `am` am Eintrag). Seit 1.67 lädt `protoLaden()` Wunschdateien
-  Vorjahr–Folgejahr + Dienstdateien ±12 Monate; Filter `protoF` (Monat des betroffenen Tags, geändert von,
+  Vorjahr–Folgejahr + Dienstdateien ±12 Monate; Filter `protoF` (`zeit` = geändert in den letzten 1/7/30 Tagen seit 1.68, Monat des betroffenen Tags, geändert von,
   betroffen = `betr`, Art `protoArt()`), max. 300 Zeilen. Dienst-`log` auf 2000 Einträge begrenzt.
   Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
   = Planer/Admin/niemand ist Planer; Einträge darf seit 1.67 jede:r für alle (`darfFuer()` = true, Genehmigtes nur Planer), Einstellungen

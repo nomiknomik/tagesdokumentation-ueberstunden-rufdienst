@@ -65,6 +65,7 @@ nav.tabs .ic{width:16px;height:16px}
 .hknopf:hover{border-color:var(--primary);color:var(--primary)}
 .hknopf .badge{position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font:700 11px/18px system-ui,sans-serif;font-style:normal;padding:0 5px;text-align:center}
 .proto-filter{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.proto-filter #protoF_zeit{grid-column:1/-1}
 .proto-filter select{min-width:0;font-size:13px}
 .proto-z{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border)}
 .proto-z small{color:var(--muted);white-space:nowrap;font-size:11.5px;padding-top:1px}
@@ -755,7 +756,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.67';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.68';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2195,7 +2196,7 @@ function protokollText(x){
   return `${codeName(x.alt)} → ${codeName(x.neu)}`;
 }
 /* Filter (1.67): Monat = betroffener Tag, geaendert von, betroffene Person, Art */
-let protoF = {m: '', von: '', k: '', art: ''};
+let protoF = {m: '', von: '', k: '', art: '', zeit: ''};   // zeit (1.68): geaendert in den letzten n Tagen
 const PROTO_ART = {dienst: 'Dienst', urlaub: 'Urlaub', fb: 'Fortbildung', fza: 'FZA', anw: 'frei/anwesend/½ Tag', wunsch: 'Dienstwunsch/No-Go', ok: 'Genehmigung'};
 function protoArt(x){
   if(x.dienst || x.meta) return 'dienst';
@@ -2204,13 +2205,13 @@ function protoArt(x){
   const t = n || a;
   return t === 'urlaub' || t === 'fb' || t === 'fza' ? t : t === 'wunsch' || t === 'nogo' ? 'wunsch' : 'anw';
 }
-const protoPasst = x => (!protoF.m || (x.tage || []).some(t => t && t.startsWith(protoF.m)))
+const protoPasst = x => (!protoF.zeit || x.am >= Date.now() - protoF.zeit * 864e5) && (!protoF.m || (x.tage || []).some(t => t && t.startsWith(protoF.m)))
   && (!protoF.von || x.von === protoF.von) && (!protoF.k || (x.betr || []).includes(protoF.k)) && (!protoF.art || protoArt(x) === protoF.art);
 function protoFilterHtml(){
   const m0 = heute().slice(0, 7), monate = Array.from({length: 25}, (_, i) => ymPlus(m0, 12 - i));
   const sel = (f, opts, leer) => `<select id="protoF_${f}" title="${leer}">${[['', leer], ...opts].map(([v, t]) => `<option value="${esc(v)}" ${protoF[f] === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
   const pers = personen().map(p => [p.k, p.name || p.k]);
-  return `<div class="proto-filter">${sel('m', monate.map(m => [m, monatName(m)]), 'alle Monate')}${sel('von', pers, 'geändert von: alle')}${sel('k', pers, 'betroffen: alle')}${sel('art', Object.entries(PROTO_ART), 'alle Arten')}</div>`;
+  return `<div class="proto-filter">${sel('zeit', [['1', 'heute geändert'], ['7', 'geändert: letzte 7 Tage'], ['30', 'geändert: letzte 30 Tage']], 'geändert: jederzeit')}${sel('m', monate.map(m => [m, 'Tage im ' + monatName(m).replace(/^(\S{3})\S*/, '$1')]), 'betrifft: alle Monate')}${sel('von', pers, 'geändert von: alle')}${sel('k', pers, 'betroffen: alle')}${sel('art', Object.entries(PROTO_ART), 'alle Arten')}</div>`;
 }
 /* Protokoll-Umfang (1.67): Wunschdateien von Vorjahr bis naechstem Jahr, Dienstdateien
    12 Monate zurueck bis 12 vor. Einmal je Sitzung, danach ETag (304 zaehlt nicht ins Limit). */
@@ -2253,7 +2254,7 @@ function zeigeProtokoll(reiter){
   }
   icons(box);
   const pr = $('protoReiter'); if(pr) pr.querySelectorAll('button').forEach(b => b.onclick = ()=> zeigeProtokoll(b.dataset.r));
-  ['m', 'von', 'k', 'art'].forEach(f => { const el = $('protoF_' + f); if(el) el.onchange = ()=>{ protoF[f] = el.value; zeigeProtokoll('log'); }; });
+  ['zeit', 'm', 'von', 'k', 'art'].forEach(f => { const el = $('protoF_' + f); if(el) el.onchange = ()=>{ protoF[f] = el.value; zeigeProtokoll('log'); }; });
   box.querySelectorAll('[data-gen]').forEach(b => b.onclick = ()=>{ genehmigen(b.dataset.gen); zeigeProtokoll('todo'); });
   box.querySelectorAll('[data-zeig]').forEach(b => b.onclick = ()=>{ zu(); ym = b.dataset.zeig; merken('planung_monat', ym); document.querySelector('nav.tabs [data-tab="urlaub"]').click(); });
 }
