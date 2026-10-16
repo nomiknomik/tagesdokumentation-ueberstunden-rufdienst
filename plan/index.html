@@ -466,7 +466,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
     <div class="planwrap">
       <div>
         <div class="werkzeug">
-          <span class="seg" id="ansichtSeg"><button data-a="liste">Liste</button><button data-a="matrix">Matrix</button><button data-a="kompakt" title="Monat wie in TDA – zum Übertragen">Kompakt</button></span>
+          <span class="seg" id="ansichtSeg"><button data-a="liste">Liste</button><button data-a="matrix">Matrix</button><button data-a="kompakt" title="Monat wie in TDA – zum Übertragen">TDA</button></span>
           <span class="pill entwurf" id="pubPill">Entwurf</span>
           <span class="hint" id="pubInfo"></span>
           <span style="flex:1"></span>
@@ -474,8 +474,8 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <button class="btn out" id="druckBtn"><span data-icon="printer"></span>Drucken</button>
           <button class="btn out" id="autoBtn" title="Leere Tage automatisch belegen"><span data-icon="activity"></span>Automatisch verteilen</button>
           <button class="btn gh hidden" id="autoWegBtn" title="Automatisch verteilte Dienste entfernen"><span data-icon="x"></span>Vorschlag verwerfen</button>
-          <button class="btn out hidden" id="unpubBtn" title="Veröffentlichung zurücknehmen (Planer/Admin)"><span data-icon="refresh"></span>Zurücknehmen</button>
-          <button class="btn" id="pubBtn"><span data-icon="send"></span>Veröffentlichen</button>
+          <button class="btn out hidden" id="unpubBtn" title="Signatur zurücknehmen (Planer/Admin)"><span data-icon="refresh"></span>Zurücknehmen</button>
+          <button class="btn" id="pubBtn"><span data-icon="send"></span>Signieren</button>
         </div>
         <div class="tabelle" id="planTab"></div>
       </div>
@@ -492,7 +492,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
             <div><span class="chip gef"><span data-icon="moon"></span>XY</span>nach Dienst – fehlt evtl. (nur Liste)</div>
             <div><span class="chip t-wunsch"><span data-icon="heart"></span>hart</span><span class="chip t-wunsch weich"><span data-icon="heart"></span>weich</span>Dienstwunsch</div>
             <div><span class="chip t-nogo"><span data-icon="ban"></span>hart</span><span class="chip t-nogo weich"><span data-icon="ban"></span>weich</span>No-Go</div>
-            <div><span class="tausch"></span>&nbsp;nach Veröffentlichung getauscht</div>
+            <div><span class="tausch"></span>&nbsp;nach Signatur getauscht</div>
             <div><span class="dchip auto" style="padding:2px 8px">Name</span>automatisch verteilt (Vorschlag)</div>
             <div><span class="chip t-urlaub offen" style="padding:2px 8px">Urlaub</span>beantragt, noch nicht genehmigt</div>
           </div>
@@ -602,7 +602,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <button class="btn out" id="nAdd"><span data-icon="plus"></span>Person</button>
         </div>
         <div class="hint" style="margin-top:8px">Das Kürzel ist der Dateiname der Wünsche und lässt sich nachträglich nicht ändern.
-          „Planer“ darf veröffentlichen; ist niemand Planer, dürfen alle.</div>
+          „Planer“ darf signieren, Urlaub genehmigen, Team und Einstellungen ändern und Einladungen erstellen (Admin ebenso).</div>
       </div>
       <div class="card">
         <h3><span data-icon="layers"></span>Teams</h3>
@@ -692,7 +692,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.47';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.48';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1238,7 +1238,7 @@ const istAdmin = () => localStorage.getItem('tagesdoku_admin') === '1';
    Planer/Admin verwalten (Team, Einstellungen, alle Personen, Urlaub genehmigen),
    alle anderen tragen nur fuer sich selbst ein. Ist niemand Planer, duerfen alle. */
 const darfVerwalten = () => !cfg.personen.some(p => p.planer) || !!(ich() && ich().planer) || istAdmin();
-const darfVeroeffentlichen = darfVerwalten;
+const darfVeroeffentlichen = () => !!(ich() && ich().planer) || istAdmin();   // Signieren: nur Planer/Admin
 const darfFuer = k => k === ichK || darfVerwalten();
 const urlOk = e => !!(e && e.typ === 'urlaub' && e.ok);
 const gesperrtFuer = (k, e) => !darfFuer(k) ? 'Nur für dich selbst – andere trägt der Planer ein.'
@@ -1263,7 +1263,7 @@ function renderPlan(){
       if(getauscht) tausche++;
       dzelle = `<span class="dchip ${dienstAuto(s) ? 'auto' : ''}" title="${esc(b.tags.map(t => t[1]).join(' · '))}">${pk(dp)}${esc(nachn(dp))}`
         + (schlimm ? `<span class="warn">${icon('alert')}</span>` : mittel ? `<span class="warno">${icon('alert')}</span>` : '')
-        + (getauscht ? `<span class="tausch" title="Getauscht – veröffentlicht war: ${esc(stand[s] || 'niemand')}"></span>` : '') + `</span>`;
+        + (getauscht ? `<span class="tausch" title="Getauscht – signiert war: ${esc(stand[s] || 'niemand')}"></span>` : '') + `</span>`;
     }else{
       dzelle = `<span class="dchip leer">${darfEinteilen() ? '+ einteilen' : '–'}</span>`;
       if(pub && stand[s]){ tausche++; }
@@ -1322,11 +1322,11 @@ function renderPlan(){
   });
   // Veroeffentlichung
   $('pubPill').className = 'pill ' + (pub ? 'pub' : 'entwurf');
-  $('pubPill').textContent = pub ? 'Veröffentlicht' : 'Entwurf';
+  $('pubPill').textContent = pub ? 'Signiert' : 'Entwurf';
   $('pubInfo').textContent = pub ? `am ${new Date(pub.am).toLocaleDateString('de-DE')} von ${pub.von}` + (tausche ? ` · ${tausche} Änderung${tausche > 1 ? 'en' : ''} seither` : '') : '';
-  $('pubBtn').innerHTML = icon('send') + (pub ? 'Erneut veröffentlichen' : 'Veröffentlichen');
-  $('pubBtn').disabled = !darfVeroeffentlichen() || nurLesen;
-  $('pubBtn').title = darfVeroeffentlichen() ? '' : 'Nur Planer:innen';
+  $('pubBtn').innerHTML = icon('send') + (pub ? 'Erneut signieren' : 'Signieren');
+  $('pubBtn').classList.toggle('hidden', !darfVeroeffentlichen());
+  $('pubBtn').disabled = nurLesen;
   $('unpubBtn').classList.toggle('hidden', !pub || !darfVeroeffentlichen() || nurLesen);
   $('autoBtn').classList.toggle('hidden', !darfEinteilen() || nurLesen);
   $('autoWegBtn').classList.toggle('hidden', !Object.values(D.tage || {}).some(x => x.auto) || nurLesen);
@@ -1411,7 +1411,7 @@ function matrixHtml(info){
       const dienst = x.dp
         ? `<div class="mx-dienst ${dienstAuto(x.s) ? 'auto' : ''}" style="--f:${f}" title="${esc((x.dp.name || x.dp.k) + (x.tipp ? ' · ' + x.tipp : ''))}"><b class="nn">${esc(nachn(x.dp))}</b>`
           + (x.warn ? `<span class="${x.warn === 'r' ? 'warn' : 'warno'}">${icon('alert')}</span>` : '')
-          + (x.getauscht ? '<span class="tausch" title="nach Veröffentlichung geändert"></span>' : '') + `</div>`
+          + (x.getauscht ? '<span class="tausch" title="nach Signatur geändert"></span>' : '') + `</div>`
         : `<div class="mx-dienst leer">${x.partner ? `<span class="vorschlag" data-vorschlag="${x.s}|${x.partner}" title="wie ${x.w === 7 ? 'Freitag' : 'Sonntag'} übernehmen">${esc(x.partner)} wie ${x.w === 7 ? 'Fr' : 'So'}?</span>` : darfEinteilen() ? '+ einteilen' : '–'}</div>`;
       const abw = x.abw.filter(([p, a]) => a).map(([p, a, g]) => a
         ? (a === 'urlaub' && !urlOk(eintrag(p.k, x.s))
@@ -1565,18 +1565,20 @@ $('autoWegBtn').onclick = ()=>{
   tage.forEach(s => einteilen(s, ''));
 };
 $('unpubBtn').onclick = ()=>{
-  if(!confirm(`Veröffentlichung von ${monatName(ym)} zurücknehmen?\n\nDer Plan wird wieder Entwurf, Tausch-Markierungen entfallen.`)) return;
-  aendern(pfadDienst(ym), {tage:{}, log:[]}, 'Veröffentlichung zurückgenommen', d => {
+  if(!darfVeroeffentlichen()) return;
+  if(!confirm(`Signatur von ${monatName(ym)} zurücknehmen?\n\nDer Plan wird wieder Entwurf, Tausch-Markierungen entfallen.`)) return;
+  aendern(pfadDienst(ym), {tage:{}, log:[]}, 'Signatur zurückgenommen', d => {
     delete d.veroeffentlicht;
     (d.log ||= []).push({am: Date.now(), von: ichK, zurueckgenommen: true});
   });
 };
 $('pubBtn').onclick = ()=>{
+  if(!darfVeroeffentlichen()) return toast('Signieren nur Planer/Admin.');
   const D = dienstDaten(ym) || {tage:{}};
   const leer = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
-  if(!confirm(`${monatName(ym)} veröffentlichen?${leer ? `\n\nAchtung: ${leer} Tag(e) noch ohne Dienst.` : ''}\n\nSpätere Änderungen werden dezent als Tausch markiert.`)) return;
+  if(!confirm(`${monatName(ym)} signieren?${leer ? `\n\nAchtung: ${leer} Tag(e) noch ohne Dienst.` : ''}\n\nSpätere Änderungen werden dezent als Tausch markiert.`)) return;
   const stand = {}; Object.entries(D.tage || {}).forEach(([s, x]) => stand[s] = x.oa);
-  aendern(pfadDienst(ym), {tage:{}, log:[]}, 'veröffentlicht', d => {
+  aendern(pfadDienst(ym), {tage:{}, log:[]}, 'signiert', d => {
     d.veroeffentlicht = {am: Date.now(), von: ichK, stand};
     (d.log ||= []).push({am: Date.now(), von: ichK, veroeffentlicht: true});
   });

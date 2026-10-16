@@ -77,14 +77,15 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   (25) von `cfg.urlaubAnspruch` (31). Schnellwahl Dienst: 1. Buchstabe Nachname,
   ab 2. auch Initialen (Nachname+Vorname) oder Kürzel. Matrix zeigt Nachbarmonate
   blass + je eine angeschnittene Woche (Klick = Nachbarmonat); Monatswechsel im Plan
-  nur über den Kopf, nicht per Scrollen. Veröffentlichung zurücknehmen: Planer oder `tagesdoku_admin`.
+  nur über den Kopf, nicht per Scrollen. „Veröffentlichen“ heißt in der Oberfläche **Signieren** (Daten weiter `veroeffentlicht`), nur Planer
+  oder `tagesdoku_admin` (`darfVeroeffentlichen()`), auch Zurücknehmen.
   Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
   = Planer/Admin/niemand ist Planer; sonst nur eigene Einträge (`darfFuer()`), Einstellungen
   nur lesen (`cfgSperren()`, Karte `.frei` ausgenommen), „Person wechseln“ gesperrt.
   Urlaub = Antrag; Planer genehmigt je Monat im Urlaub-Reiter (`genehmigKnopf()`/`genehmigen()`,
   `ok:{von,am}` am Eintrag, genau der Stand beim Klick). Beantragt = gestrichelt; genehmigten
   Urlaub ändert nur der Planer (`gesperrtFuer()`). Abwesend zählt er schon als Antrag.
-  Kompaktansicht (1.46, dritte Wahl neben Liste/Matrix, `kompaktHtml()`): Monat wie TDA – Zeilen
+  TDA-Ansicht (1.46, intern `kompakt`, dritte Wahl neben Liste/Matrix, `kompaktHtml()`): Monat wie TDA – Zeilen
   „Nachname, Vorname (Pers.-Nr.)“ (`p.pnr`, Team-Tabelle), Spalten Tage, Sa gelb, So/Feiertag grün;
   Codes ZD1/ZD2/RBD1/RBD2, U, Fo, FZA, 0 (frei/WE), Regeldienst Amb2 (Mo)/Amb4 (wie Tagesdoku `derive()`). Ohne Seitenleiste; Drucken = A4 quer.
   Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
