@@ -67,6 +67,12 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   ab 2. auch Initialen (Nachname+Vorname) oder Kürzel. Matrix zeigt Nachbarmonate
   blass + je eine angeschnittene Woche (Klick = Nachbarmonat); Monatswechsel im Plan
   nur über den Kopf, nicht per Scrollen. Veröffentlichung zurücknehmen: Planer oder `tagesdoku_admin`.
+  Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
+  = Planer/Admin/niemand ist Planer; sonst nur eigene Einträge (`darfFuer()`), Einstellungen
+  nur lesen (`cfgSperren()`, Karte `.frei` ausgenommen), „Person wechseln“ gesperrt.
+  Urlaub = Antrag; Planer genehmigt je Monat im Urlaub-Reiter (`genehmigKnopf()`/`genehmigen()`,
+  `ok:{von,am}` am Eintrag, genau der Stand beim Klick). Beantragt = gestrichelt; genehmigten
+  Urlaub ändert nur der Planer (`gesperrtFuer()`). Abwesend zählt er schon als Antrag.
   Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, tage[]}]`, alt:
   `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (aus schulferien.org-
   ICS bis 01/2028), weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv);
