@@ -38,7 +38,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   als Funktion, auf frischen Repo-Stand neu angewandt (SHA-Konflikt → wiederholen).
   Hochladen gesammelt (Wunsch): alle 120 s, beim Verlassen von Fenster/Tab oder per
   Klick auf die Wolke (`#status`), nie je Eingabe. Pinsel im Wunsch-Kalender;
-  Teilzeit-Muster `manuell` = Werktage frei außer Eintrag `da`. `da` hat keinen Chip (= weiße
+  Teilzeit-Muster gelten nur an Werktagen (`teilzeitFrei()` → nie WE/Feiertag);
+  `manuell` = Werktage frei außer Eintrag `da`. `da` hat keinen Chip (= weiße
   Kachel); an normalen Arbeitstagen entfernt der Pinsel „anwesend“ nur `frei`. `frei` = schraffiert
   ohne Chip (an Teilzeit-freien Tagen entfernt der Pinsel nur `da`). Typ `fza` = Freizeitausgleich (abwesend).
   Im Wunschkalender ist jede Abwesenheit (Urlaub, FB, FZA, frei) zusätzlich schraffiert.

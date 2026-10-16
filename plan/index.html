@@ -652,7 +652,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.41';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.42';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -978,6 +978,7 @@ const dienstDaten = m => (files[pfadDienst(m)] || {}).data;
 const dienstVon = s => { const d = dienstDaten(ymVon(s)); return (d && d.tage && d.tage[s] && d.tage[s].oa) || ''; };
 const eintrag = (k, s) => { const f = files[pfadWunsch(k, ymVon(s))]; return f && f.data && f.data.tage ? f.data.tage[s] : undefined; };
 function teilzeitFrei(p, s){
+  if(!werktag(s)) return false;   // Teilzeit betrifft nur Werktage, nie Wochenende/Feiertag
   for(const t of p.teilzeit || []){
     if((t.ab && s < t.ab) || (t.bis && s > t.bis)) continue;
     if(t.typ === 'woche' && (t.wt || []).includes(wt(s))) return true;
