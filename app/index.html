@@ -1424,7 +1424,7 @@ async function lokaleKopie(zusatz = ''){
 const echteTageAnzahl = ()=> Object.keys(echteTage()).length + Object.keys(plan).length;
 /* Schon von Hand eingerichtet? Dann lohnt die erste Online-Sicherung auch ohne
    erfasste Tage - die Einstellungen sollen auf das naechste Geraet kommen. */
-const einstellungenGesetzt = ()=> ['name','pnr','nachname','kuerzel'].some(k => String(cfg[k]||'').trim())
+const einstellungenGesetzt = ohne => ['name','pnr','nachname','kuerzel'].some(k => k !== ohne && String(cfg[k]||'').trim())
   || !!(cfg.gehalt && (cfg.gehalt.verlauf || []).length) || !!(cfg.netto && (cfg.netto.refs || []).length);
 async function renderSnaps(){
   const sel = $('snapSel');
@@ -1611,7 +1611,9 @@ async function basisMerken(d){
 }
 /* Drei-Wege-Abgleich je Eintrag (ein Tag, ein Plantag, eine Einstellung):
    nur hier geaendert -> hier, nur online geaendert -> online, beide -> Konflikt.
-   Ohne Basis (erste Verbindung) ist jeder Unterschied ein Konflikt. */
+   Ohne Basis (erste Verbindung): was nur auf einer Seite steht, wird
+   uebernommen (sonst loeschte "OK = online" alle nur hier erfassten Tage),
+   Konflikt nur bei verschiedenen Werten auf beiden Seiten. */
 function zusammenfuehren(basis, lok, onl){
   const erg = kern(lok), konflikte = []; let vonOnline = 0, vonHier = 0;
   for(const b of BEREICHE){
@@ -1619,6 +1621,8 @@ function zusammenfuehren(basis, lok, onl){
     for(const k of new Set([...Object.keys(L), ...Object.keys(R), ...Object.keys(B || {})])){
       const l = kanon(L[k]), o = kanon(R[k]);
       if(l === o) continue;
+      if(!B && L[k] === undefined){ vonOnline++; erg[b][k] = R[k]; continue; }
+      if(!B && R[k] === undefined){ vonHier++; continue; }
       if(B && l === kanon(B[k])){ vonOnline++; if(R[k] === undefined) delete erg[b][k]; else erg[b][k] = R[k]; }
       else if(B && o === kanon(B[k])) vonHier++;
       else konflikte.push({b, k, l: L[k], o: R[k]});
@@ -1648,7 +1652,9 @@ async function hochladen(){
   await basisMerken(stand);
   return true;
 }
-let syncLaeuft = false, syncFehler = '';
+let syncLaeuft = false, syncFehler = '', syncLeer = false;
+/* Wo liegt das Backup? Zum Vergleich zwischen Geraeten (gleiche Datei = gleiche Daten) */
+const syncOrt = ()=> sync.datei ? ` (${sync.repo.toLowerCase() === TEAM_REPO ? 'Team-Repo' : sync.repo}, Datei ${sync.datei.slice(10, 16)})` : '';
 /* Kopf-Symbol: gruener Haken = online gesichert, gelbe Uhr = Aenderung noch nicht
    oben, drehende Pfeile = laeuft, rotes Dreieck = Fehler, graue Wolke = aus */
 function syncStatus(){
@@ -1658,6 +1664,7 @@ function syncStatus(){
       !syncAktiv() ? ['off','cloudOff','Online-Backup nicht eingerichtet']
     : syncLaeuft   ? ['busy','refresh','Wird gesichert …']
     : syncFehler   ? ['err','alertTriangle','Online-Backup: ' + syncFehler]
+    : syncLeer     ? ['wait','alertTriangle','Kein Online-Backup zu dieser Personalnummer + Passwort gefunden']
     : dirty        ? ['wait','clock', navigator.onLine ? 'Änderungen noch nicht online gesichert' : 'Offline – wird später gesichert']
     :                ['ok','cloudCheck','Online gesichert' + (sync.zuletzt ? ': ' + new Date(sync.zuletzt).toLocaleString('de-DE') : '')];
   if(b.dataset.st !== st || b.dataset.ic !== ic){ b.dataset.st = st; b.dataset.ic = ic; b.innerHTML = icon(ic); }
@@ -1683,9 +1690,17 @@ async function abgleichen(manuell){
       const dirty = lokalGeaendert();
       if(!remote){                                   // noch nie gesichert
         sync.sha = null;
-        if((echteTageAnzahl() || einstellungenGesetzt()) && !(await hochladen())) continue;
-        break;
+        /* Personalnr. allein zaehlt nicht: die setzt "Verbinden" selbst in die Kopfdaten */
+        if(echteTageAnzahl() || einstellungenGesetzt('pnr')){ if(!(await hochladen())) continue;
+          if(!echteTageAnzahl()){ msg.innerHTML = `<span class="note">Neues Online-Backup angelegt (noch ohne erfasste Tage)${syncOrt()}. Erwartest du Daten von einem anderen Gerät: dort Personalnummer, Passwort und Repo vergleichen.</span>`; syncLaeuft = false; syncFehler = ''; syncStatus(); return; }
+          break; }
+        /* Nichts hier und nichts online: nicht gruen melden - meist andere
+           Personalnummer/Passwort/Repo als auf dem anderen Geraet */
+        syncLeer = true; syncFehler = '';
+        msg.innerHTML = `<span class="note">Unter dieser Personalnummer und diesem Passwort liegt noch kein Backup${syncOrt()}. Auf dem anderen Gerät prüfen: gleiche Personalnummer, gleiches Passwort, gleiches Repo (dort steht nach „Online gesichert“ dieselbe Datei-Kennung).</span>`;
+        syncLaeuft = false; syncStatus(); return;
       }
+      syncLeer = false;
       const datei = JSON.parse(new TextDecoder().decode(unb64(remote.content.replace(/\s/g,''))));
       if(remote.sha === sync.sha){                   // online = unser letzter Stand
         if(dirty && !(await hochladen())) continue;
@@ -1698,7 +1713,7 @@ async function abgleichen(manuell){
       if(!dirty && !ersteVerbindung || !echteTageAnzahl()){   // hier nichts geaendert: einfach uebernehmen
         sync.sha = remote.sha; sync.zuletzt = data.meta.erstellt; saveSync();
         uebernehmeBackup(data); await basisMerken(backupDaten());   // lokaler Stand nach Uebernahme (inkl. Vorbelegungen)
-        msg.innerHTML = `<span class="ok">Stand von ${wer} übernommen.</span>`;
+        msg.innerHTML = `<span class="ok">Stand von ${wer} übernommen${syncOrt()}.</span>`;
         syncLaeuft = false; syncFehler = ''; syncStatus(); return;
       }
       let basis = null;
@@ -1716,8 +1731,8 @@ async function abgleichen(manuell){
       msg.innerHTML = `<span class="ok">Zusammengeführt mit ${wer}: ${z.vonHier} Einträge von hier, ${z.vonOnline} von online${z.konflikte.length ? `, ${z.konflikte.length} nach Rückfrage` : ''}.</span>`;
       syncLaeuft = false; syncFehler = ''; syncStatus(); return;
     }
-    msg.innerHTML = `<span class="ok">Online gesichert: ${sync.zuletzt ? new Date(sync.zuletzt).toLocaleString('de-DE') : '–'}.</span>`;
-    syncFehler = '';
+    msg.innerHTML = `<span class="ok">Online gesichert: ${sync.zuletzt ? new Date(sync.zuletzt).toLocaleString('de-DE') : '–'}${syncOrt()}.</span>`;
+    syncFehler = ''; syncLeer = false;
   }catch(err){
     msg.innerHTML = `<span class="note">Online-Backup: ${err.message}</span>`;
     syncFehler = err.message;
@@ -1725,14 +1740,16 @@ async function abgleichen(manuell){
   syncLaeuft = false; syncStatus();
 }
 $('sync_repo').value = sync.repo || ''; $('sync_token').value = sync.token || ''; $('sync_pw').value = sync.pw || ''; $('sync_pnr').value = sync.kennung || cfg.pnr || '';
-if(syncAktiv() && sync.zuletzt) $('syncMsg').innerHTML = `<span class="ok">Online gesichert: ${new Date(sync.zuletzt).toLocaleString('de-DE')}.</span>`;
+if(syncAktiv() && sync.zuletzt) $('syncMsg').innerHTML = `<span class="ok">Online gesichert: ${new Date(sync.zuletzt).toLocaleString('de-DE')}${syncOrt()}.</span>`;
 $('syncSave').onclick = ()=>{
   const repo = $('sync_repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$|\/$/g,'');
-  const token = $('sync_token').value.trim(), pw = $('sync_pw').value, pnr = $('sync_pnr').value.replace(/\s+/g,'');
+  let token = $('sync_token').value.trim();
+  const pw = $('sync_pw').value, pnr = $('sync_pnr').value.replace(/\s+/g,'');
+  if(!token && repo.toLowerCase() === TEAM_REPO) token = load(LS_TEILEN, {}).token || '';   // Admin: Team-Token aus der Weitergabe
   if(!token || !repo){ $('syncMsg').innerHTML = '<span class="note">Kein Zugang – QR-Code scannen oder den Link öffnen.</span>'; return; }
   if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ $('syncMsg').innerHTML = '<span class="note">Repo bitte als „besitzer/name“ angeben.</span>'; return; }
   const qr = !istAdmin();
-  if(qr && !pnr){ $('syncMsg').innerHTML = '<span class="note">Bitte deine Personalnummer eintragen.</span>'; return; }
+  if(!pnr){ $('syncMsg').innerHTML = '<span class="note">Bitte deine Personalnummer eintragen.</span>'; return; }
   if(!pw){ $('syncMsg').innerHTML = '<span class="note">Backup-Passwort eintragen.</span>'; return; }
   // Neues Ziel oder Passwort: Abgleich beginnt von vorn (sha vergessen -> Rueckfrage statt stillem Ueberschreiben)
   if(pnr && !String(cfg.pnr||'').trim()){ cfg.pnr = pnr; $('cfg_pnr').value = pnr; save(LS.cfg, cfg); }   // neues Geraet: Kopfdaten vorbelegen
@@ -1805,10 +1822,15 @@ function zugangUebernehmen(z, kopieZeigen){
   if(z.admin && z.g){   // Admin-Geraet: Weitergabe-Daten + Admin-Flag; eigener Sync bleibt unberuehrt
     localStorage.setItem(LS_ADMIN, '1');
     localStorage.setItem(LS_TEILEN, JSON.stringify({...load(LS_TEILEN, {}), repo: z.r, token: z.t, gist: z.g}));
+    localStorage.setItem(LS_UMZUG, '1');
     zugangQr = false; zugangAnsicht();
     document.querySelector('nav button[data-tab=cfg]').click();
     karteAuf($('syncFelder')); $('syncFelder').open = true;
-    $('syncMsg').innerHTML = '<span class="ok">Als Admin-Gerät eingerichtet. Für dein eigenes Backup hier Repo, Token und Passwort eintragen.</span>';
+    /* Seit 1.67 liegt auch das Admin-Backup im Team-Repo (Personalnr. + Passwort wie alle) */
+    $('sync_repo').value = z.r; $('sync_token').value = z.t;
+    if(!$('sync_pnr').value) $('sync_pnr').value = cfg.pnr || '';
+    $('syncMsg').innerHTML = '<span class="ok">Als Admin-Gerät eingerichtet, Team-Zugang eingetragen. Jetzt Personalnummer und Backup-Passwort wie auf deinen anderen Geräten eintragen und „Verbinden“ tippen.</span>';
+    setTimeout(()=> $('sync_pnr').scrollIntoView({block:'center', behavior:'smooth'}), 50);
     return;
   }
   if(z.gist){   // sichtbar laden; Fehler bleiben im Fenster stehen (Toast war zu fluechtig)
@@ -1872,6 +1894,7 @@ $('adminOk').onclick = async ()=>{
 /* Vor 1.52 eingerichtet (QR ab 1.42): Team-Nutzer hatten einen Namen bzw. das
    Team-Repo (1.51 hat den Namen geloescht) und nie selbst einen Code erzeugt. */
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
+const LS_UMZUG = 'tagesdoku_umzug';   // Admin-Backup ins Team-Repo: einmal gefragt (nur Geraet)
 if(sync.repo && !sync.qr && !localStorage.getItem(LS_TEILEN)
    && (sync.name || sync.repo.toLowerCase() === TEAM_REPO)){ sync.qr = true; saveSync(); }
 /* Bis 1.63 war Admin, wer nicht per QR kam. Admin bleibt nur, wer schon
@@ -1880,6 +1903,20 @@ if(localStorage.getItem(LS_ADMIN) === null)
   localStorage.setItem(LS_ADMIN, localStorage.getItem(LS_TEILEN)
     || (sync.repo && !sync.qr && sync.repo.toLowerCase() !== TEAM_REPO) ? '1' : '0');
 zugangAnsicht();
+/* 1.67: Admin-Backup aus eigenem Repo ins Team-Repo (einheitlich, ein Ort fuer alle
+   Geraete). Einmal fragen; die alte Datei im eigenen Repo bleibt unangetastet. */
+{ const t = load(LS_TEILEN, {});   // Admin-Geraet ohne Sync: Team-Zugang schon eintragen
+  if(istAdmin() && !syncAktiv() && t.token && !$('sync_repo').value){ $('sync_repo').value = t.repo || TEAM_REPO; $('sync_token').value = t.token; } }
+setTimeout(()=>{
+  const t = load(LS_TEILEN, {});
+  if(!istAdmin() || !syncAktiv() || sync.repo.toLowerCase() === TEAM_REPO || !t.token || localStorage.getItem(LS_UMZUG)) return;
+  localStorage.setItem(LS_UMZUG, '1');
+  if(!confirm(`Dein Online-Backup liegt noch im eigenen Repo ${sync.repo}, die anderen Geräte nutzen das Team-Repo.\n\nJetzt ins Team-Repo umziehen? Personalnummer und Passwort bleiben gleich, die Daten dieses Geräts werden dort gesichert. Die alte Datei bleibt im eigenen Repo liegen.`)) return;
+  const pnr = sync.kennung || String(cfg.pnr || '').replace(/\s+/g,'');
+  $('sync_repo').value = TEAM_REPO; $('sync_token').value = t.token; $('sync_pnr').value = pnr;
+  if(!pnr){ zuDenZugangsdaten(); $('syncMsg').innerHTML = '<span class="note">Bitte Personalnummer eintragen und „Verbinden“ tippen.</span>'; return; }
+  $('syncSave').click();
+}, 1500);
 $('qrPinOk').onclick = async ()=>{
   const pin = $('qrPinIn').value.trim(); if(!pin || !pinCode) return;
   $('qrPinMsg').textContent = 'Prüfe …';
@@ -2118,13 +2155,13 @@ $('syncModus').onchange = e=>{
     }
     sync = {}; saveSync(); zugangQr = false; zugangAnsicht();
     ['sync_repo','sync_token','sync_pw','sync_pnr'].forEach(id => $(id).value = '');
-    $('syncMsg').textContent = ''; syncFehler = ''; syncStatus();
+    $('syncMsg').textContent = ''; syncFehler = ''; syncLeer = false; syncStatus();
   }
   modusSetzen(e.target.value);
   if(e.target.value === 'online' && !syncAktiv()){ $('syncFelder').open = true; }
 };
 $('syncBtn').onclick = ()=>{
-  if(syncAktiv() && !syncFehler){ abgleichen(true); return; }
+  if(syncAktiv() && !syncFehler && !syncLeer){ abgleichen(true); return; }
   // nicht eingerichtet oder Fehler: zu den Einstellungen, dort steht die Meldung
   document.querySelector('nav button[data-tab=cfg]').click();
   karteAuf($('syncFelder')); $('syncFelder').open = true;
@@ -3953,7 +3990,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.66';
+const APP_VERSION = '1.67';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){

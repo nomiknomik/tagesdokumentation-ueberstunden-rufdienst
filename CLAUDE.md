@@ -136,7 +136,14 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   Klasse `offen`), Start alle zu. Wer per Code in die Einstellungen springt,
   muss die Zielkarte mit `karteAuf(el)` öffnen.
 - Erste Online-Sicherung auch ohne Tage, sobald Einstellungen gesetzt sind
-  (`einstellungenGesetzt()`).
+  (`einstellungenGesetzt('pnr')` – die Personalnr. allein zählt nicht, „Verbinden“
+  setzt sie selbst). Sonst kein Upload, gelbe Warnung (`syncLeer`) statt grüner
+  Wolke. Meldungen zeigen Repo + Datei-Kennung (`syncOrt()`) zum Gerätevergleich.
+- Seit 1.67 auch Admin-Backup im Team-Repo mit Personalnr. + Passwort (Pflicht für
+  alle). Admin-QR trägt Team-Repo/-Token in die Sync-Felder ein; Admin mit eigenem
+  Repo wird einmal zum Umzug gefragt (`tagesdoku_umzug`), alte Datei bleibt.
+- Erste Verbindung ohne Basis: nur einseitige Einträge werden übernommen, Konflikt
+  nur bei verschiedenen Werten auf beiden Seiten.
 - `hasContent()` entscheidet, was als erfasst gilt; `persist()` und Export
   speichern nur solche Tage (`echteTage()`).
 - Zeit-/Tagesrechnung über UTC-Tagesnummern (DST).
