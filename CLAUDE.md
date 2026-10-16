@@ -52,8 +52,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `git/trees` (`ladeJahr()`); Zähler = Urlaub an Werktagen vs. `cfg.urlaubPlan`
   (25) von `cfg.urlaubAnspruch` (31). Schnellwahl Dienst: 1. Buchstabe Nachname,
   ab 2. auch Initialen (Nachname+Vorname) oder Kürzel. Matrix zeigt Nachbarmonate
-  blass + je eine angeschnittene Woche; Mausrad über das Ende wechselt Monat (Plan)
-  im Plan. Veröffentlichung zurücknehmen: Planer oder `tagesdoku_admin`.
+  blass + je eine angeschnittene Woche (Klick = Nachbarmonat); Monatswechsel im Plan
+  nur über den Kopf, nicht per Scrollen. Veröffentlichung zurücknehmen: Planer oder `tagesdoku_admin`.
   Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, tage[]}]`, alt:
   `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (aus schulferien.org-
   ICS bis 01/2028), weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv);

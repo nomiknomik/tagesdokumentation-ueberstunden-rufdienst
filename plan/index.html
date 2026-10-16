@@ -573,7 +573,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.18';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.19';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1518,20 +1518,6 @@ $('urlTab').addEventListener('pointerdown', e => {
   e.preventDefault(); strich = {erledigt: new Set(), url: true}; urlMalen(s);
 });
 $('urlTab').addEventListener('pointermove', e => { if(strich && strich.url){ const s = tagUnter(e, '#urlTab .mx-box[data-tag]'); if(s) urlMalen(s); } });
-/* Matrix im Plan: ueber das Ende hinaus scrollen wechselt den Monat */
-let ueber = 0, ueberT = 0, wechselt = false;
-window.addEventListener('wheel', e => {
-  if(tab !== 'plan' || !$('planTab').classList.contains('matrix') || $('dlg').innerHTML || wechselt) return;
-  const el = document.documentElement, unten = innerHeight + scrollY >= el.scrollHeight - 2, oben = scrollY <= 0;
-  if(!((e.deltaY > 0 && unten) || (e.deltaY < 0 && oben))){ ueber = 0; return; }
-  if(Date.now() - ueberT > 700) ueber = 0;
-  ueberT = Date.now(); ueber += e.deltaY;
-  if(Math.abs(ueber) < 260) return;
-  const n = ueber > 0 ? 1 : -1; ueber = 0; wechselt = true;
-  const ziel = ()=> window.scrollTo({top: n > 0 ? 0 : el.scrollHeight});
-  monatWechseln(n).then(()=>{ ziel(); setTimeout(()=> wechselt = false, 500); });
-  ziel();
-}, {passive: true});
 /* Urlaub: Monat in Bildschirmmitte in den Kopf; an den Enden ein Jahr nachladen */
 let urlScrollT = 0;
 window.addEventListener('scroll', ()=>{
