@@ -46,7 +46,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Zoom −/+ im Kopf: CSS `zoom` auf `main` + `#dlg` (Kopf bleibt), Sticky-Abstände
   über `--z`, 70–200 %, je Gerät in `planung_zoom`. „Automatisch verteilen“
   (`autoVerteilen()`): nur leere Tage, engster Tag zuerst, rote Tags tabu, Fairness
-  über Anteil an max./WE-Diensten/Folgetage; Einträge `auto:true` (gestrichelt),
+  über 3 Vormonate + Monat (`vorher()`, Dienste rel. zum Max., WE/Feiertage), Folgetage; Einträge `auto:true` (gestrichelt),
   „Vorschlag verwerfen“ entfernt nur diese.
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Tooltips sofort über `#tip` (global: `title` wird beim Überfahren zu `data-tip`).

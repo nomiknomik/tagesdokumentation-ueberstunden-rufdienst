@@ -583,7 +583,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.23';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.24';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -824,7 +824,7 @@ async function ladeAlles(){
   try{
     const c = await lesen(pfadCfg);
     cfg = Object.assign(clone(CFG_LEER), c.data || {});
-    const pf = [pfadDienst(ymPlus(ym, -1)), pfadDienst(ym), pfadDienst(ymPlus(ym, 1))];
+    const pf = [-3, -2, -1, 0, 1].map(n => pfadDienst(ymPlus(ym, n)));   // 3 Vormonate fuer die Fairness
     personen().forEach(p => pf.push(pfadWunsch(p.k, ym), pfadWunsch(p.k, ymPlus(ym, 1))));
     await Promise.all(pf.map(lesen));
     cacheSchreiben();
@@ -1080,7 +1080,7 @@ function renderPlan(){
   let z = '';
   for(const p of diensttauglich()){
     const n2 = diensteIm(p.k, ym), max = maxDienste(p);
-    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : ''}</small></div>`
+    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${(()=>{ const h = vorher(p.k); return `3 Vormonate: ${h.n} (WE/Ft ${h.we})`; })()}${p.quote && p.quote < 100 ? ' · Teilzeit ' + p.quote + ' %' : ''}</small></div>`
       + `<div class="zahl">${n2}<small> / ${max}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, max) * 100)}%"></i></div>`;
   }
   const frei = Array.from({length: n}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
@@ -1219,18 +1219,28 @@ function einteilen(s, k, auto){
    (Anteil an max. Diensten, Wochenend-/Feiertagsdienste). Markiert als auto. */
 const dienstAuto = s => { const d = dienstDaten(ymVon(s)); return !!(d && d.tage && d.tage[s] && d.tage[s].auto); };
 const weTag = s => wt(s) >= 6 || !!feiertag(s);
+/* Dienste und WE/Feiertagsdienste der 3 Vormonate */
+function vorher(k){
+  let n = 0, we = 0;
+  for(let i = 1; i <= 3; i++){ const d = dienstDaten(ymPlus(ym, -i));
+    for(const [s, x] of Object.entries((d && d.tage) || {})) if(x.oa === k){ n++; if(weTag(s)) we++; } }
+  return {n, we};
+}
 function autoVerteilen(){
   const alle = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1));
   let offen = alle.filter(s => !dienstVon(s));
   if(!offen.length) return toast('Alle Tage sind schon besetzt.');
-  if(!confirm(`${offen.length} leere Tage in ${monatName(ym)} automatisch belegen?\n\nBestehende Einteilungen bleiben. Die Vorschläge sind gestrichelt markiert und lassen sich mit „Vorschlag verwerfen“ wieder entfernen.`)) return;
+  if(!confirm(`${offen.length} leere Tage in ${monatName(ym)} automatisch belegen?\n\nBestehende Einteilungen bleiben. Ausgeglichen wird über diesen und die 3 Vormonate. Die Vorschläge sind gestrichelt markiert und lassen sich mit „Vorschlag verwerfen“ wieder entfernen.`)) return;
   const weZahl = k => alle.filter(s => weTag(s) && dienstVon(s) === k).length;
+  const hist = {}; diensttauglich().forEach(p => hist[p.k] = vorher(p.k));
   let n = 0; const rest = [];
   while(offen.length){
     let best = null;
     for(const s of offen){
       const kand = diensttauglich().map(p => ({p, ...bewerte(p, s)})).filter(x => !x.tags.some(t => t[0] === 'r'));
-      kand.forEach(x => { x.wert = x.score + x.n * 3 - x.n / Math.max(1, x.max) * 40 - (weTag(s) ? weZahl(x.p.k) * 15 : 0)
+      /* Fairness ueber 4 Monate (3 Vormonate + dieser): Dienste relativ zum eigenen Max., WE/Feiertage absolut */
+      kand.forEach(x => { const h = hist[x.p.k];
+        x.wert = x.score + x.n * 3 - (h.n + x.n) / Math.max(1, x.max) * 25 - (weTag(s) ? (h.we + weZahl(x.p.k)) * 12 : 0)
         - ((dienstVon(plus(s, -1)) === x.p.k || dienstVon(plus(s, 1)) === x.p.k) ? 30 : 0) + Math.random(); });
       kand.sort((a, b) => b.wert - a.wert);
       if(!best || kand.length < best.kand.length) best = {s, kand};
