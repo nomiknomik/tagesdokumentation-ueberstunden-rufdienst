@@ -33,7 +33,7 @@ button,input,select{font:inherit;color:inherit}
 /* ---------- Kopf ---------- */
 header{position:sticky;top:0;z-index:20;background:rgba(250,245,236,.94);backdrop-filter:blur(8px);
   border-bottom:1px solid var(--border)}
-.hd{max-width:1320px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hd{max-width:1320px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
 .logo .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary-light,#0A7480),var(--primary-dark));
   color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,99,110,.25)}
@@ -42,12 +42,12 @@ header{position:sticky;top:0;z-index:20;background:rgba(250,245,236,.94);backdro
 .version:hover{color:var(--primary);border-color:var(--primary)}
 .logo small{display:block;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.02em}
 nav.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px}
-nav.tabs button{border:0;background:transparent;padding:7px 14px;border-radius:999px;display:flex;gap:6px;align-items:center;
+nav.tabs button{border:0;background:transparent;padding:7px 11px;border-radius:999px;display:flex;gap:6px;align-items:center;
   color:var(--text2);font-weight:600;cursor:pointer}
 nav.tabs button.on{background:var(--primary);color:#fff}
 nav.tabs .ic{width:16px;height:16px}
 .monat{display:flex;align-items:center;gap:6px;margin-left:auto}
-.monat h2{margin:0;font-size:17px;min-width:150px;text-align:center}
+.monat h2{margin:0;font-size:17px;min-width:140px;text-align:center}
 .rund{width:34px;height:34px;border-radius:999px;border:1.5px solid var(--border);background:var(--card);color:var(--primary);
   display:flex;align-items:center;justify-content:center;cursor:pointer}
 .rund:hover{border-color:var(--primary)}
@@ -55,6 +55,9 @@ nav.tabs .ic{width:16px;height:16px}
 .zoom{display:flex;align-items:center;border:1px solid var(--border);background:var(--card);border-radius:999px;overflow:hidden}
 .zoom button{border:0;background:transparent;width:30px;height:30px;font-size:17px;font-weight:700;color:var(--primary);cursor:pointer}
 .zoom button:hover{background:var(--primary-soft)}
+.zoom-trenn{width:1px;align-self:stretch;margin:6px 2px;background:var(--border)}
+.zoom button:disabled{color:var(--muted);opacity:.45;cursor:default;background:transparent}
+.zoom button .ic{width:16px;height:16px;vertical-align:middle}
 .zoom span{font-size:11px;font-weight:700;color:var(--text2);min-width:40px;text-align:center}
 .status{border:0;background:transparent;cursor:pointer;padding:4px 6px;border-radius:8px}
 .status:hover{background:var(--primary-soft)}
@@ -410,7 +413,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
       <h2 id="mTitel">–</h2>
       <button class="rund" id="mVor" title="Nächster Monat"><span data-icon="chevronRight"></span></button>
     </div>
-    <div class="zoom" title="Darstellung verkleinern/vergrößern (je Gerät)"><button id="zoomMinus">−</button><span id="zoomWert">100 %</span><button id="zoomPlus">+</button></div>
+    <div class="zoom"><button id="undoBtn" title="Rückgängig (Strg+Z), bis 10 Schritte"><span data-icon="undo"></span></button><button id="redoBtn" title="Wiederholen (Strg+Y)"><span data-icon="redo"></span></button><i class="zoom-trenn"></i><button id="zoomMinus" title="verkleinern (je Gerät)">−</button><span id="zoomWert">100 %</span><button id="zoomPlus" title="vergrößern (je Gerät)">+</button></div>
     <button class="status" id="status" data-st="off" title="Jetzt speichern bzw. neu laden"><span data-icon="cloud"></span><span id="statusTxt">offline</span></button>
     <div class="ich" id="ichBtn" title="Angemeldet als"></div>
   </div>
@@ -647,7 +650,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.36';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.37';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -675,6 +678,8 @@ const ICONS = {
   plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
   x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   send:'<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+  undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  redo:'<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
   copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   printer:'<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
   clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
@@ -836,13 +841,64 @@ function aendern(pfad, leer, was, fn){
   if(nurLesen){ toast('Offline – nur lesen.'); return; }
   const f = files[pfad] || (files[pfad] = {data: null, sha: null});
   if(!f.data) f.data = clone(leer);
+  const vor = clone(f.data);
   fn(f.data, false);
+  const st = schrittFuer();
+  if(st) st.push({pfad, leer, vor, nach: clone(f.data)});
   const q = queue[pfad] || (queue[pfad] = {fns: [], leer, was: new Set()});
   q.fns.push(fn); q.was.add(was);
   ungespeichert();
   if(!flushTimer) flushTimer = setTimeout(flush, SPEICHER_INTERVALL);
   render();
 }
+/* Rueckgaengig / Wiederholen (max. 10 Schritte, nur eigene Aenderungen dieser Sitzung).
+   Ein Schritt = alle aendern() einer Aktion (ein Klick bzw. ein Pinselstrich). Zurueckgesetzt
+   werden nur die Stellen, die der Schritt geaendert hat - als neue Aenderung ueber aendern(),
+   also auf den frischen Repo-Stand; Aenderungen anderer bleiben erhalten. */
+const UNDO_MAX = 10;
+let undoStack = [], redoStack = [], schritt = null, imUndo = false;
+function schrittFuer(){
+  if(imUndo) return null;
+  if(!schritt){
+    schritt = []; undoStack.push(schritt); if(undoStack.length > UNDO_MAX) undoStack.shift(); redoStack = [];
+    if(!strich) setTimeout(()=>{ schritt = null; });
+  }
+  return schritt;
+}
+const istObj = x => x && typeof x === 'object' && !Array.isArray(x);
+function diffPfade(a, b, pre = []){   // Stellen, an denen b von a abweicht -> [[pfad, wert in b]]
+  if(istObj(a) && istObj(b)) return [...new Set([...Object.keys(a), ...Object.keys(b)])].flatMap(k => diffPfade(a[k], b[k], [...pre, k]));
+  return JSON.stringify(a) === JSON.stringify(b) ? [] : [[pre, b === undefined ? undefined : clone(b)]];
+}
+function setzePfad(d, pfad, wert){
+  let o = d;
+  for(const k of pfad.slice(0, -1)){ if(!istObj(o[k])) o[k] = {}; o = o[k]; }
+  const k = pfad[pfad.length - 1];
+  if(wert === undefined) delete o[k]; else o[k] = clone(wert);
+}
+function undoRedo(zurueck){
+  const st = (zurueck ? undoStack : redoStack).pop();
+  if(!st) return;
+  imUndo = true;
+  try{
+    for(const e of zurueck ? [...st].reverse() : st){
+      const stellen = zurueck ? diffPfade(e.nach, e.vor) : diffPfade(e.vor, e.nach);
+      if(stellen.length) aendern(e.pfad, e.leer, zurueck ? 'rückgängig' : 'wiederholt', d => stellen.forEach(([p, w]) => p.length ? setzePfad(d, p, w) : null));
+    }
+  }finally{ imUndo = false; }
+  (zurueck ? redoStack : undoStack).push(st);
+  undoKnoepfe(); toast(zurueck ? 'Rückgängig gemacht.' : 'Wiederholt.');
+}
+const undoKnoepfe = ()=>{ $('undoBtn').disabled = !undoStack.length || nurLesen; $('redoBtn').disabled = !redoStack.length || nurLesen; };
+$('undoBtn').onclick = ()=> undoRedo(true);
+$('redoBtn').onclick = ()=> undoRedo(false);
+document.addEventListener('keydown', e => {
+  if(!(e.ctrlKey || e.metaKey) || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  const k = e.key.toLowerCase();
+  if(k === 'z' && !e.shiftKey){ e.preventDefault(); undoRedo(true); }
+  else if(k === 'y' || (k === 'z' && e.shiftKey)){ e.preventDefault(); undoRedo(false); }
+});
+
 /* Gespeichert wird gesammelt: spaetestens nach 120 s, beim Verlassen von
    Fenster/Tab oder per Klick auf die Wolke - nicht bei jeder Eingabe. */
 const SPEICHER_INTERVALL = 120000;
@@ -1012,7 +1068,7 @@ function bewerte(p, s){
 }
 
 /* ---------- UI-Helfer ---------- */
-function toast(t){ const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(()=> el.remove(), 3200); }
+function toast(t){ document.querySelectorAll('.toast').forEach(x => x.remove()); const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(()=> el.remove(), 3200); }
 function status(st, txt){ $('status').dataset.st = st; $('statusTxt').textContent = txt; }
 /* letzte Klickposition (fuer Dialoge neben der Maus) */
 let klickXY = null;
@@ -1057,6 +1113,7 @@ $('mVor').onclick = ()=> monatWechseln(1);
 $('druckBtn').onclick = ()=> window.print();
 
 function render(){
+  undoKnoepfe();
   cfg = Object.assign(clone(CFG_LEER), (files[pfadCfg] || {}).data || {});
   $('mTitel').textContent = monatName(ym);
   const p = ich();
@@ -1402,7 +1459,7 @@ function renderMeine(){
   let h = WT.slice(1).map(x => `<div class="kk">${x}</div>`).join('');
   for(let i = 1; i < wt(ds(y, mo, 1)); i++) h += '<div class="leer"></div>';
   for(let d = 1; d <= n; d++){
-    const s = ds(y, mo, d), e = eintrag(p.k, s), ft = feiertag(s), tz = (teilzeitFrei(p, s) && !(e && e.typ === 'da')) || !!(e && e.typ === 'frei');
+    const s = ds(y, mo, d), e = eintrag(p.k, s), ft = feiertag(s), tz = (teilzeitFrei(p, s) && !(e && e.typ === 'da')) || !!(e && TYPEN[e.typ] && TYPEN[e.typ].abw);   // abwesend = schraffiert
     let inh = '';
     if(e && TYPEN[e.typ] && e.typ !== 'da' && e.typ !== 'frei') inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''} ${e.typ === 'urlaub' && !e.ok ? 'offen' : ''}"${e.typ === 'urlaub' ? ` title="${e.ok ? 'genehmigt' : 'beantragt – wartet auf Genehmigung'}"` : ''}>${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}${e.typ === 'urlaub' ? (e.ok ? ' ✓' : ' ?') : ''}</span></span>`;
     if(dienstVon(s) === p.k) inh += `<span class="mein-d">Dienst</span>`;
@@ -1535,7 +1592,7 @@ $('kal').addEventListener('pointerdown', e => {
   e.preventDefault(); strich = {erledigt: new Set()}; pinselTag(s);
 });
 $('kal').addEventListener('pointermove', e => { if(strich){ const s = tagUnter(e); if(s) pinselTag(s); } });
-['pointerup','pointercancel'].forEach(t => window.addEventListener(t, ()=>{ strich = null; }));
+['pointerup','pointercancel'].forEach(t => window.addEventListener(t, ()=>{ if(strich) schritt = null; strich = null; }));
 
 /* =================== Termine (Ferien, Kongresse) =================== */
 const TERMIN = {ferien: {name: 'Ferien', farbe: '#5B9BD5'}, kongress: {name: 'Kongress', farbe: '#7A5AA6'}, sonst: {name: 'Termin', farbe: '#8A7F72'}};

@@ -40,7 +40,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Klick auf die Wolke (`#status`), nie je Eingabe. Pinsel im Wunsch-Kalender;
   Teilzeit-Muster `manuell` = Werktage frei außer Eintrag `da`. `da` hat keinen Chip (= weiße
   Kachel); an normalen Arbeitstagen entfernt der Pinsel „anwesend“ nur `frei`. `frei` = schraffiert
-  ohne Chip (an Teilzeit-freien Tagen entfernt der Pinsel nur `da`). Typ `fza` = Freizeitausgleich (abwesend). Neues Muster beendet
+  ohne Chip (an Teilzeit-freien Tagen entfernt der Pinsel nur `da`). Typ `fza` = Freizeitausgleich (abwesend).
+  Im Wunschkalender ist jede Abwesenheit (Urlaub, FB, FZA, frei) zusätzlich schraffiert.
+  Rückgängig/Wiederholen (1.37, Kopf + Strg+Z/Y): max. 10 Schritte, Schritt = alle `aendern()` einer
+  Aktion (Klick bzw. Pinselstrich); setzt per `diffPfade()` nur die geänderten Stellen zurück, über
+  `aendern()` auf den frischen Stand – fremde Änderungen bleiben. Neues Muster beendet
   laufende am Vortag (Rückfrage). Datumsfelder, die render() auslösen: erst bei Blur/1,5 s Ruhe speichern. `PLAN_VERSION` bei
   jeder Änderung hochzählen; Klick auf die Version speichert und lädt ohne Cache neu.
   Plan als Liste oder Matrix (1 Zeile = 1 KW, `matrixHtml()`, nur > 760 px,
