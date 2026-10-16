@@ -367,6 +367,8 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 .pinsel button .ic{width:14px;height:14px}
 .kal button.tz{background:repeating-linear-gradient(135deg,#F3EEE7 0 6px,#fff 6px 12px)}
 .kal button .n{font-weight:800;font-size:14px}
+.kal button .tn{font-size:9.5px;font-weight:700;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kal button.ferien:not(.we):not(.ft):not(.tz){background:#F1F6FC}
 .kal button .fn{font-size:9.5px;color:var(--danger);font-weight:600;line-height:1.1}
 .kal button .chip{font-size:10.5px;padding:1px 6px 1px 3px}
 .kal button .mein-d{font-size:10px;color:#fff;background:var(--primary);border-radius:6px;padding:1px 5px;font-weight:700}
@@ -767,7 +769,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.77';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.78';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1834,7 +1836,11 @@ function renderMeine(){
     const rg = (p.regeln || []).filter(r => r.wt === wt(s)), rk = rg.find(r => r.typ === 'kein'), rp = rg.find(r => r.typ === 'pref');
     const rcls = rk ? 'rkein' : rp ? 'rpref' : '';
     if(rcls) inh += `<span class="rm" title="${rk ? 'Regel: kein Dienst (' + rk.stufe + ')' : 'Regel: Dienst bevorzugt'}">${icon(rk ? 'ban' : 'heart')}</span>`;
-    h += `<button data-tag="${s}" class="${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''} ${tz ? 'tz' : ''} ${rcls}"><span class="n">${d}</span>${ft ? `<span class="fn">${esc(ft)}</span>` : ''}${inh}</button>`;
+    /* Termine (1.78): Farbbalken oben, Name am ersten Tag bzw. montags, Ferien hellblau */
+    const tm = termineAm(s).filter(t => t.art !== 'feiertag');
+    const tname = tm.filter(t => terminSpanne(t)[0] === s || !imTermin(t, plus(s, -1)) || wt(s) === 1)
+      .map(t => `<span class="tn" style="color:${TERMIN[t.art].farbe}" title="${esc(TERMIN[t.art].name + ': ' + t.name)}">${esc(t.name)}</span>`).join('');
+    h += `<button data-tag="${s}" class="${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''} ${tz ? 'tz' : ''} ${rcls} ${tm.some(t => t.art === 'ferien') ? 'ferien' : ''}">${terminBand(s)}<span class="n">${d}</span>${ft ? `<span class="fn">${esc(ft)}</span>` : ''}${tname}${inh}</button>`;
   }
   $('kal').innerHTML = h;
   const lesen = !darfFuer(p.k);
