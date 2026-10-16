@@ -144,7 +144,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .tagzelle b{font-size:15px}
 .tagzelle .wt{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase}
 .tagzelle .ftn{font-size:10.5px;color:var(--danger);font-weight:600;line-height:1.2}
-.dzelle{cursor:pointer;position:relative}
+.dzelle{cursor:pointer;position:relative;touch-action:pan-y}
 .dzelle:hover{background:rgba(0,99,110,.05)}
 .dzelle.gesperrt{cursor:default}
 .dzelle .art{font-size:10.5px;color:var(--muted);font-weight:700;margin-left:auto}
@@ -550,6 +550,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
             <div><span class="dchip auto" style="padding:2px 8px">Name</span>automatisch verteilt (Vorschlag)</div>
             <div><span class="chip t-urlaub offen" style="padding:2px 8px">Urlaub</span>beantragt, noch nicht genehmigt</div>
             <div><span class="mx-mini halb vm" style="--f:#8E3B6B;min-width:26px">CH</span>½ Tag weg – links gefüllt = vormittags, rechts = nachmittags</div>
+            <div><span class="chip" style="padding:2px 8px">Entf</span>Dienst löschen: Maus über den Tag + Entf, am Handy nach links wischen</div>
           </div>
         </div>
       </aside>
@@ -750,7 +751,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.59';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.60';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1413,6 +1414,7 @@ function renderPlan(){
   tab_.querySelectorAll('.dzelle').forEach(el => el.onclick = e => {
     const v = e.target.closest('[data-vorschlag]');
     if(v){ e.stopPropagation(); const [s, k] = v.dataset.vorschlag.split('|'); einteilen(s, k); return; }
+    if(Date.now() - dienstWischEnde < 400) return;   // war ein Wischen
     if(darfEinteilen()) waehlen(el.dataset.tag);
   });
   // Veroeffentlichung
@@ -1580,7 +1582,7 @@ function waehlen(s){
     ${liste.map(x => `<button class="kand ${x.p.k === akt ? 'akt' : ''} ${x.score <= -50 ? 'schlecht' : ''}" data-k="${esc(x.p.k)}">
       ${pk(x.p)}<span class="mid"><b>${esc(x.p.name || x.p.k)}</b><span class="tags">${x.tags.map(t => `<span class="tag ${t[0]}">${esc(t[1])}</span>`).join('') || '<span class="tag n">keine Einträge</span>'}</span></span>
       <span class="cnt">${x.n}/${x.max}</span></button>`).join('')}
-    <div class="fuss">${akt ? '<button class="btn out" data-k="">' + icon('trash') + 'Leeren</button>' : ''}<button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
+    <div class="fuss">${akt ? '<button class="btn out" data-k="" title="Taste Entf">' + icon('trash') + 'Leeren</button>' : ''}<button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
     el => {
       el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ einteilen(s, b.dataset.k); zu(); });
       $('dlgZu').onclick = zu;
@@ -1604,6 +1606,7 @@ function waehlen(s){
       };
       dialogTaste = e => {
         if(e.ctrlKey || e.metaKey || e.altKey) return;
+        if(e.key === 'Delete' && akt){ e.preventDefault(); einteilen(s, ''); zu(); return; }   // Entf = Leeren
         const t = treffer();
         if(e.key === 'Enter' && tipp && t[wahl]){ e.preventDefault(); t[wahl].click(); return; }
         if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); if(t.length) wahl = (wahl + (e.key === 'ArrowDown' ? 1 : -1) + t.length) % t.length; zeigen(); return; }
@@ -1634,6 +1637,48 @@ function einteilen(s, k, auto){
     d.log.push({am: Date.now(), von: ichK, tag: s, alt: jetzt, neu: k, ...(auto ? {auto: true} : {})});
   });
 }
+/* Dienst bequem loeschen (1.60): Maus ueber dem Tag + Entf/Ruecktaste (Desktop),
+   nach links wischen (Handy). Rueckgaengig wie immer ueber Strg+Z bzw. den Kopf-Knopf. */
+let planHover = '', dienstWischEnde = 0;
+const dienstWeg = s => {
+  const k = dienstVon(s); if(!k || !darfEinteilen() || nurLesen) return;
+  einteilen(s, ''); toast(`Dienst ${k} am ${kurzDat(s)} entfernt – rückgängig mit ↶`);
+};
+$('planTab').addEventListener('mouseover', e => { const z = e.target.closest('.dzelle[data-tag]'); planHover = z ? z.dataset.tag : ''; });
+$('planTab').addEventListener('mouseleave', ()=>{ planHover = ''; });
+document.addEventListener('keydown', e => {
+  if(tab !== 'plan' || !planHover || $('dlg').innerHTML || (e.key !== 'Delete' && e.key !== 'Backspace')) return;
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
+  if(!dienstVon(planHover)) return;
+  e.preventDefault(); dienstWeg(planHover);
+});
+let dWisch = null;
+$('planTab').addEventListener('touchstart', e => {
+  const z = e.target.closest('.dzelle[data-tag]');
+  dWisch = z && e.touches.length === 1 && dienstVon(z.dataset.tag) && darfEinteilen() && !nurLesen
+    ? {z, s: z.dataset.tag, x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, quer: null} : null;
+}, {passive: true});
+$('planTab').addEventListener('touchmove', e => {
+  if(!dWisch) return;
+  const t = e.touches[0], dx = t.clientX - dWisch.x, dy = t.clientY - dWisch.y;
+  if(dWisch.quer === null && Math.hypot(dx, dy) > 8) dWisch.quer = Math.abs(dx) > Math.abs(dy) * 1.5 && dx < 0;
+  if(!dWisch.quer) return;
+  e.preventDefault();
+  dWisch.dx = Math.min(0, dx);
+  dWisch.z.style.transform = `translateX(${dWisch.dx}px)`;
+  dWisch.z.style.background = dWisch.dx < -80 ? 'rgba(194,73,46,.16)' : 'rgba(194,73,46,.06)';
+}, {passive: false});
+const dWischEnde = ()=>{
+  if(!dWisch) return;
+  const {z, s, dx, quer} = dWisch; dWisch = null;
+  if(quer) dienstWischEnde = Date.now();
+  z.style.transition = 'transform .15s'; z.style.transform = ''; z.style.background = '';
+  setTimeout(()=>{ z.style.transition = ''; }, 200);
+  if(quer && dx < -80) dienstWeg(s);
+};
+$('planTab').addEventListener('touchend', dWischEnde);
+$('planTab').addEventListener('touchcancel', dWischEnde);
+
 /* =================== Automatische Verteilung ===================
    Fuellt nur leere Tage. Immer den Tag mit den wenigsten moeglichen Kandidaten
    zuerst; harte Ausschluesse (rot: abwesend, No-Go/Regel hart, max. erreicht,
