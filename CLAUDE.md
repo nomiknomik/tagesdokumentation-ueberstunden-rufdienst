@@ -38,7 +38,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   als Funktion, auf frischen Repo-Stand neu angewandt (SHA-Konflikt → wiederholen).
   Hochladen gesammelt (Wunsch): alle 120 s, beim Verlassen von Fenster/Tab oder per
   Klick auf die Wolke (`#status`), nie je Eingabe. Pinsel im Wunsch-Kalender;
-  Teilzeit-Muster `manuell` = Werktage frei außer Eintrag `da`. `PLAN_VERSION` bei
+  Teilzeit-Muster `manuell` = Werktage frei außer Eintrag `da`. `da` hat keinen Chip (= weiße
+  Kachel); an normalen Arbeitstagen entfernt der Pinsel „anwesend“ nur `frei`. Neues Muster beendet
+  laufende am Vortag (Rückfrage). Datumsfelder, die render() auslösen: erst bei Blur/1,5 s Ruhe speichern. `PLAN_VERSION` bei
   jeder Änderung hochzählen; Klick auf die Version speichert und lädt ohne Cache neu.
   Plan als Liste oder Matrix (1 Zeile = 1 KW, `matrixHtml()`, nur > 760 px,
   Wahl in `planung_ansicht`); beide aus denselben Tagesdaten (`info`). Letzter

@@ -646,7 +646,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.34';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.35';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1402,7 +1402,7 @@ function renderMeine(){
   for(let d = 1; d <= n; d++){
     const s = ds(y, mo, d), e = eintrag(p.k, s), ft = feiertag(s), tz = teilzeitFrei(p, s) && !(e && e.typ === 'da');
     let inh = '';
-    if(e && TYPEN[e.typ]) inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''} ${e.typ === 'urlaub' && !e.ok ? 'offen' : ''}"${e.typ === 'urlaub' ? ` title="${e.ok ? 'genehmigt' : 'beantragt – wartet auf Genehmigung'}"` : ''}>${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}${e.typ === 'urlaub' ? (e.ok ? ' ✓' : ' ?') : ''}</span></span>`;
+    if(e && TYPEN[e.typ] && e.typ !== 'da') inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''} ${e.typ === 'urlaub' && !e.ok ? 'offen' : ''}"${e.typ === 'urlaub' ? ` title="${e.ok ? 'genehmigt' : 'beantragt – wartet auf Genehmigung'}"` : ''}>${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}${e.typ === 'urlaub' ? (e.ok ? ' ✓' : ' ?') : ''}</span></span>`;
     if(dienstVon(s) === p.k) inh += `<span class="mein-d">Dienst</span>`;
     const rg = (p.regeln || []).filter(r => r.wt === wt(s)), rk = rg.find(r => r.typ === 'kein'), rp = rg.find(r => r.typ === 'pref');
     const rcls = rk ? 'rkein' : rp ? 'rpref' : '';
@@ -1425,12 +1425,22 @@ function renderMeine(){
       ? `${t.an} Tage da, ${t.aus} frei, ab ${kurzDat(t.ab)}${t.ab.slice(0,4)} (${WT[wt(t.ab)]}–${WT[wt(plus(t.ab, t.an - 1))]})`
       : t.typ === 'manuell' ? `nur gepinselte Tage anwesend${t.ab ? ', ab ' + kurzDat(t.ab) + t.ab.slice(0,4) : ''}`
       : `frei: ${(t.wt || []).map(x => WT[x]).join(', ')}${t.ab ? ', ab ' + kurzDat(t.ab) + t.ab.slice(0,4) : ''}`}</span>
-      <label class="tz-bis" title="Ende des Musters – leer = unbegrenzt">bis<input type="date" data-bis="${i}" value="${t.bis || ''}" min="${t.ab || ''}"></label>
+      <label class="tz-bis" title="Ende des Musters – leer = unbegrenzt">bis<input type="date" data-bis="${i}" value="${t.bis || ''}" min="${t.ab || '2000-01-01'}" max="2099-12-31"></label>
       <button class="x" data-i="${i}">${icon('x')}</button></div>`).join('') || '<div class="hint">Vollzeit – kein Muster.</div>';
   /* Ende nachtragen/aendern direkt im bestehenden Muster */
-  $('tzListe').querySelectorAll('[data-bis]').forEach(el => el.onchange = ()=>{
-    const i = +el.dataset.bis, v = el.value;
-    personAendern(p.k, 'Teilzeit bis', q => { const t = (q.teilzeit || [])[i]; if(!t) return; if(v) t.bis = v; else delete t.bis; });
+  /* Chrome meldet 'change' schon je getipptem Datumsteil (Jahr 0002 …) - speichern erst beim
+     Verlassen des Felds bzw. nach 1,5 s Ruhe; sonst baut render() das Feld mitten im Tippen neu */
+  $('tzListe').querySelectorAll('[data-bis]').forEach(el => {
+    let t0 = 0;
+    const sichern = ()=>{
+      clearTimeout(t0);
+      const i = +el.dataset.bis, v = el.value, alt = ((p.teilzeit || [])[i] || {}).bis || '';
+      if(v === alt || (v && +v.slice(0, 4) < 2000)) return;
+      personAendern(p.k, 'Teilzeit bis', q => { const t = (q.teilzeit || [])[i]; if(!t) return; if(v) t.bis = v; else delete t.bis; });
+    };
+    el.onchange = ()=>{ clearTimeout(t0); t0 = setTimeout(sichern, 1500); };
+    el.onblur = sichern;
+    el.onkeydown = e => { if(e.key === 'Enter') sichern(); };
   });
   $('tzListe').querySelectorAll('.x').forEach(b => b.onclick = ()=> personAendern(p.k, 'Teilzeitmuster entfernt', q => q.teilzeit.splice(+b.dataset.i, 1)));
 }
@@ -1459,7 +1469,16 @@ $('tzAdd').onclick = ()=>{
     t = {typ:'woche', wt: w, ab: $('tzWAb').value || ''};
   }
   if($('tzBis').value) t.bis = $('tzBis').value;
-  personAendern(fuerK, 'Teilzeitmuster', q => (q.teilzeit ||= []).push(t));
+  /* vorherige, noch laufende Muster enden am Tag vor dem neuen (nach Rueckfrage) */
+  const offen = (person(fuerK).teilzeit || []).map((x, i) => [x, i]).filter(([x]) => !x.bis || !t.ab || x.bis >= t.ab);
+  let enden = [], endeTag = '';
+  if(offen.length){
+    if(!t.ab) return toast('Bitte „ab“ angeben – es läuft schon ein Muster.');
+    endeTag = plus(t.ab, -1);
+    if(confirm(`Bisheriges Muster am ${kurzDat(endeTag)}${endeTag.slice(0, 4)} beenden?\n\nAbbrechen = beide Muster gelten parallel.`))
+      enden = offen.filter(([x]) => !x.ab || x.ab <= endeTag).map(([x, i]) => i);
+  }
+  personAendern(fuerK, 'Teilzeitmuster', q => { (q.teilzeit ||= []).forEach((x, i) => { if(enden.includes(i)) x.bis = endeTag; }); q.teilzeit.push(t); });
   if(t.typ === 'manuell'){ pinsel = 'da'; renderMeine(); toast('Pinsel „anwesend“ aktiv – Arbeitstage im Kalender überstreichen.'); }
 };
 
@@ -1483,6 +1502,14 @@ function pinselTag(s, k = fuerK, typ = pinsel){
   if(['da','frei','fb'].includes(typ) && !werktag(s)) return;   // Wochenende/Feiertag auslassen (Urlaub nicht)
   const alt = eintrag(p.k, s), sperre = gesperrtFuer(p.k, alt);
   if(sperre){ if(!strich.gemeldet){ strich.gemeldet = true; toast(sperre); } return; }
+  /* 'anwesend' = Kachel weiss: an Teilzeit-freien Tagen Eintrag 'da', an normalen
+     Arbeitstagen nur ein 'frei' entfernen (sonst gaebe es unsichtbare Eintraege) */
+  if(typ === 'da' && !teilzeitFrei(p, s)){
+    if(strich.loeschen === undefined) strich.loeschen = false;
+    if(!strich.loeschen && alt && (alt.typ === 'frei' || alt.typ === 'da'))
+      aendern(pfadWunsch(p.k, ymVon(s)), {tage:{}}, `${p.k} anwesend`, d => { if(d.tage) delete d.tage[s]; });
+    return;
+  }
   if(strich.loeschen === undefined) strich.loeschen = typ === 'weg' || !!(alt && alt.typ === typ);
   if(strich.loeschen && !(alt && (typ === 'weg' || alt.typ === typ))) return;
   if(!strich.loeschen && alt && alt.typ === typ && (alt.stufe || 'weich') === (TYPEN[typ].stufen ? pinselStufe : 'weich')) return;
