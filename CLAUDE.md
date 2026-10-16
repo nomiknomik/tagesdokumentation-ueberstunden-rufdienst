@@ -107,6 +107,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `tagesdoku_admin`) und „Repo und Token direkt“ im Erstlogin seit 1.71 nur über `…/plan/#admin` (`ADMIN_TUER`) oder
   seit 1.72 7 schnelle Tipps (4 s) auf das Kopf-Logo bzw. den Erstlogin-Titel (`fuenfTipps()`, auch für installierte App) –
   Notausgang: neuen GitHub-Token erzeugen; Nicht-Verwalter sehen in den Einstellungen nur die Karte `.frei` (Zugang).
+  Lese-Zugänge (1.86, Rolle `sek` = Sekretariat, `pa` = PA, `LESER`/`istLeser()`): Konten in `cfg.personen`, aber
+  nicht in `personen()` (keine Dienste/Besetzung; `konten()` für Personenwahl/Einladung). Nur Plan als Matrix/Woche
+  (+ Zugang in Einstellungen), kein Urlaub-Reiter, kein Protokoll, `darfEinteilen()`/`darfVerwalten()` false;
+  Sekretariat zusätzlich Wünsche, dort nur Chefarzt wählbar und `darfFuer()` nur für Rolle `chef`.
   Halber Tag weg (1.58, Typ `halb`, `zeit` 'vm'|'nm', `uhr` = freier Text): nicht `abw`, zählt nur im
   eigenen Besetzungsfenster (`halbWeg()` in `besetzung()`/`urlBesetzung()`); Pinsel „½ Tag“ im Urlaub-Reiter
   , in der Wunsch-Pinselleiste (1.84, mit vorm./nachm. + Uhrzeit `halbUhr`) und im Wunsch-Dialog nur beim Chef (`rolle` 'chef'), Anzeige bei allen (halb gefüllter Chip). Keine Freigabe.

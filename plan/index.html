@@ -707,7 +707,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
         <div class="reihe" style="margin-top:10px">
           <label class="f">Kürzel<input type="text" id="nK" maxlength="6" style="width:80px"></label>
           <label class="f">Name<input type="text" id="nName" style="width:180px"></label>
-          <label class="f">Rolle<select id="nRolle"><option value="oa">Oberarzt/-ärztin</option><option value="chef">Chefarzt (keine Dienste)</option></select></label>
+          <label class="f">Rolle<select id="nRolle"><option value="oa">Oberarzt/-ärztin</option><option value="chef">Chefarzt (keine Dienste)</option><option value="sek">Sekretariat (Ansicht + Chefarzt-Wünsche)</option><option value="pa">PA (nur Ansicht)</option></select></label>
           <button class="btn out" id="nAdd"><span data-icon="plus"></span>Person</button>
         </div>
         <div class="hint" style="margin-top:8px">Das Kürzel ist der Dateiname der Wünsche und lässt sich nachträglich nicht ändern.
@@ -799,7 +799,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.85';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.86';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -934,10 +934,17 @@ let ichK = load(LS_ICH, '');
 let markK = '';              // hervorgehobene Person
 let nurLesen = false;
 
-const personen = () => cfg.personen.filter(p => p.aktiv !== false);
+/* Lese-Zugaenge (1.86): Sekretariat und PA sind Konten, aber keine Planungspersonen (keine Dienste,
+   keine Besetzung) - nur Matrix/Woche; Sekretariat traegt zusaetzlich Wuensche fuer den Chefarzt ein */
+const LESER = {sek: 'Sekretariat', pa: 'PA'};
+const ROLLEN = {oa: 'Oberarzt/-ärztin', chef: 'Chefarzt', ...LESER};
+const konten = () => cfg.personen.filter(p => p.aktiv !== false);
+const personen = () => konten().filter(p => !LESER[p.rolle]);
 const person = k => cfg.personen.find(p => p.k === k);
 const diensttauglich = () => personen().filter(p => p.rolle !== 'chef');
 const ich = () => person(ichK);
+const istLeser = () => !!(ich() && LESER[ich().rolle]);
+const rollenOpt = r => Object.entries(ROLLEN).map(([k, n]) => `<option value="${k}" ${(r || 'oa') === k ? 'selected' : ''}>${n}</option>`).join('');
 const farbe = p => p ? (p.farbe || FARBEN[cfg.personen.indexOf(p) % FARBEN.length]) : '#999';
 const pk = (p, cls = 'pk') => `<span class="${cls}" style="background:${farbe(p)}">${esc(p ? p.k : '?')}</span>`;
 const pfadCfg = 'plan/config.json';
@@ -1399,6 +1406,11 @@ function render(){
   $('ichWechsel').classList.toggle('hidden', !!ich() && !adminGeraet());   // Person wechseln nur Admin
   $('adminLogin').classList.toggle('hidden', adminGeraet() || !ADMIN_TUER);
   todoBadge(); hilfeBadge();
+  /* Lese-Zugaenge (1.86): Sekretariat Plan + Wuensche, PA nur Plan (+ Zugang in Einstellungen) */
+  const ohne = istLeser() ? ['urlaub', ...(ich().rolle === 'pa' ? ['meine'] : [])] : [];
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('hidden', ohne.includes(b.dataset.tab)));
+  $('protoBtn').classList.toggle('hidden', istLeser());
+  if(ohne.includes(tab)) return document.querySelector('nav.tabs button[data-tab="plan"]').click();
   if(tab === 'plan') renderPlan();
   if(tab === 'meine') renderMeine();
   if(tab === 'cfg') renderCfg();
@@ -1406,7 +1418,7 @@ function render(){
 }
 
 /* =================== Plan =================== */
-const darfEinteilen = () => cfg.gruppen.oa.einteilen !== 'planer' || !!(ich() && ich().planer);
+const darfEinteilen = () => !istLeser() && (cfg.gruppen.oa.einteilen !== 'planer' || !!(ich() && ich().planer));
 /* Admin-Geraet (tagesdoku_admin): darf als einziges die Person wechseln (1.61). Rechte kommen seit
    1.63 immer von der gewaehlten Person – der Admin sieht genau, was sie sieht; die Personenwahl
    bleibt sein Rueckweg. Volle Rechte nur, solange noch keine Person gewaehlt ist. */
@@ -1418,13 +1430,13 @@ const istAdmin = () => adminGeraet() && !ich();
 /* Rechte nur in der Oberflaeche: der Team-Token darf technisch alles im Repo.
    Planer/Admin verwalten (Team, Einstellungen, alle Personen, Urlaub genehmigen),
    alle anderen tragen nur fuer sich selbst ein. Ist niemand Planer, duerfen alle. */
-const darfVerwalten = () => !cfg.personen.some(p => p.planer) || !!(ich() && ich().planer) || istAdmin();
+const darfVerwalten = () => !istLeser() && (!cfg.personen.some(p => p.planer) || !!(ich() && ich().planer) || istAdmin());
 const darfVeroeffentlichen = () => !!(ich() && ich().planer) || istAdmin();   // Signieren: nur Planer/Admin
-const darfFuer = k => true;   // 1.67: jede:r traegt fuer alle ein (kleines Team, alles im Protokoll); Genehmigtes bleibt beim Planer
+const darfFuer = k => !istLeser() || (ich().rolle === 'sek' && (person(k) || {}).rolle === 'chef');   // 1.67: jede:r fuer alle (alles im Protokoll), Genehmigtes beim Planer; 1.86: Sekretariat nur Chefarzt, PA nichts
 /* Freigabepflichtig (Antrag -> Planer genehmigt, ok:{von,am}): Urlaub, Fortbildung, FZA */
 const FREIGABE = ['urlaub', 'fb', 'fza'], pflicht = t => FREIGABE.includes(t);
 const urlOk = e => !!(e && pflicht(e.typ) && e.ok);
-const gesperrtFuer = (k, e) => !darfFuer(k) ? 'Nur für dich selbst – andere trägt der Planer ein.'
+const gesperrtFuer = (k, e) => !darfFuer(k) ? (istLeser() ? 'Nur ansehen.' : 'Nur für dich selbst – andere trägt der Planer ein.')
   : urlOk(e) && !darfVerwalten() ? `${TYPEN[e.typ].name} ist genehmigt – ändern nur über den Planer.` : '';
 
 function renderPlan(){
@@ -1493,6 +1505,8 @@ function renderPlan(){
       + `<div class="dzelle ${darfEinteilen() ? '' : 'gesperrt'}" data-tag="${s}">${dzelle}</div>`
       + `<div>${bz}</div><div>${ab}</div><div>${wu}</div><div style="flex-direction:column;align-items:flex-start">${hw}</div></div>`;
   }
+  if(istLeser() && !(ansicht === 'woche' || (ansicht === 'matrix' && innerWidth > 760))) ansicht = innerWidth > 760 ? 'matrix' : 'woche';   // Leser: nur Matrix/Woche
+  ['liste', 'kompakt'].forEach(a => $('ansichtSeg').querySelector(`[data-a="${a}"]`).classList.toggle('hidden', istLeser()));
   const matrix = ansicht === 'matrix' && innerWidth > 760, kompakt = ansicht === 'kompakt' && darfVeroeffentlichen(),   // TDA nur Planer/Admin
     woche = ansicht === 'woche';
   $('ansichtSeg').querySelector('[data-a="kompakt"]').style.display = darfVeroeffentlichen() ? '' : 'none';
@@ -1531,7 +1545,7 @@ function renderPlan(){
   $('zaehler').innerHTML = z;
   $('zaehler').querySelectorAll('.prow').forEach(el => {
     el.onclick = ()=>{ markK = markK === el.dataset.k ? '' : el.dataset.k; renderPlan(); };
-    el.ondblclick = ()=>{ markK = ''; document.querySelector('nav.tabs button[data-tab="meine"]').click(); fuerK = el.dataset.k; renderMeine(); window.scrollTo({top: 0}); };
+    el.ondblclick = ()=>{ if(istLeser()) return; markK = ''; document.querySelector('nav.tabs button[data-tab="meine"]').click(); fuerK = el.dataset.k; renderMeine(); window.scrollTo({top: 0}); };
     el.title = 'Klick: Tage hervorheben · Doppelklick: Wunschkalender öffnen'; });
 }
 
@@ -1908,9 +1922,10 @@ $('pubBtn').onclick = ()=>{
 let fuerK = '';
 function renderMeine(){
   /* 1.66: alle duerfen jede Person ansehen (Standard: ich); eintragen nur, wer fuer sie darf */
-  if(!fuerK || !person(fuerK)) fuerK = ichK;
+  const wahl = istLeser() ? personen().filter(p => p.rolle === 'chef') : personen();   // 1.86: Sekretariat nur Chefarzt
+  if(!fuerK || !wahl.some(p => p.k === fuerK)) fuerK = istLeser() ? (wahl[0] || {}).k || '' : ichK;
   $('fuerSel').disabled = false;
-  $('fuerSel').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === fuerK ? 'selected' : ''}>${esc(p.name || p.k)}${p.k === ichK ? ' (ich)' : ''}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
+  $('fuerSel').innerHTML = wahl.map(p => `<option value="${esc(p.k)}" ${p.k === fuerK ? 'selected' : ''}>${esc(p.name || p.k)}${p.k === ichK ? ' (ich)' : ''}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
   const p = person(fuerK);
   if(!p) return;
   const y = +ym.slice(0,4), mo = +ym.slice(5,7), n = tageIm(ym);
@@ -2747,7 +2762,7 @@ const personAendern = (k, was, fn) => cfgAendern(`${k}: ${was}`, d => { const q 
 
 function renderCfg(){
   const einAlt = $('einPers').value;
-  $('einPers').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === einAlt ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('');
+  $('einPers').innerHTML = konten().map(p => `<option value="${esc(p.k)}" ${p.k === einAlt ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('');
   setTimeout(cfgSperren);
   // Team
   $('teamTab').innerHTML = `<tr><th></th><th>Kürzel</th><th>Name</th><th>Pers.-Nr.</th><th>Rolle</th><th>Teams</th><th>Planer</th><th>aktiv</th></tr>` +
@@ -2755,7 +2770,7 @@ function renderCfg(){
       <td><b>${esc(p.k)}</b>${p.k === ichK ? ' <span class="tag n">ich</span>' : ''}</td>
       <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td>
       <td><input type="text" value="${esc(p.pnr || '')}" data-f="pnr" style="width:80px" inputmode="numeric" title="Personalnummer wie in TDA (für die Kompaktansicht)"></td>
-      <td><select data-f="rolle"><option value="oa" ${p.rolle !== 'chef' ? 'selected' : ''}>OA</option><option value="chef" ${p.rolle === 'chef' ? 'selected' : ''}>Chef</option></select></td>
+      <td><select data-f="rolle">${rollenOpt(p.rolle)}</select></td>
       <td>${cfg.teams.map(t => `<label class="chk"><input type="checkbox" data-team="${esc(t.id)}" ${(p.teams || []).includes(t.id) ? 'checked' : ''}>${esc(t.name)}</label>`).join('')}</td>
       <td><input type="checkbox" data-f="planer" ${p.planer ? 'checked' : ''}></td>
       <td><input type="checkbox" data-f="aktiv" ${p.aktiv !== false ? 'checked' : ''}></td></tr>`).join('');
@@ -3036,11 +3051,11 @@ function ichWaehlen(){
       ? 'Nur auf diesem Admin-Gerät. Du siehst und darfst genau das, was die gewählte Person sieht und darf; Einträge werden mit ihrem Kürzel protokolliert.'
       : 'Einmalig auf diesem Gerät. Einträge werden mit deinem Kürzel protokolliert.'}</div>
 
-    ${personen().map(p => `<button class="kand ${p.k === ichK ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b><span class="hint">${p.rolle === 'chef' ? 'Chefarzt' : 'Oberarzt/-ärztin'}</span></span></button>`).join('')}
+    ${konten().map(p => `<button class="kand ${p.k === ichK ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b><span class="hint">${ROLLEN[p.rolle] || ROLLEN.oa}</span></span></button>`).join('')}
     ${neuErlaubt ? `<div class="hint" style="margin-top:10px">Nicht in der Liste? Unten neu anlegen.</div>
     <div class="reihe" style="margin-top:8px"><label class="f">Kürzel<input type="text" id="iK" maxlength="6" style="width:80px"></label>
       <label class="f" style="flex:1">Name<input type="text" id="iName"></label>
-      <label class="f">Rolle<select id="iRolle"><option value="oa">OA</option><option value="chef">Chef</option></select></label>
+      <label class="f">Rolle<select id="iRolle">${rollenOpt('oa')}</select></label>
       <button class="btn out" id="iAdd">${icon('plus')}Anlegen</button></div>` : '<div class="hint" style="margin-top:10px">Nicht in der Liste? Planer:in legt dich unter Einstellungen → Team an.</div>'}`, el => {
     el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ ichK = b.dataset.k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render(); });
     if($('iAdd')) $('iAdd').onclick = ()=>{
