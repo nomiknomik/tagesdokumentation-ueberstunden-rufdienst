@@ -597,7 +597,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <h3><span data-icon="sliders"></span>Regeln</h3>
           <div class="liste" id="regelListe"></div>
           <div class="reihe" style="margin-top:10px">
-            <select id="rTyp"><option value="kein">Kein Dienst am</option><option value="pref">Dienst bevorzugt am</option></select>
+            <select id="rTyp"><option value="kein">Kein Dienst am</option><option value="pref">Dienst bevorzugt am</option><option value="nachFreiWE">Kein Dienst nach freiem Wochenende (Montag)</option></select>
             <select id="rWt"></select>
             <select id="rStufe"><option value="weich">weich</option><option value="hart">hart</option></select>
             <button class="btn out" id="rAdd"><span data-icon="plus"></span>Regel</button>
@@ -769,7 +769,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.78';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.79';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1227,6 +1227,8 @@ function weSerie(k, s){
   for(let x = plus(sa, 7); weGearbeitet(k, x); x = plus(x, 7)) n++;
   return n;
 }
+/* Regel „kein Dienst nach freiem Wochenende“: gilt am Montag, wenn Sa und So kein eigener Dienst war */
+const regelFreiWE = (p, s) => wt(s) === 1 && dienstVon(plus(s, -1)) !== p.k && dienstVon(plus(s, -2)) !== p.k;
 /* Bewertung einer Person fuer den Dienst am Tag s */
 function bewerte(p, s){
   const tags = [], e = eintrag(p.k, s); let score = 0;
@@ -1235,6 +1237,10 @@ function bewerte(p, s){
   if(e && e.typ === 'nogo'){ tags.push([e.stufe === 'hart' ? 'r' : 'o', 'No-Go' + (e.stufe === 'hart' ? '' : ' (weich)')]); score -= e.stufe === 'hart' ? 80 : 30; }
   if(e && e.typ === 'wunsch'){ tags.push(['g', 'Wunsch' + (e.stufe === 'hart' ? '' : ' (weich)')]); score += e.stufe === 'hart' ? 60 : 30; }
   for(const r of p.regeln || []){
+    if(r.typ === 'nachFreiWE'){   // 1.79: Montag nach einem Wochenende ohne eigenen Dienst
+      if(regelFreiWE(p, s)){ tags.push([r.stufe === 'hart' ? 'r' : 'o', 'nach freiem WE']); score -= r.stufe === 'hart' ? 60 : 20; }
+      continue;
+    }
     if(r.wt !== wt(s)) continue;
     if(r.typ === 'kein'){ tags.push([r.stufe === 'hart' ? 'r' : 'o', 'kein ' + WT[r.wt]]); score -= r.stufe === 'hart' ? 60 : 20; }
     if(r.typ === 'pref'){ tags.push(['g', 'gern ' + WT[r.wt]]); score += r.stufe === 'hart' ? 25 : 12; }
@@ -1833,9 +1839,10 @@ function renderMeine(){
     let inh = '';
     if(e && TYPEN[e.typ] && e.typ !== 'da' && e.typ !== 'frei') inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''} ${pflicht(e.typ) && !e.ok ? 'offen' : ''}"${pflicht(e.typ) ? ` title="${e.ok ? 'genehmigt' : 'beantragt – wartet auf Genehmigung'}"` : ''}>${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}${pflicht(e.typ) ? (e.ok ? ' ✓' : ' ?') : ''}</span></span>`;
     if(dienstVon(s) === p.k) inh += `<span class="mein-d">Dienst</span>`;
-    const rg = (p.regeln || []).filter(r => r.wt === wt(s)), rk = rg.find(r => r.typ === 'kein'), rp = rg.find(r => r.typ === 'pref');
+    const rg = (p.regeln || []).filter(r => r.typ === 'nachFreiWE' ? regelFreiWE(p, s) : r.wt === wt(s)),
+      rk = rg.find(r => r.typ === 'kein' || r.typ === 'nachFreiWE'), rp = rg.find(r => r.typ === 'pref');
     const rcls = rk ? 'rkein' : rp ? 'rpref' : '';
-    if(rcls) inh += `<span class="rm" title="${rk ? 'Regel: kein Dienst (' + rk.stufe + ')' : 'Regel: Dienst bevorzugt'}">${icon(rk ? 'ban' : 'heart')}</span>`;
+    if(rcls) inh += `<span class="rm" title="${rk ? 'Regel: kein Dienst' + (rk.typ === 'nachFreiWE' ? ' nach freiem Wochenende' : '') + ' (' + rk.stufe + ')' : 'Regel: Dienst bevorzugt'}">${icon(rk ? 'ban' : 'heart')}</span>`;
     /* Termine (1.78): Farbbalken oben, Name am ersten Tag bzw. montags, Ferien hellblau */
     const tm = termineAm(s).filter(t => t.art !== 'feiertag');
     const tname = tm.filter(t => terminSpanne(t)[0] === s || !imTermin(t, plus(s, -1)) || wt(s) === 1)
@@ -1852,8 +1859,8 @@ function renderMeine(){
   $('tab-meine').querySelectorAll('.zwei > div:last-child :is(input,select,button,textarea)').forEach(x => x.disabled = lesen);
   $('meinLesen').classList.toggle('hidden', !lesen);
   // Regeln
-  $('regelListe').innerHTML = (p.regeln || []).map((r, i) => `<div class="lz"><span class="tag ${r.typ === 'kein' ? (r.stufe === 'hart' ? 'r' : 'o') : 'g'}">${r.stufe}</span>
-    <span class="t">${r.typ === 'kein' ? 'Kein Dienst' : 'Dienst bevorzugt'} am ${WTL[r.wt]}</span><button class="x" data-i="${i}">${icon('x')}</button></div>`).join('')
+  $('regelListe').innerHTML = (p.regeln || []).map((r, i) => `<div class="lz"><span class="tag ${r.typ !== 'pref' ? (r.stufe === 'hart' ? 'r' : 'o') : 'g'}">${r.stufe}</span>
+    <span class="t">${r.typ === 'nachFreiWE' ? 'Kein Dienst am Montag nach freiem Wochenende' : (r.typ === 'kein' ? 'Kein Dienst' : 'Dienst bevorzugt') + ' am ' + WTL[r.wt]}</span><button class="x" data-i="${i}">${icon('x')}</button></div>`).join('')
     || '<div class="hint">Keine Regeln.</div>';
   $('regelListe').querySelectorAll('.x').forEach(b => b.onclick = ()=> personAendern(p.k, 'Regel entfernt', q => q.regeln.splice(+b.dataset.i, 1)));
   // Teilzeit
@@ -1886,7 +1893,8 @@ $('fuerSel').onchange = e => { fuerK = e.target.value; renderMeine(); };
 $('rWt').innerHTML = WTL.slice(1).map((x, i) => `<option value="${i + 1}">${x}</option>`).join('');
 $('tzWoche').innerHTML = WT.slice(1, 6).map((x, i) => `<label class="chk"><input type="checkbox" value="${i + 1}">${x}</label>`).join('')
   + '<label class="f">ab (optional)<input type="date" id="tzWAb"></label>';
-$('rAdd').onclick = ()=> personAendern(fuerK, 'Regel', q => (q.regeln ||= []).push({typ: $('rTyp').value, wt: +$('rWt').value, stufe: $('rStufe').value}));
+$('rAdd').onclick = ()=> personAendern(fuerK, 'Regel', q => (q.regeln ||= []).push({typ: $('rTyp').value, wt: $('rTyp').value === 'nachFreiWE' ? 1 : +$('rWt').value, stufe: $('rStufe').value}));
+$('rTyp').onchange = ()=>{ $('rWt').style.display = $('rTyp').value === 'nachFreiWE' ? 'none' : ''; };
 $('quote').onchange = ()=>{ const v = Math.max(10, Math.min(100, +$('quote').value || 100)); personAendern(fuerK, 'Arbeitsquote', q => { q.quote = v; }); };
 let tzArt = 'block';
 $('tzArt').querySelectorAll('button').forEach(b => b.onclick = ()=>{

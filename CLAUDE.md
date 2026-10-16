@@ -138,6 +138,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   zeigen nur noch die automatischen BW-Feiertage). BW-Schulferien fest in `BW_FERIEN` bis Sommer 2030
   (laut Kultusministerium, Stand 10/2026; Herbst 2030 noch offen; `u` = ⚠ prüfen für spätere Drittquellen), immer über `werktagKern()` auf Mo–Fr gekürzt (offizielle
   Angaben enden oft am Samstag); weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv, ebenfalls gekürzt);
+  Regel-Typ `nachFreiWE` (1.79): kein Dienst am Montag, wenn Sa+So kein eigener Dienst (`regelFreiWE()`, in `bewerte()` und
+  Wunschkalender), weich/hart wie andere Regeln; `wt` fest 1.
   Wunschkalender zeigt Termine seit 1.78 ebenso (Balken `terminBand()`, Name am 1. Tag/montags, Ferien hellblau).
   Doppelklick auf einen Termin rechts scrollt den Urlaub-Kalender zum ersten Tag (`urlZuTag()`, 1.77, Kachel blinkt).
   Winterferien legt jede Schule selbst fest → von Hand. Urlaub-Kacheln: Besetzung
