@@ -71,7 +71,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   vorm.|nachm. (`urlBesetzung()`; Vortags-Dienst zählt als da, heutiger Dienst –
   auch noch offen – erst nachmittags),
   Tooltip = nur Anwesende (eine pro Zeile). Kongresse
-  auch im Dienstplan.
+  auch im Dienstplan; alle Termine dort als dezente Farbbalken oben (`terminBand()`).
   Diensthabender zählt ab 11 (Nachmittag), Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
 - `add_fields.py`, `build_html.py` (veraltet, erzeugt die heutige HTML nicht

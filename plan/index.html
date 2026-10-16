@@ -218,6 +218,11 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-woche.rand.oben .mx-box{min-height:118px}
 
 /* ---------- Termine ---------- */
+.zeile{position:relative}
+.tm-band{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;gap:1px;z-index:3;border-radius:14px 14px 0 0;overflow:hidden}
+.zeile .tm-band{border-radius:0}
+.tm-band i{display:block;height:3px;opacity:.5}
+.tm-band:hover i{opacity:.9}
 .lz.term-akt{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
 .x.pin:hover{color:var(--primary)}
 #termName{width:100%} #termArt{display:flex;flex-wrap:wrap} #termArt button{padding:5px 10px;font-size:12.5px}
@@ -592,7 +597,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.25';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.26';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1063,7 +1068,7 @@ function renderPlan(){
       abw: personen().map(p => [p, abwesend(p, s), gefaehrdet(p, s)]).filter(x => x[1] || x[2]),
       wu: personen().map(p => [p, eintrag(p.k, s)]).filter(x => x[1] && (x[1].typ === 'wunsch' || x[1].typ === 'nogo')),
       tipp: dp ? bewerte(dp, s).tags.map(t => t[1]).join(' · ') : ''});
-    h += `<div class="${cls}"><div class="tagzelle"><span class="wt">${WT[w]}</span><b>${d}.</b>${ft ? `<span class="ftn">${esc(ft)}</span>` : ''}</div>`
+    h += `<div class="${cls}">${terminBand(s)}<div class="tagzelle"><span class="wt">${WT[w]}</span><b>${d}.</b>${ft ? `<span class="ftn">${esc(ft)}</span>` : ''}</div>`
       + `<div class="dzelle ${darfEinteilen() ? '' : 'gesperrt'}" data-tag="${s}">${dzelle}</div>`
       + `<div>${bz}</div><div>${ab}</div><div>${wu}</div><div style="flex-direction:column;align-items:flex-start">${hw}</div></div>`;
   }
@@ -1113,9 +1118,12 @@ $('ansichtSeg').querySelectorAll('button').forEach(b => b.onclick = ()=>{
 });
 const kw = s => { const t = tn(s), do_ = t - wt(s) + 4, j = vonTn(do_).slice(0, 4); return Math.floor((do_ - tn(j + '-01-01')) / 7) + 1; };
 const tint = (hex, a) => { const n = parseInt(String(hex).slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
+/* Termine (Ferien, Kongresse) als dezente Farbbalken oben, Name im Tooltip */
+const terminBand = s => { const tm = termineAm(s); return tm.length ? `<div class="tm-band" title="${esc(tm.map(t => TERMIN[t.art].name + ': ' + t.name).join('\n'))}">`
+  + tm.map(t => `<i style="background:${TERMIN[t.art].farbe}"></i>`).join('') + '</div>' : ''; };
 function nachbarBox(s){
   const p = person(dienstVon(s)), ft = feiertag(s);
-  return `<div class="mx-box nachbar ${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''}" data-nachbar="${s < ym ? -1 : 1}" title="${monatName(ymVon(s))} öffnen">`
+  return `<div class="mx-box nachbar ${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''}" data-nachbar="${s < ym ? -1 : 1}" title="${monatName(ymVon(s))} öffnen">${terminBand(s)}`
     + `<div class="mx-dat">${+s.slice(8)}.${s.slice(8) === '01' ? +s.slice(5, 7) + '.' : ''}</div>`
     + (p ? `<div class="mx-dienst" style="background:${tint(farbe(p), .1)};border-color:${tint(farbe(p), .3)};color:${farbe(p)}"><b class="nn">${esc(nachn(p))}</b></div>` : '')
     + '</div>';
@@ -1152,7 +1160,7 @@ function matrixHtml(info){
         + (x.hwRot ? `<span class="r" title="${esc(x.hwRot)}">!</span>` : '')
         + x.kongr.map(n => `<span class="k" title="Kongress: ${esc(n)}">★</span>`).join('')
         + (x.hwGrau.length ? `<span class="g" title="${esc(x.hwGrau.join('\n'))}">i</span>` : '') + '</div>' : '';
-      h += `<div class="${cls}"><div class="dzelle" data-tag="${x.s}">`
+      h += `<div class="${cls}">${terminBand(x.s)}<div class="dzelle" data-tag="${x.s}">`
         + `<div class="mx-dat">${x.d}.${x.ft ? `<small title="${esc(x.ft)}">${esc(x.ft)}</small>` : ''}</div>${z}${dienst}${hw}`
         + `<div class="mx-bl">${abw}</div><div class="mx-br">${wu}</div></div></div>`;
     }
