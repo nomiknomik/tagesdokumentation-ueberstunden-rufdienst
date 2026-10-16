@@ -327,6 +327,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 .mx-mini.offen{background:#fff;border-style:dashed;opacity:1}
 .ur-dat small{display:block;font-size:10.5px;color:var(--danger);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ur-zahl{position:absolute;top:6px;right:8px;font-size:13px;font-weight:800;display:flex;gap:2px;align-items:baseline}
+.ur-hw{position:absolute;top:26px;right:8px;width:17px;height:17px;border-radius:99px;background:#9C8F80;color:#fff;font:italic 900 11px/17px Georgia,serif;text-align:center;cursor:help;z-index:2}
 .ur-zahl i{color:var(--muted);font-style:normal;font-weight:400}
 .ur-zahl b.ok{color:#3E9B63} .ur-zahl b.kn{color:#C47A2C} .ur-zahl b.rot{color:var(--danger)}
 .ur-dat{right:52px !important}
@@ -460,6 +461,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
   .ur-dat{position:static;font-size:12px;text-align:center;width:100%;white-space:nowrap}
   .ur-dat small{display:none}
   .ur-zahl{position:static;font-size:10.5px;gap:1px;margin-top:1px}
+  .ur-hw{position:static;width:14px;height:14px;font-size:9px;line-height:14px;margin-top:2px}
   .ur-chips{position:static;flex-direction:column;align-items:center;gap:2px;margin-top:3px}
   .ur-chip{font-size:9.5px;line-height:13px;padding:0 3px;border-radius:4px}
   .ur-chip.offen{padding:0 2px;border-width:1px}
@@ -769,7 +771,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.82';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.83';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2166,9 +2168,12 @@ function urlTagHtml(s){
   const band = tm.length ? `<div class="ur-band">${tm.map(t => `<i style="background:${TERMIN[t.art].farbe}" title="${esc(TERMIN[t.art].name + ': ' + t.name)}"></i>`).join('')}</div>` : '';
   const tname = tm.filter(t => terminSpanne(t)[0] === s || !imTermin(t, plus(s, -1)) || wt(s) === 1)
     .map(t => `<span style="color:${TERMIN[t.art].farbe}" title="${esc(t.name)}">${esc(t.name)}</span>`).join(' · ');
-  return `<div class="mx-box ur ${ft ? 'ft' : we ? 'we' : ''} ${tm.some(t => t.art === 'ferien') ? 'ferien' : ''} ${s === heute() ? 'heute' : ''}" data-tag="${s}"${ub ? ` title="${esc(ub.tip)}"` : ''}>${band}`
+  const hw = hinweise(s);   // Gruppenhinweise (1.83) wie im Plan: Symbol „i“, Text im Tooltip
+  const tip = ub ? ub.tip + (hw.length ? '\n\n' + hw.map(x => '⚠ ' + x.text).join('\n') : '') : '';
+  return `<div class="mx-box ur ${ft ? 'ft' : we ? 'we' : ''} ${tm.some(t => t.art === 'ferien') ? 'ferien' : ''} ${s === heute() ? 'heute' : ''}" data-tag="${s}"${tip ? ` title="${esc(tip)}"` : ''}>${band}`
     + `<div class="ur-dat">${+s.slice(8)}${s.slice(8) === '01' ? '.' + +s.slice(5, 7) + '.' : '.'}${ft ? `<small title="${esc(ft)}">${esc(ft)}</small>` : ''}${tname ? `<small class="tn">${tname}</small>` : ''}</div>`
     + (ub ? `<span class="ur-zahl">${ub.w.map((n, i) => `<b class="${ub.st[i]}">${n}</b>`).join('<i>|</i>')}</span>` : '')
+    + (hw.length ? `<span class="ur-hw" title="${esc(hw.map(x => x.text).join('\n'))}">i</span>` : '')
     + `<div class="ur-chips">${chips}</div></div>`;
 }
 function renderUrlaub(){

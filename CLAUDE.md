@@ -146,7 +146,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Winterferien legt jede Schule selbst fest → von Hand. Urlaub-Kacheln: Besetzung
   vorm.|nachm. (`urlBesetzung()`; Vortags-Dienst zählt als da, heutiger Dienst –
   auch noch offen – erst nachmittags),
-  Tooltip = nur Anwesende (eine pro Zeile). Kongresse
+  Tooltip = nur Anwesende (eine pro Zeile); Gruppenhinweise (`hinweise()`) seit 1.83 als „i“ (`.ur-hw`) + im Tooltip. Kongresse
   auch im Dienstplan; alle Termine dort als dezente Farbbalken oben (`terminBand()`).
   Diensthabender zählt ab 11 (Nachmittag), Vortags-
   Dienst = „fehlt evtl.“. Max. Dienste = 13 × Quote (TV-Ärzte/VKA, ungeprüft).
