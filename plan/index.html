@@ -263,10 +263,16 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .tabelle.kompakt{overflow-x:auto;padding:0}
 .planwrap.breit{grid-template-columns:minmax(0,1fr)} .planwrap.breit > .seite{display:none}
 /* Wochenansicht (1.85): Mo–Fr, Anwesende je Tag; schmal = je Tag eine Zeile */
-.wo-kw{font-size:12px;font-weight:800;color:var(--text2);margin:16px 2px 6px;display:flex;gap:8px;align-items:baseline}
-.wo-kw:first-child{margin-top:0} .wo-kw small{font-weight:600;color:var(--muted)}
-.wo-woche{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.wo-monat{margin-bottom:6px}
+.wo-kopf{position:sticky;top:calc(var(--kopfH, 57px) / var(--z, 1));z-index:5;background:var(--bg, #FAF5EC);padding:8px 0 6px;
+  border-top:2px solid var(--border);margin-bottom:4px}
+.wo-monat:first-child .wo-kopf{border-top-color:transparent}
+.wo-kopf b{display:block;font-size:14px;font-weight:800;margin:0 2px 6px}
+.wo-wt,.wo-woche{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.wo-wt{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;text-align:center}
+.wo-woche{margin-bottom:6px} .wo-dat .wt{display:none}
 .wo-tag{position:relative;border:1px solid var(--border);border-radius:12px;background:#fff;padding:7px 7px 8px;min-height:96px;overflow:hidden}
+.wo-leer{min-height:0}
 .wo-tag.heute{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
 .wo-tag.ft{background:#F9EFEC} .wo-tag.vorbei{opacity:.55}
 .wo-dat{font-size:12.5px;font-weight:800;display:flex;gap:6px;align-items:baseline;padding-right:44px;flex-wrap:wrap}
@@ -283,7 +289,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .wo-tm{font-size:10.5px;font-weight:700;margin-top:2px}
 .wo-mehr{display:flex;justify-content:center;margin:14px 0 4px}
 @media (max-width:760px){
-  .wo-woche{grid-template-columns:1fr;gap:5px}
+  .wo-woche{grid-template-columns:1fr;gap:5px;margin-bottom:5px}
+  .wo-wt,.wo-leer{display:none} .wo-dat .wt{display:inline} .wo-kopf b{margin-bottom:0}
   .wo-tag{min-height:0;display:grid;grid-template-columns:58px minmax(0,1fr);column-gap:8px;padding:7px 8px}
   .wo-dat{flex-direction:column;gap:0;padding-right:0;grid-row:span 3}
   .wo-tag .ur-zahl{position:static;grid-column:1;margin-top:4px}
@@ -799,7 +806,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.87';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.88';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1355,6 +1362,8 @@ async function monatWechseln(n){
 }
 $('mZur').onclick = ()=> monatWechseln(-1);
 $('mVor').onclick = ()=> monatWechseln(1);
+/* Hoehe des (mitlaufenden) Kopfs fuer sticky-Abstaende der Wochenansicht (1.88; am Handy hoeher) */
+new ResizeObserver(()=> document.documentElement.style.setProperty('--kopfH', document.querySelector('header').offsetHeight + 'px')).observe(document.querySelector('header'));
 /* Doppelklick auf den Monat (1.87): zurueck zum aktuellen Monat */
 $('mTitel').ondblclick = ()=>{ const h = heute().slice(0, 7), n = (+h.slice(0, 4) - +ym.slice(0, 4)) * 12 + +h.slice(5, 7) - +ym.slice(5, 7);
   getSelection().removeAllRanges(); if(n) monatWechseln(n); };
@@ -1631,7 +1640,7 @@ async function wocheLaden(m){
 }
 function wocheTagHtml(s){
   const ft = feiertag(s), dh = dienstVon(s), hz = heute();
-  const kopf = `<div class="wo-dat">${WT[wt(s)]} ${+s.slice(8)}.${+s.slice(5, 7)}.</div>`;
+  const kopf = `<div class="wo-dat"><span><span class="wt">${WT[wt(s)]} </span>${+s.slice(8)}.</span></div>`;
   const tm = termineAm(s);
   const tmTxt = tm.length ? `<div class="wo-tm">${tm.map(t => `<span style="color:${TERMIN[t.art].farbe}">${esc(t.name)}</span>`).join(' · ')}</div>` : '';
   if(ft) return `<div class="wo-tag ft ${s < hz ? 'vorbei' : ''}">${terminBand(s)}${kopf}<div class="wo-ft">${esc(ft)}</div></div>`;
@@ -1655,11 +1664,17 @@ function wocheHtml(){
   let von = ym === hz.slice(0, 7) ? hz : erster;
   von = plus(von, 1 - wt(von));
   const bisM = ymPlus(ym, wocheMehr), bis = ds(+bisM.slice(0, 4), +bisM.slice(5, 7), tageIm(bisM));
+  /* 1.88: je Monat ein Abschnitt mit mitlaufendem Kopf (Monat + Wochentage), Wochen am Monatswechsel geteilt */
   let h = '';
-  for(let w0 = von; w0 <= bis; w0 = plus(w0, 7)){
-    const fr = plus(w0, 4);
-    h += `<div class="wo-kw">KW ${kw(w0)}<small>${+w0.slice(8)}.${+w0.slice(5, 7)}. – ${+fr.slice(8)}.${+fr.slice(5, 7)}.${fr.slice(0, 4)}</small></div>`
-      + `<div class="wo-woche">${[0, 1, 2, 3, 4].map(i => wocheTagHtml(plus(w0, i))).join('')}</div>`;
+  for(let m = ymVon(von); m <= bisM; m = ymPlus(m, 1)){
+    const a = [m + '-01', von].sort()[1], e = ds(+m.slice(0, 4), +m.slice(5, 7), tageIm(m));
+    let wo = '';
+    for(let w0 = plus(a, 1 - wt(a)); w0 <= e; w0 = plus(w0, 7)){
+      const tage = [0, 1, 2, 3, 4].map(i => plus(w0, i));
+      if(!tage.some(s => ymVon(s) === m)) continue;
+      wo += `<div class="wo-woche">${tage.map(s => ymVon(s) === m ? wocheTagHtml(s) : '<div class="wo-leer"></div>').join('')}</div>`;
+    }
+    if(wo) h += `<section class="wo-monat"><div class="wo-kopf"><b>${monatName(m)}</b><div class="wo-wt">${WT.slice(1, 6).map(x => `<div>${x}</div>`).join('')}</div></div>${wo}</section>`;
   }
   return h + `<div class="wo-mehr"><button class="btn" id="woMehr">Weitere Wochen (${monatName(ymPlus(ym, wocheMehr + 1))})</button></div>`;
 }

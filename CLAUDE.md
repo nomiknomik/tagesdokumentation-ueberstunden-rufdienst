@@ -131,6 +131,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   die Anwesenden (nur Nachname ohne Kürzel seit 1.87, nach Nachname, Zusatz „ab 11“ = Dienst, „n. D.“ = nach Dienst, vorm./nachm. bei `halb`), Zahl
   vorm.|nachm. wie `urlBesetzung()`, „weg:“ + Termine; ab aktueller Woche (sonst Monatsbeginn) bis Ende Folgemonat,
   „Weitere Wochen“ lädt je einen Monat (`wocheMehr`, `wocheLaden()`); ≤ 760 px je Tag eine Zeile. Reine Ansicht.
+  Seit 1.88 je Monat ein Abschnitt (`.wo-monat`, Wochen am Monatswechsel geteilt, Trennlinie), Kopf mit Monat +
+  Wochentagen bleibt beim Scrollen oben (sticky unter dem App-Kopf über `--kopfH`, per ResizeObserver gemessen);
+  keine KW-Zeilen, Kachel nur Tageszahl (am Handy „Mo 9.“, Wochentagszeile dort ausgeblendet).
   Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
   `body.wochendruck` blendet beim Druck alles außer `#wochendruck` aus).
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
