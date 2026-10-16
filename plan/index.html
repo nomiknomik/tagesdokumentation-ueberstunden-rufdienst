@@ -93,6 +93,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .chip.leer{padding:2px 9px;color:var(--muted)}
 .chip.t-urlaub{background:#FFF6DC;border-color:#F0D99A}
 .chip.t-fb{background:#E7EEFA;border-color:#BCCDEB}
+.chip.t-fza{background:#EEF0F6;border-color:#C9CEDF;color:#3A4F8F}
 .chip.t-frei,.chip.t-tz{background:#F0ECE6;border-color:#DDD3C5;color:var(--text2)}
 .chip.gef{border-style:dashed;border-color:var(--warning);background:var(--warning-soft);color:var(--warning)}
 .chip.t-wunsch{background:var(--success-soft);border-color:#A8D8B8;color:#0F6B35}
@@ -467,9 +468,9 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
         </div>
         <div class="pinsel" id="pinsel"></div>
         <div class="kal" id="kal"></div>
-        <div class="hint" style="margin-top:10px">Tag antippen: Dienstwunsch, No-Go, Urlaub, Fortbildung oder frei eintragen.
-          Mit dem Pinsel über mehrere Tage streichen; Anwesend, frei und Fortbildung lassen Wochenenden und Feiertage aus, Urlaub nicht.
-          Schraffiert = laut Teilzeit frei, Linie unten = Tag mit Regel.
+        <div class="hint" style="margin-top:10px">Tag antippen: Dienstwunsch, No-Go, Urlaub, Fortbildung, FZA (Freizeitausgleich) oder frei eintragen.
+          Mit dem Pinsel über mehrere Tage streichen; anwesend, frei, FZA und Fortbildung lassen Wochenenden und Feiertage aus, Urlaub nicht.
+          Weiß = da, schraffiert = frei (Teilzeit oder gemalt) – Pinsel „anwesend“ und „frei“ schalten zwischen beidem. Linie unten = Tag mit Regel.
           Abwesenheiten anderer (z. B. Chefarzt) oben bei „für“ die Person wählen.</div>
       </div>
       <div>
@@ -646,7 +647,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.35';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.36';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -755,10 +756,11 @@ const TYPEN = {
   urlaub: {name:'Urlaub', icon:'sun', abw:true},
   fb:     {name:'Fortbildung', icon:'book', abw:true},
   frei:   {name:'frei', icon:'moon', abw:true},
+  fza:    {name:'FZA', icon:'clock', abw:true},   // Freizeitausgleich fuer Ueberstunden
   da:     {name:'anwesend', icon:'check'}
 };
-const ABW_NAME = {urlaub:'Urlaub', fb:'Fortbildung', frei:'frei', tz:'Teilzeit frei'};
-const ABW_ICON = {urlaub:'sun', fb:'book', frei:'moon', tz:'clock'};
+const ABW_NAME = {urlaub:'Urlaub', fb:'Fortbildung', frei:'frei', fza:'Freizeitausgleich (FZA)', tz:'Teilzeit frei'};
+const ABW_ICON = {urlaub:'sun', fb:'book', frei:'moon', fza:'clock', tz:'clock'};
 
 let cfg = clone(CFG_LEER);
 const files = {};            // pfad -> {data, sha}
@@ -1400,9 +1402,9 @@ function renderMeine(){
   let h = WT.slice(1).map(x => `<div class="kk">${x}</div>`).join('');
   for(let i = 1; i < wt(ds(y, mo, 1)); i++) h += '<div class="leer"></div>';
   for(let d = 1; d <= n; d++){
-    const s = ds(y, mo, d), e = eintrag(p.k, s), ft = feiertag(s), tz = teilzeitFrei(p, s) && !(e && e.typ === 'da');
+    const s = ds(y, mo, d), e = eintrag(p.k, s), ft = feiertag(s), tz = (teilzeitFrei(p, s) && !(e && e.typ === 'da')) || !!(e && e.typ === 'frei');
     let inh = '';
-    if(e && TYPEN[e.typ] && e.typ !== 'da') inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''} ${e.typ === 'urlaub' && !e.ok ? 'offen' : ''}"${e.typ === 'urlaub' ? ` title="${e.ok ? 'genehmigt' : 'beantragt – wartet auf Genehmigung'}"` : ''}>${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}${e.typ === 'urlaub' ? (e.ok ? ' ✓' : ' ?') : ''}</span></span>`;
+    if(e && TYPEN[e.typ] && e.typ !== 'da' && e.typ !== 'frei') inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''} ${e.typ === 'urlaub' && !e.ok ? 'offen' : ''}"${e.typ === 'urlaub' ? ` title="${e.ok ? 'genehmigt' : 'beantragt – wartet auf Genehmigung'}"` : ''}>${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}${e.typ === 'urlaub' ? (e.ok ? ' ✓' : ' ?') : ''}</span></span>`;
     if(dienstVon(s) === p.k) inh += `<span class="mein-d">Dienst</span>`;
     const rg = (p.regeln || []).filter(r => r.wt === wt(s)), rk = rg.find(r => r.typ === 'kein'), rp = rg.find(r => r.typ === 'pref');
     const rcls = rk ? 'rkein' : rp ? 'rpref' : '';
@@ -1484,7 +1486,7 @@ $('tzAdd').onclick = ()=>{
 
 /* Pinsel: Typ waehlen, dann Tage antippen oder darueberstreichen. Beginnt der
    Strich auf einem Tag mit genau diesem Eintrag, loescht der Strich. */
-const PINSEL = [['da','anwesend','check'], ['frei','frei','moon'], ['urlaub','Urlaub','sun'], ['fb','Fortbildung','book'],
+const PINSEL = [['da','anwesend','check'], ['frei','frei','moon'], ['fza','FZA','clock'], ['urlaub','Urlaub','sun'], ['fb','Fortbildung','book'],
   ['wunsch','Wunsch','heart'], ['nogo','No-Go','ban'], ['weg','Radierer','x']];
 let pinsel = '', pinselStufe = 'weich', strich = null;
 function pinselLeiste(){
@@ -1499,7 +1501,7 @@ function pinselTag(s, k = fuerK, typ = pinsel){
   const p = person(k);
   if(!p || !strich || strich.erledigt.has(s)) return;
   strich.erledigt.add(s);
-  if(['da','frei','fb'].includes(typ) && !werktag(s)) return;   // Wochenende/Feiertag auslassen (Urlaub nicht)
+  if(['da','frei','fza','fb'].includes(typ) && !werktag(s)) return;   // Wochenende/Feiertag auslassen (Urlaub nicht)
   const alt = eintrag(p.k, s), sperre = gesperrtFuer(p.k, alt);
   if(sperre){ if(!strich.gemeldet){ strich.gemeldet = true; toast(sperre); } return; }
   /* 'anwesend' = Kachel weiss: an Teilzeit-freien Tagen Eintrag 'da', an normalen
@@ -1508,6 +1510,13 @@ function pinselTag(s, k = fuerK, typ = pinsel){
     if(strich.loeschen === undefined) strich.loeschen = false;
     if(!strich.loeschen && alt && (alt.typ === 'frei' || alt.typ === 'da'))
       aendern(pfadWunsch(p.k, ymVon(s)), {tage:{}}, `${p.k} anwesend`, d => { if(d.tage) delete d.tage[s]; });
+    return;
+  }
+  /* 'frei' = Kachel schraffiert: an Teilzeit-freien Tagen nur ein 'da' entfernen */
+  if(typ === 'frei' && teilzeitFrei(p, s)){
+    if(strich.loeschen === undefined) strich.loeschen = false;
+    if(!strich.loeschen && alt && (alt.typ === 'da' || alt.typ === 'frei'))
+      aendern(pfadWunsch(p.k, ymVon(s)), {tage:{}}, `${p.k} frei`, d => { if(d.tage) delete d.tage[s]; });
     return;
   }
   if(strich.loeschen === undefined) strich.loeschen = typ === 'weg' || !!(alt && alt.typ === typ);
