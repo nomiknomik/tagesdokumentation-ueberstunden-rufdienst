@@ -225,9 +225,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-box.rot{background:#FFF7F4}
 .mx-zahl b.ok{color:var(--muted)}
 .mx-dienst{background:color-mix(in srgb,var(--f) 12%,#fff);border-color:color-mix(in srgb,var(--f) 30%,#fff);
-  color:color-mix(in srgb,var(--f) 80%,#000);box-shadow:inset 4px 0 0 var(--f)}
+  color:color-mix(in srgb,var(--f) 80%,#000)}
 .mx-dienst .nn{font-weight:700}
-.mx-dienst.leer{box-shadow:none}
 .mx-dienst.auto{border-color:color-mix(in srgb,var(--f) 55%,#fff)}
 .mx-mini{background:var(--f);color:#fff;opacity:.75}
 .mx-mini.offen,.mx-mini.gef{background:#fff;color:var(--f);border-style:dashed;border-color:var(--f);opacity:1}
@@ -653,7 +652,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.40';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.41';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
