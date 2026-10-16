@@ -598,7 +598,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.28';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.29';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1094,11 +1094,10 @@ function renderPlan(){
   $('autoBtn').classList.toggle('hidden', !darfEinteilen() || nurLesen);
   $('autoWegBtn').classList.toggle('hidden', !Object.values(D.tage || {}).some(x => x.auto) || nurLesen);
   // Zaehler
-  let z = ''; const vh = vorherAlle();
+  let z = '';
   for(const p of diensttauglich()){
     const n2 = diensteIm(p.k, ym), max = maxDienste(p);
-    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small title="Ist / fair erwartet (Abwesenheit verrechnet) in den 3 Vormonaten">${(()=>{ const h = vh[p.k]; const sd = h.n - h.exp;
-      return `3 Vormonate: ${h.n} / ${zahl1(h.exp)} · WE ${h.we} / ${zahl1(h.expWe)} · <b style="color:${sd > 1 ? 'var(--warning)' : sd < -1 ? 'var(--primary)' : 'inherit'}">${sd >= 0 ? '+' : ''}${zahl1(sd)}</b>`; })()}${p.quote && p.quote < 100 ? ' · Teilzeit ' + p.quote + ' %' : ''}</small></div>`
+    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : ''}</small></div>`
       + `<div class="zahl">${n2}<small> / ${max}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, max) * 100)}%"></i></div>`;
   }
   const frei = Array.from({length: n}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
