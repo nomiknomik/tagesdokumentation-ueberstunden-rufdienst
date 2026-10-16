@@ -82,7 +82,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   (25) von `cfg.urlaubAnspruch` (31). Schnellwahl Dienst: 1. Buchstabe Nachname,
   ab 2. auch Initialen (Nachname+Vorname) oder Kürzel. Matrix zeigt Nachbarmonate
   blass + je eine angeschnittene Woche (Klick = Nachbarmonat); Monatswechsel im Plan
-  nur über den Kopf, nicht per Scrollen. „Veröffentlichen“ heißt in der Oberfläche **Signieren** (Daten weiter `veroeffentlicht`), nur Planer
+  nur über den Kopf (Doppelklick auf den Monat = aktueller Monat, 1.87), nicht per Scrollen. „Veröffentlichen“ heißt in der Oberfläche **Signieren** (Daten weiter `veroeffentlicht`), nur Planer
   oder `tagesdoku_admin` (`darfVeroeffentlichen()`), auch Zurücknehmen.
   Protokoll (1.51): Wunschdateien führen `log` [{am,von,tag,alt,neu}] wie die Dienstdatei – über
   `mitLog()` in `aendern()` (Codes `wCode()`: Typ + ✓ genehmigt + ! hart); Rückgängig setzt `log`
@@ -128,7 +128,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Chef (1.59): kein Amb/Dienst – ganztags da = leer, halber Tag = „Vorm.“/„Nachm.“ (anwesende Hälfte, auch
   bei OA mit `halb`); Wahl U/Fo/FZA/ganztags/Vorm./Nachm./0 (Vorm. = `halb` mit `zeit:'nm'`).
   Woche (1.85, vierte Plan-Ansicht, alle, auch Handy, `wocheHtml()`): Sprechstunde/OP-Planung, nur Mo–Fr, je Tag
-  die Anwesenden (nach Nachname, Zusatz „ab 11“ = Dienst, „n. D.“ = nach Dienst, vorm./nachm. bei `halb`), Zahl
+  die Anwesenden (nur Nachname ohne Kürzel seit 1.87, nach Nachname, Zusatz „ab 11“ = Dienst, „n. D.“ = nach Dienst, vorm./nachm. bei `halb`), Zahl
   vorm.|nachm. wie `urlBesetzung()`, „weg:“ + Termine; ab aktueller Woche (sonst Monatsbeginn) bis Ende Folgemonat,
   „Weitere Wochen“ lädt je einen Monat (`wocheMehr`, `wocheLaden()`); ≤ 760 px je Tag eine Zeile. Reine Ansicht.
   Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
