@@ -295,6 +295,8 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 .liste{display:grid;gap:8px}
 .lz{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 10px}
 .lz .t{flex:1}
+.tz-bis{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);font-weight:600}
+.tz-bis input{padding:4px 6px;font-size:12px;width:128px}
 .x{border:0;background:transparent;color:var(--muted);cursor:pointer;padding:4px;display:flex}
 .x:hover{color:var(--danger)}
 
@@ -476,13 +478,13 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           </div>
           <div class="reihe hidden" id="tzWoche" style="margin-top:10px"></div>
           <div class="reihe hidden" id="tzManuell" style="margin-top:10px"><label class="f">ab<input type="date" id="tzMAb"></label>
-            <span class="hint" style="padding-bottom:9px">Alle Werktage gelten als frei, außer die mit dem Pinsel „anwesend“ markierten.</span></div>
+            <span class="hint" style="padding-bottom:9px">Ohne Rechnen: alle Werktage gelten als frei, Arbeitstage malst du danach mit dem Pinsel „anwesend“ (wird automatisch gewählt).</span></div>
           <div class="reihe" style="margin-top:10px">
             <label class="f">gilt bis (optional)<input type="date" id="tzBis"></label>
             <button class="btn out" id="tzAdd"><span data-icon="plus"></span>Muster</button>
           </div>
           <div class="hint" style="margin-top:8px">Beispiel Wechsel Mi–Di: erster Arbeitstag = ein Mittwoch, 7 Tage da, 7 frei.
-            Einzelne Tage im Kalender als „frei“ oder „anwesend“ korrigieren.</div>
+            Einzelne Tage im Kalender als „frei“ oder „anwesend“ korrigieren. Das Ende („bis“) lässt sich oben im Muster jederzeit nachtragen.</div>
         </div>
       </div>
     </div>
@@ -612,7 +614,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.31';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.32';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1389,8 +1391,14 @@ function renderMeine(){
   $('tzListe').innerHTML = (p.teilzeit || []).map((t, i) => `<div class="lz">${icon('clock')}<span class="t">${t.typ === 'block'
       ? `${t.an} Tage da, ${t.aus} frei, ab ${kurzDat(t.ab)}${t.ab.slice(0,4)} (${WT[wt(t.ab)]}–${WT[wt(plus(t.ab, t.an - 1))]})`
       : t.typ === 'manuell' ? `nur gepinselte Tage anwesend${t.ab ? ', ab ' + kurzDat(t.ab) + t.ab.slice(0,4) : ''}`
-      : `frei: ${(t.wt || []).map(x => WT[x]).join(', ')}${t.ab ? ', ab ' + kurzDat(t.ab) + t.ab.slice(0,4) : ''}`}${t.bis ? ', bis ' + kurzDat(t.bis) + t.bis.slice(0,4) : ''}</span>
+      : `frei: ${(t.wt || []).map(x => WT[x]).join(', ')}${t.ab ? ', ab ' + kurzDat(t.ab) + t.ab.slice(0,4) : ''}`}</span>
+      <label class="tz-bis" title="Ende des Musters – leer = unbegrenzt">bis<input type="date" data-bis="${i}" value="${t.bis || ''}" min="${t.ab || ''}"></label>
       <button class="x" data-i="${i}">${icon('x')}</button></div>`).join('') || '<div class="hint">Vollzeit – kein Muster.</div>';
+  /* Ende nachtragen/aendern direkt im bestehenden Muster */
+  $('tzListe').querySelectorAll('[data-bis]').forEach(el => el.onchange = ()=>{
+    const i = +el.dataset.bis, v = el.value;
+    personAendern(p.k, 'Teilzeit bis', q => { const t = (q.teilzeit || [])[i]; if(!t) return; if(v) t.bis = v; else delete t.bis; });
+  });
   $('tzListe').querySelectorAll('.x').forEach(b => b.onclick = ()=> personAendern(p.k, 'Teilzeitmuster entfernt', q => q.teilzeit.splice(+b.dataset.i, 1)));
 }
 $('fuerSel').onchange = e => { fuerK = e.target.value; renderMeine(); };
@@ -1419,6 +1427,7 @@ $('tzAdd').onclick = ()=>{
   }
   if($('tzBis').value) t.bis = $('tzBis').value;
   personAendern(fuerK, 'Teilzeitmuster', q => (q.teilzeit ||= []).push(t));
+  if(t.typ === 'manuell'){ pinsel = 'da'; renderMeine(); toast('Pinsel „anwesend“ aktiv – Arbeitstage im Kalender überstreichen.'); }
 };
 
 /* Pinsel: Typ waehlen, dann Tage antippen oder darueberstreichen. Beginnt der
