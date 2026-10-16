@@ -92,9 +92,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
   = Planer/Admin/niemand ist Planer; sonst nur eigene Einträge (`darfFuer()`), Einstellungen
   ausgeblendet (`cfgSperren()`, Karte `.frei` ausgenommen). Person wechseln (Kopf `#ichBtn`, `#ichWechsel`)
-  seit 1.61 nur auf dem Admin-Gerät (`adminGeraet()`), auch nicht der Planer; Häkchen „Ansicht wie diese
-  Person“ (`planung_sim`='1', `simuliert()`) schaltet `istAdmin()` ab – Rechte dann wie die gewählte Person,
-  der Personen-Dialog bleibt als Rückweg. Ohne gewählte Person darf jedes Gerät einmal wählen.
+  seit 1.61 nur auf dem Admin-Gerät (`adminGeraet()`), auch nicht der Planer. Seit 1.63 kommen die Rechte
+  immer von der gewählten Person (`istAdmin()` nur ohne gewählte Person) – der Admin sieht genau ihre
+  Ansicht, die Personenwahl bleibt sein Rückweg. Ohne gewählte Person darf jedes Gerät einmal wählen.
   1.62: „Admin-Anmeldung“ in der Karte Zugang (Gist-Token, `GET /user` = Besitzer `TEAM_REPO`, setzt
   `tagesdoku_admin`); Nicht-Verwalter sehen in den Einstellungen nur die Karte `.frei` (Zugang).
   Halber Tag weg (1.58, Typ `halb`, `zeit` 'vm'|'nm', `uhr` = freier Text): nicht `abw`, zählt nur im

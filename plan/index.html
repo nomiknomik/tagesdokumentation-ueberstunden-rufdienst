@@ -77,7 +77,6 @@ nav.tabs .ic{width:16px;height:16px}
 .status[data-st=wait]{color:var(--warning);font-weight:700}
 .status[data-st=ok]{color:var(--success)} .status[data-st=busy]{color:var(--warning)} .status[data-st=err]{color:var(--danger)}
 .ich .pk{width:26px;height:26px;border-radius:999px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.ich.sim{border:1.5px dashed var(--warning);background:var(--warning-soft)}
 .ich{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:4px 10px 4px 4px;cursor:pointer}
 
 main{max-width:1320px;margin:0 auto;padding:18px 20px 60px}
@@ -753,7 +752,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.62';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.63';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1317,8 +1316,7 @@ function render(){
   $('mTitel').textContent = monatName(ym);
   const p = ich();
   $('ichBtn').innerHTML = p ? `${pk(p)}<b>${esc(p.name || p.k)}</b>` : '<span class="hint">nicht angemeldet</span>';
-  $('ichBtn').classList.toggle('sim', simuliert());
-  $('ichBtn').title = simuliert() ? 'Ansicht wie diese Person (Admin-Rechte aus) – Klick zum Wechseln' : 'Angemeldet als';
+  $('ichBtn').title = adminGeraet() ? 'Angemeldet als – Klick: Person wechseln (Admin)' : 'Angemeldet als';
   $('ichWechsel').classList.toggle('hidden', !!ich() && !adminGeraet());   // Person wechseln nur Admin
   $('adminLogin').classList.toggle('hidden', adminGeraet());
   todoBadge();
@@ -1330,11 +1328,11 @@ function render(){
 
 /* =================== Plan =================== */
 const darfEinteilen = () => cfg.gruppen.oa.einteilen !== 'planer' || !!(ich() && ich().planer);
-/* Admin-Geraet (tagesdoku_admin). 1.61: nur der Admin wechselt die Person; „wie diese Person sehen“
-   (planung_sim='1') schaltet die Admin-Rechte ab – die Personenwahl bleibt als einziger Rueckweg. */
+/* Admin-Geraet (tagesdoku_admin): darf als einziges die Person wechseln (1.61). Rechte kommen seit
+   1.63 immer von der gewaehlten Person – der Admin sieht genau, was sie sieht; die Personenwahl
+   bleibt sein Rueckweg. Volle Rechte nur, solange noch keine Person gewaehlt ist. */
 const adminGeraet = () => localStorage.getItem('tagesdoku_admin') === '1';
-const simuliert = () => adminGeraet() && localStorage.getItem('planung_sim') === '1';
-const istAdmin = () => adminGeraet() && !simuliert();
+const istAdmin = () => adminGeraet() && !ich();
 /* Rechte nur in der Oberflaeche: der Team-Token darf technisch alles im Repo.
    Planer/Admin verwalten (Team, Einstellungen, alle Personen, Urlaub genehmigen),
    alle anderen tragen nur fuer sich selbst ein. Ist niemand Planer, duerfen alle. */
@@ -2210,7 +2208,7 @@ function zeigeProtokoll(reiter){
     box.innerHTML = (g.length ? g.map(x => `<div class="proto-z ${x.alt === '?' ? 'alt' : ''}"><small>${zeit(x.am)}</small><div class="was"><b>${esc(x.von || '?')}</b>${x.k && x.k !== x.von ? ' für <b>' + esc(x.k) + '</b>' : ''}: ${protokollText(x)}${x.tage[0] ? ` <span class="tg">· ${spannen(x.tage.filter(Boolean))}</span>` : ''}</div></div>`).join('')
       : '<div class="hint" style="padding:10px 0">Noch keine Einträge.</div>')
       + `<div class="hint" style="margin-top:8px">Erfasst: Dienste, Wünsche, Urlaub, Genehmigungen (geladene Monate, aktuelles + nächstes Jahr). Wunsch-/Urlaubsänderungen vor v1.51 nur als Eintragszeit, Löschungen davon nicht.</div>`
-      + (istAdmin() ? `<div class="hint"><a href="https://github.com/${TEAM_REPO}/commits/main/plan" target="_blank" rel="noopener">Vollständige Historie auf GitHub</a></div>` : '');
+      + (adminGeraet() ? `<div class="hint"><a href="https://github.com/${TEAM_REPO}/commits/main/plan" target="_blank" rel="noopener">Vollständige Historie auf GitHub</a></div>` : '');
   }
   icons(box);
   const pr = $('protoReiter'); if(pr) pr.querySelectorAll('button').forEach(b => b.onclick = ()=> zeigeProtokoll(b.dataset.r));
@@ -2545,7 +2543,7 @@ $('adminLogin').onclick = async ()=>{
     const r = await fetch('https://api.github.com/user', {cache: 'no-store', headers: {Authorization: 'Bearer ' + t, Accept: 'application/vnd.github+json'}});
     const u = r.ok ? await r.json() : null;
     if(!u || String(u.login).toLowerCase() !== TEAM_REPO.split('/')[0].toLowerCase()) return toast('Token ungültig oder nicht vom Admin-Konto.');
-    localStorage.setItem('tagesdoku_admin', '1'); localStorage.setItem('planung_sim', '0');
+    localStorage.setItem('tagesdoku_admin', '1');
     localStorage.setItem('tagesdoku_teilen', JSON.stringify({...load('tagesdoku_teilen', {}), gist: t}));
     toast('Als Admin angemeldet.'); render(); ichWaehlen();
   }catch(e){ toast('Keine Verbindung (' + e.message + ').'); }
@@ -2686,18 +2684,16 @@ function ichWaehlen(){
   }
   const neuErlaubt = !cfg.personen.length || adminGeraet();
   dialog(`<h3>${adminGeraet() ? 'Person wählen (Admin)' : 'Wer bist du?'}</h3><div class="unter">${adminGeraet()
-      ? 'Nur auf diesem Admin-Gerät sichtbar. Einträge werden mit dem gewählten Kürzel protokolliert.'
+      ? 'Nur auf diesem Admin-Gerät. Du siehst und darfst genau das, was die gewählte Person sieht und darf; Einträge werden mit ihrem Kürzel protokolliert.'
       : 'Einmalig auf diesem Gerät. Einträge werden mit deinem Kürzel protokolliert.'}</div>
-    ${adminGeraet() ? `<label class="f" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:10px;font-weight:600">
-      <input type="checkbox" id="iSim" ${simuliert() ? 'checked' : ''}> Ansicht wie diese Person (Admin-Rechte aus – zum Testen)</label>` : ''}
+
     ${personen().map(p => `<button class="kand ${p.k === ichK ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b><span class="hint">${p.rolle === 'chef' ? 'Chefarzt' : 'Oberarzt/-ärztin'}</span></span></button>`).join('')}
     ${neuErlaubt ? `<div class="hint" style="margin-top:10px">Nicht in der Liste? Unten neu anlegen.</div>
     <div class="reihe" style="margin-top:8px"><label class="f">Kürzel<input type="text" id="iK" maxlength="6" style="width:80px"></label>
       <label class="f" style="flex:1">Name<input type="text" id="iName"></label>
       <label class="f">Rolle<select id="iRolle"><option value="oa">OA</option><option value="chef">Chef</option></select></label>
       <button class="btn out" id="iAdd">${icon('plus')}Anlegen</button></div>` : '<div class="hint" style="margin-top:10px">Nicht in der Liste? Planer:in legt dich unter Einstellungen → Team an.</div>'}`, el => {
-    const simSetzen = ()=>{ if(adminGeraet()) localStorage.setItem('planung_sim', $('iSim').checked ? '1' : '0'); };
-    el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ simSetzen(); ichK = b.dataset.k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render(); });
+    el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ ichK = b.dataset.k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render(); });
     if($('iAdd')) $('iAdd').onclick = ()=>{
       const k = $('iK').value.trim().toUpperCase().replace(/[^A-ZÄÖÜ0-9]/g, '');
       if(!k) return toast('Bitte Kürzel eingeben.');
@@ -2706,7 +2702,7 @@ function ichWaehlen(){
           planer: cfg.personen.length === 0, farbe: FARBEN[cfg.personen.length % FARBEN.length]};
         cfgAendern(`Person ${k}`, d => { if(!d.personen.some(p => p.k === k)) d.personen.push(neu); });
       }
-      simSetzen(); ichK = k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render();
+      ichK = k; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); zu(); render();
     };
   });
 }
