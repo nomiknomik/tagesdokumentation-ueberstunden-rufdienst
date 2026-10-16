@@ -228,8 +228,9 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
   color:color-mix(in srgb,var(--f) 80%,#000)}
 .mx-dienst .nn{font-weight:700}
 .mx-dienst.auto{border-color:color-mix(in srgb,var(--f) 55%,#fff)}
-.mx-mini{background:var(--f);color:#fff;opacity:.75}
-.mx-mini.offen,.mx-mini.gef{background:#fff;color:var(--f);border-style:dashed;border-color:var(--f);opacity:1}
+.mx-mini{background:color-mix(in srgb,var(--f) 82%,#fff);color:#fff;opacity:1;font-size:9.5px;font-weight:600;letter-spacing:.02em;
+  min-width:21px;height:21px;margin-right:2px;border:0;-webkit-font-smoothing:antialiased}
+.mx-mini.offen,.mx-mini.gef{background:#fff;color:var(--f);border:1.5px dashed var(--f);opacity:1}
 .prow .pk{filter:saturate(.75)}
 
 /* Nachbarmonate in der Matrix */
@@ -652,7 +653,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.42';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.43';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -986,6 +987,22 @@ function teilzeitFrei(p, s){
     if(t.typ === 'block'){ const z = ((tn(s) - tn(t.ab)) % (t.an + t.aus) + (t.an + t.aus)) % (t.an + t.aus); if(z >= t.an) return true; }
   }
   return false;
+}
+/* Bruch eines laufenden Teilzeit-Blocks (anwesend an Block-frei bzw. frei an Block-Arbeitstag,
+   Dienst an Block-frei): der Block endet am Vortag (beginnt er an dem Tag, entfaellt er). */
+function blockBruch(p, s, da){
+  if(!p || !werktag(s)) return;
+  const i = (p.teilzeit || []).findIndex(t => t.typ === 'block' && t.ab && s >= t.ab && (!t.bis || s <= t.bis));
+  if(i < 0) return;
+  const t = p.teilzeit[i], z = ((tn(s) - tn(t.ab)) % (t.an + t.aus) + (t.an + t.aus)) % (t.an + t.aus);
+  if(da === (z < t.an)) return;   // passt zum Block
+  const ende = plus(s, -1);
+  personAendern(p.k, 'Teilzeit-Block beendet', q => {
+    const x = (q.teilzeit || []).find(y => y.typ === 'block' && y.ab === t.ab && y.an === t.an && y.aus === t.aus);
+    if(!x) return;
+    if(ende < x.ab) q.teilzeit.splice(q.teilzeit.indexOf(x), 1); else x.bis = ende;
+  });
+  toast(`Teilzeit-Block von ${p.name || p.k} endet am ${kurzDat(ende)} – danach Tage malen oder neues Muster.`);
 }
 /* Abwesenheitsgrund oder '' – haengt nur an Eintrag bzw. Teilzeitmuster */
 function abwesend(p, s){
@@ -1354,6 +1371,7 @@ function waehlen(s){
 function einteilen(s, k, auto){
   const alt = dienstVon(s), m = ymVon(s);
   if(alt === k) return;
+  if(k && !auto) blockBruch(person(k), s, true);
   aendern(pfadDienst(m), {tage:{}, log:[]}, `Dienst ${kurzDat(s)}`, (d, remote) => {
     d.tage ||= {}; d.log ||= [];
     const jetzt = (d.tage[s] && d.tage[s].oa) || '';
@@ -1564,6 +1582,7 @@ function pinselTag(s, k = fuerK, typ = pinsel){
   if(['da','frei','fza','fb'].includes(typ) && !werktag(s)) return;   // Wochenende/Feiertag auslassen (Urlaub nicht)
   const alt = eintrag(p.k, s), sperre = gesperrtFuer(p.k, alt);
   if(sperre){ if(!strich.gemeldet){ strich.gemeldet = true; toast(sperre); } return; }
+  if((typ === 'da' || typ === 'frei') && !(alt && alt.typ === typ)) blockBruch(p, s, typ === 'da');
   /* 'anwesend' = Kachel weiss: an Teilzeit-freien Tagen Eintrag 'da', an normalen
      Arbeitstagen nur ein 'frei' entfernen (sonst gaebe es unsichtbare Eintraege) */
   if(typ === 'da' && !teilzeitFrei(p, s)){
@@ -1879,6 +1898,7 @@ function eintragDialog(p, s){
     const setzen = wert => {
       const bis = $('eBis').value && $('eBis').value >= s ? $('eBis').value : s;
       if(tn(bis) - tn(s) > 62) return toast('Höchstens zwei Monate auf einmal.');
+      if(wert && (wert.typ === 'da' || wert.typ === 'frei')) blockBruch(p, s, wert.typ === 'da');
       for(let x = s; x <= bis; x = plus(x, 1)){
         const tag = x;
         if(x !== s && gesperrtFuer(p.k, eintrag(p.k, x))) continue;   // genehmigten Urlaub im Bereich nicht anfassen
