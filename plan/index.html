@@ -605,7 +605,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button><button data-t="fza">FZA</button><button data-t="termin">Termin</button></span>
           <span class="hint" id="urlTermInfo"></span>
           <span class="hint desk">Antippen oder über Tage streichen; nochmal = löschen. Urlaub zählt nur an Werktagen.</span>
-          <span class="hint mobil">Tippen = ein Tag · lang drücken und streichen = mehrere · nochmal = löschen</span>
+          <span class="hint mobil">Tippen = ein Tag · lang drücken = Pinsel (gestrichelt, endet 3 s nach dem Loslassen) · nochmal = löschen</span>
         </div>
         <div class="tabelle matrix" id="urlTab"></div>
       </div>
@@ -734,7 +734,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.52';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.53';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2142,7 +2142,12 @@ $('urlTab').addEventListener('pointermove', e => { if(strich && strich.url){ con
 /* Touch (Handy): Wischen scrollt immer. Kurz antippen = ein Tag; Streichen erst nach
    langem Druecken (0,4 s ohne Bewegung) - dann ist Scrollen bis zum Loslassen gesperrt.
    Ein Strich = ein Rueckgaengig-Schritt (schritt bleibt bis touchend offen). */
-let urlTouch = null;
+let urlTouch = null, urlMalAus = 0;   // Pinsel-Modus: bleibt nach dem Loslassen 3 s aktiv (gestrichelt)
+const urlMalModus = an => {
+  clearTimeout(urlMalAus);
+  $('urlTab').classList.toggle('malt', an);
+  if(an) urlMalAus = setTimeout(()=> $('urlTab').classList.remove('malt'), 3000);
+};
 const urlTagAn = t => { const el = document.elementFromPoint(t.clientX, t.clientY); const b = el && el.closest('#urlTab .mx-box[data-tag]'); return b && b.dataset.tag; };
 const urlStrichStart = s => {
   if(urlTyp === 'termin' && !termId){ toast('Erst einen Termin zum Pinseln wählen (✎).'); return false; }
@@ -2151,27 +2156,39 @@ const urlStrichStart = s => {
 $('urlTab').addEventListener('touchstart', e => {
   if(e.touches.length > 1){ if(urlTouch) clearTimeout(urlTouch.timer); urlTouch = null; return; }
   const t = e.touches[0], s = urlTagAn(t); if(!s || nurLesen) return;
+  if($('urlTab').classList.contains('malt')){   // Pinsel noch aktiv: sofort malen, kein Halten noetig
+    clearTimeout(urlMalAus);
+    urlTouch = {s, aktiv: urlStrichStart(s)}; urlTouchHoeren(e.target); return;
+  }
   urlTouch = {x: t.clientX, y: t.clientY, s, t0: Date.now(), aktiv: false};
+  urlTouchHoeren(e.target);
   urlTouch.timer = setTimeout(()=>{
     if(!urlTouch || !urlStrichStart(urlTouch.s)) return;
-    urlTouch.aktiv = true; $('urlTab').classList.add('malt');
+    urlTouch.aktiv = true; urlMalModus(true); clearTimeout(urlMalAus);
     if(navigator.vibrate) navigator.vibrate(15);
   }, 400);
 }, {passive: true});
-$('urlTab').addEventListener('touchmove', e => {
+/* move/end direkt am beruehrten Element: render() ersetzt die Kachel waehrend des Strichs,
+   die abgeloeste Kachel bekommt die Events weiter, sie erreichen #urlTab/document aber nicht mehr */
+const urlTouchMove = e => {
   if(!urlTouch) return;
   const t = e.touches[0];
   if(urlTouch.aktiv){ e.preventDefault(); const s = urlTagAn(t); if(s) urlMalen(s); return; }
-  if(Math.hypot(t.clientX - urlTouch.x, t.clientY - urlTouch.y) > 8){ clearTimeout(urlTouch.timer); urlTouch = null; }   // scrollt
-}, {passive: false});
+  if(Math.hypot(t.clientX - urlTouch.x, t.clientY - urlTouch.y) > 8){ clearTimeout(urlTouch.timer); urlTouchEnde({type: 'scroll'}); }   // scrollt
+};
 const urlTouchEnde = e => {
+  if(urlTouch && urlTouch.ziel){ const z = urlTouch.ziel; z.removeEventListener('touchmove', urlTouchMove); z.removeEventListener('touchend', urlTouchEnde); z.removeEventListener('touchcancel', urlTouchEnde); }
   if(!urlTouch) return;
   clearTimeout(urlTouch.timer);
   if(!urlTouch.aktiv && e.type === 'touchend' && Date.now() - urlTouch.t0 < 400){ e.preventDefault(); urlStrichStart(urlTouch.s); }
-  if(strich) schritt = null; strich = null; urlTouch = null; $('urlTab').classList.remove('malt');
+  if(urlTouch.aktiv) urlMalModus(true);   // 3 s Nachlauf ab Loslassen
+  if(strich) schritt = null; strich = null; urlTouch = null;
 };
-$('urlTab').addEventListener('touchend', urlTouchEnde);
-$('urlTab').addEventListener('touchcancel', urlTouchEnde);
+const urlTouchHoeren = ziel => {
+  urlTouch.ziel = ziel;
+  ziel.addEventListener('touchmove', urlTouchMove, {passive: false});
+  ziel.addEventListener('touchend', urlTouchEnde); ziel.addEventListener('touchcancel', urlTouchEnde);
+};
 /* Urlaub: Monat in Bildschirmmitte in den Kopf; an den Enden ein Jahr nachladen */
 let urlScrollT = 0;
 window.addEventListener('scroll', ()=>{
