@@ -752,7 +752,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.64';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.65';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1257,6 +1257,8 @@ let tab = 'plan';
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = ()=>{
   tab = b.dataset.tab; merken('planung_tab', tab);
   if(tab === 'urlaub') urlScrollZiel = ym;
+  if(tab === 'meine') fuerK = ichK;   // 1.65: beim Oeffnen immer die eigene Person
+  if(tab === 'urlaub') urlK = ichK;
   document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
   ['plan','meine','urlaub','cfg'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
   render();
@@ -1448,7 +1450,7 @@ function renderPlan(){
   $('zaehler').innerHTML = z;
   $('zaehler').querySelectorAll('.prow').forEach(el => {
     el.onclick = ()=>{ markK = markK === el.dataset.k ? '' : el.dataset.k; renderPlan(); };
-    el.ondblclick = ()=>{ markK = ''; fuerK = el.dataset.k; document.querySelector('nav.tabs button[data-tab="meine"]').click(); window.scrollTo({top: 0}); };
+    el.ondblclick = ()=>{ markK = ''; document.querySelector('nav.tabs button[data-tab="meine"]').click(); fuerK = el.dataset.k; renderMeine(); window.scrollTo({top: 0}); };
     el.title = 'Klick: Tage hervorheben · Doppelklick: Wunschkalender öffnen'; });
 }
 

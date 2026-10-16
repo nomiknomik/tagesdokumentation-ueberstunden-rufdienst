@@ -94,7 +94,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   ausgeblendet (`cfgSperren()`, Karte `.frei` ausgenommen). Person wechseln (Kopf `#ichBtn`, `#ichWechsel`)
   seit 1.61 nur auf dem Admin-Gerät (`adminGeraet()`), auch nicht der Planer. Seit 1.63 kommen die Rechte
   immer von der gewählten Person (`istAdmin()` nur ohne gewählte Person) – der Admin sieht genau ihre
-  Ansicht, die Personenwahl bleibt sein Rückweg. Kopf-Knopf `#ichBtn` seit 1.64 nur auf dem Admin-Gerät; „Angemeldet als“ für alle in der Karte Zugang. Ohne gewählte Person darf jedes Gerät einmal wählen.
+  Ansicht, die Personenwahl bleibt sein Rückweg. Wünsche/Urlaub öffnen seit 1.65 immer mit der eigenen Person (`fuerK`/`urlK` = `ichK` beim Reiterwechsel; Doppelklick im Plan setzt danach). Kopf-Knopf `#ichBtn` seit 1.64 nur auf dem Admin-Gerät; „Angemeldet als“ für alle in der Karte Zugang. Ohne gewählte Person darf jedes Gerät einmal wählen.
   1.62: „Admin-Anmeldung“ in der Karte Zugang (Gist-Token, `GET /user` = Besitzer `TEAM_REPO`, setzt
   `tagesdoku_admin`); Nicht-Verwalter sehen in den Einstellungen nur die Karte `.frei` (Zugang).
   Halber Tag weg (1.58, Typ `halb`, `zeit` 'vm'|'nm', `uhr` = freier Text): nicht `abw`, zählt nur im
