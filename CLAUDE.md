@@ -80,6 +80,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   blass + je eine angeschnittene Woche (Klick = Nachbarmonat); Monatswechsel im Plan
   nur über den Kopf, nicht per Scrollen. „Veröffentlichen“ heißt in der Oberfläche **Signieren** (Daten weiter `veroeffentlicht`), nur Planer
   oder `tagesdoku_admin` (`darfVeroeffentlichen()`), auch Zurücknehmen.
+  Protokoll (1.51): Wunschdateien führen `log` [{am,von,tag,alt,neu}] wie die Dienstdatei – über
+  `mitLog()` in `aendern()` (Codes `wCode()`: Typ + ✓ genehmigt + ! hart); Rückgängig setzt `log`
+  nie zurück. Kopf-Knopf `#protoBtn`: Dialog „Offen“ (beantragter Urlaub, nur `darfVerwalten()`,
+  Zähler-Badge, `todoLaden()` = aktuelles + nächstes Jahr) und „Protokoll“ (Striche ≤ 2 min
+  zusammengefasst; vor 1.51 nur Eintragszeit `am` am Eintrag).
   Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
   = Planer/Admin/niemand ist Planer; sonst nur eigene Einträge (`darfFuer()`), Einstellungen
   nur lesen (`cfgSperren()`, Karte `.frei` ausgenommen), „Person wechseln“ gesperrt.

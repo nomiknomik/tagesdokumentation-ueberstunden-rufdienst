@@ -61,6 +61,18 @@ nav.tabs .ic{width:16px;height:16px}
 .zoom button .ic{width:16px;height:16px;vertical-align:middle}
 .zoom span{font-size:11px;font-weight:700;color:var(--text2);min-width:40px;text-align:center}
 .status{border:0;background:transparent;cursor:pointer;padding:4px 6px;border-radius:8px}
+.hknopf{position:relative;border:1px solid var(--border);background:var(--card);border-radius:999px;width:38px;height:38px;display:grid;place-items:center;cursor:pointer;color:var(--text2);padding:0}
+.hknopf:hover{border-color:var(--primary);color:var(--primary)}
+.hknopf .badge{position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font:700 11px/18px system-ui,sans-serif;font-style:normal;padding:0 5px;text-align:center}
+.proto-z{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border)}
+.proto-z small{color:var(--muted);white-space:nowrap;font-size:11.5px;padding-top:1px}
+.proto-z .was{line-height:1.35} .proto-z .tg{color:var(--text2)}
+.proto-z.alt .was{color:var(--text2)}
+.todo-m{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--card)}
+.todo-m h4{margin:0 0 6px;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.todo-m h4 > span{flex:1}
+.todo-m h4 .btn{padding:5px 12px;font-size:12.5px;min-height:0}
+.todo-m .z{font-size:13px;display:flex;gap:8px;align-items:center;padding:2px 0}
 .status:hover{background:var(--primary-soft)}
 .status[data-st=wait]{color:var(--warning);font-weight:700}
 .status[data-st=ok]{color:var(--success)} .status[data-st=busy]{color:var(--warning)} .status[data-st=err]{color:var(--danger)}
@@ -397,6 +409,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
   .logo small{display:none}
   .monat{margin-left:0;width:100%;justify-content:space-between;order:5}
   nav.tabs{order:4}
+  #protoBtn{order:4}
   nav.tabs button span.txt{display:none}
   main{padding:14px 16px 60px}
   .zeile.kopf{display:none}
@@ -481,6 +494,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
       <button class="rund" id="mVor" title="Nächster Monat"><span data-icon="chevronRight"></span></button>
     </div>
     <div class="zoom"><button id="undoBtn" title="Rückgängig (Strg+Z), bis 10 Schritte"><span data-icon="undo"></span></button><button id="redoBtn" title="Wiederholen (Strg+Y)"><span data-icon="redo"></span></button><i class="zoom-trenn"></i><button id="zoomMinus" title="verkleinern (je Gerät)">−</button><span id="zoomWert">100 %</span><button id="zoomPlus" title="vergrößern (je Gerät)">+</button></div>
+    <button class="hknopf" id="protoBtn" title="Protokoll und offene Anträge"><span data-icon="activity"></span><i class="badge hidden" id="todoZahl"></i></button>
     <button class="status" id="status" data-st="off" title="Jetzt speichern bzw. neu laden"><span data-icon="cloud"></span><span id="statusTxt">offline</span></button>
     <div class="ich" id="ichBtn" title="Angemeldet als"></div>
   </div>
@@ -721,7 +735,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.50';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.51';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -917,6 +931,7 @@ const queue = {};            // pfad -> {fns, leer, was}
 let flushTimer = 0, flushLaeuft = false;
 function aendern(pfad, leer, was, fn){
   if(nurLesen){ toast('Offline – nur lesen.'); return; }
+  if(/^plan\/wuensche\//.test(pfad) || (imUndo && /^plan\/dienst\//.test(pfad))) fn = mitLog(fn, pfad);
   const f = files[pfad] || (files[pfad] = {data: null, sha: null});
   if(!f.data) f.data = clone(leer);
   const vor = clone(f.data);
@@ -934,6 +949,27 @@ function aendern(pfad, leer, was, fn){
    werden nur die Stellen, die der Schritt geaendert hat - als neue Aenderung ueber aendern(),
    also auf den frischen Repo-Stand; Aenderungen anderer bleiben erhalten. */
 const UNDO_MAX = 10;
+/* Protokoll (seit 1.51): Wunsch-/Urlaubsdateien fuehren wie die Dienstdatei ein log
+   [{am, von, tag, alt, neu}] - Codes: Typ + '✓' (genehmigt) + '!' (hart), '' = leer.
+   Der Wrapper vergleicht tage vor/nach der Aenderung, laeuft also lokal UND beim
+   Hochladen auf dem frischen Stand. Dienst-Aenderungen loggen selbst, nur deren
+   Rueckgaengig laeuft hierueber. */
+const LOG_MAX = 400;
+const wCode = e => e ? e.typ + (e.ok ? '✓' : '') + (e.stufe === 'hart' ? '!' : '') : '';
+function mitLog(fn, pfad){
+  const am = Date.now(), von = ichK || '?', dienst = /^plan\/dienst\//.test(pfad), code = dienst ? (e => (e && e.oa) || '') : wCode;
+  return (d, remote) => {
+    const vor = clone(d.tage || {});
+    const r = fn(d, remote);
+    const nach = d.tage || {}, neu = [];
+    for(const t of new Set([...Object.keys(vor), ...Object.keys(nach)])){
+      const a = code(vor[t]), b = code(nach[t]);
+      if(a !== b) neu.push({am, von, tag: t, alt: a, neu: b, ...(dienst ? {rueck: true} : {})});
+    }
+    if(neu.length) d.log = [...(d.log || []), ...neu].slice(-LOG_MAX);
+    return r;
+  };
+}
 let undoStack = [], redoStack = [], schritt = null, imUndo = false;
 function schrittFuer(){
   if(imUndo) return null;
@@ -960,7 +996,7 @@ function undoRedo(zurueck){
   imUndo = true;
   try{
     for(const e of zurueck ? [...st].reverse() : st){
-      const stellen = zurueck ? diffPfade(e.nach, e.vor) : diffPfade(e.vor, e.nach);
+      const stellen = (zurueck ? diffPfade(e.nach, e.vor) : diffPfade(e.vor, e.nach)).filter(([p]) => p[0] !== 'log');   // Protokoll bleibt
       if(stellen.length) aendern(e.pfad, e.leer, zurueck ? 'rückgängig' : 'wiederholt', d => stellen.forEach(([p, w]) => p.length ? setzePfad(d, p, w) : null));
     }
   }finally{ imUndo = false; }
@@ -1254,6 +1290,7 @@ function render(){
   $('mTitel').textContent = monatName(ym);
   const p = ich();
   $('ichBtn').innerHTML = p ? `${pk(p)}<b>${esc(p.name || p.k)}</b>` : '<span class="hint">nicht angemeldet</span>';
+  todoBadge();
   if(tab === 'plan') renderPlan();
   if(tab === 'meine') renderMeine();
   if(tab === 'cfg') renderCfg();
@@ -1947,6 +1984,105 @@ function renderUrlaub(){
     if(m) window.scrollTo({top: m.getBoundingClientRect().top + scrollY - 130}); }
 }
 let urlVorne = false;
+/* =================== Protokoll & To-dos (1.51) ===================
+   To-do = beantragter (nicht genehmigter) Urlaub, fuer Planer/Admin (darfVerwalten).
+   Geladen werden aktuelles + naechstes Jahr (ladeJahr, ETag). Protokoll aus den log-
+   Eintraegen aller geladenen Dateien; aeltere Eintraege ohne Protokoll ueber am/von
+   am Eintrag (nur „eingetragen“, Loeschungen davor sind nicht nachvollziehbar). */
+const todoLaden = () => { const y = +heute().slice(0, 4); return Promise.all([ladeJahr(y), ladeJahr(y + 1)]); };
+function offeneAntraege(){   // [{m, k, tage[]}]
+  const r = {};
+  for(const [pfad, f] of Object.entries(files)){
+    const m = pfad.match(/^plan\/wuensche\/([^/]+)\/(\d{4}-\d{2})\.json$/);
+    if(!m || !person(m[1]) || !f || !f.data || !f.data.tage) continue;
+    for(const [s, e] of Object.entries(f.data.tage)) if(e.typ === 'urlaub' && !e.ok) (r[m[2] + '|' + m[1]] ||= {m: m[2], k: m[1], tage: []}).tage.push(s);
+  }
+  return Object.values(r).sort((a, b) => a.m < b.m ? -1 : a.m > b.m ? 1 : a.k < b.k ? -1 : 1);
+}
+function todoBadge(){
+  const n = darfVerwalten() ? offeneAntraege().length : 0;
+  $('todoZahl').textContent = n; $('todoZahl').classList.toggle('hidden', !n);
+  $('protoBtn').title = n ? `${n} offene Urlaubsanträge (Person je Monat) – Protokoll` : 'Protokoll';
+}
+function spannen(tage){   // sortierte Tage -> „6.–9.10., 13.10.“
+  const t = [...new Set(tage)].sort(), r = [];
+  for(const s of t){ const l = r[r.length - 1]; if(l && plus(l[1], 1) === s) l[1] = s; else r.push([s, s]); }
+  return r.map(([a, b]) => a === b ? kurzDat(a) : (a.slice(0, 7) === b.slice(0, 7) ? +a.slice(8) + '.' : kurzDat(a)) + '–' + kurzDat(b)).join(', ');
+}
+const codeName = c => { if(!c) return 'leer'; const t = c.replace(/[✓!]/g, ''); return ((TYPEN[t] || {}).name || t) + (c.includes('!') ? ' (hart)' : '') + (c.includes('✓') ? ' (genehmigt)' : ''); };
+function protokollEintraege(){
+  const r = [];
+  for(const [pfad, f] of Object.entries(files)){
+    if(!f || !f.data) continue;
+    const w = pfad.match(/^plan\/wuensche\/([^/]+)\//), d = /^plan\/dienst\//.test(pfad);
+    if(!w && !d) continue;
+    const log = f.data.log || [];
+    log.forEach(x => { if(x.tag) r.push({...x, k: w ? w[1] : '', dienst: d}); else r.push({...x, dienst: d, meta: true}); });
+    if(w){   // vor Einfuehrung des Protokolls: nur Eintragszeit am Eintrag
+      const erst = log.length ? Math.min(...log.map(x => x.am)) : Infinity;
+      for(const [s, e] of Object.entries(f.data.tage || {})){
+        if(e.am && e.am < erst) r.push({am: e.am, von: e.von || w[1], k: w[1], tag: s, alt: '?', neu: wCode(e).replace('✓', '')});
+        if(e.ok && e.ok.am < erst) r.push({am: e.ok.am, von: e.ok.von, k: w[1], tag: s, alt: 'urlaub', neu: 'urlaub✓'});
+      }
+    }
+  }
+  r.sort((a, b) => b.am - a.am);
+  // zusammenfassen: gleiche Person/Aktion innerhalb von 2 Minuten (ein Pinselstrich)
+  const g = [];
+  for(const x of r){
+    const l = g[g.length - 1], key = [x.von, x.k, x.dienst, x.alt, x.neu, x.meta ? JSON.stringify(x) : ''].join('|');
+    if(l && l.key === key && l.am0 - x.am < 120000){ l.tage.push(x.tag); l.am0 = x.am; }
+    else g.push({...x, key, am0: x.am, tage: [x.tag]});
+  }
+  return g;
+}
+function protokollText(x){
+  if(x.meta) return x.zurueckgenommen ? 'Signatur zurückgenommen' : x.veroeffentlicht ? 'Dienstplan signiert' : 'Dienstplan';
+  if(x.dienst) return `Dienst: ${x.alt || 'leer'} → ${x.neu || 'leer'}${x.auto ? ' (automatisch)' : ''}${x.rueck ? ' (rückgängig/wiederholt)' : ''}`;
+  if(x.alt === '?') return `${codeName(x.neu)} eingetragen <i class="hint">(vor dem Protokoll)</i>`;
+  if(!x.alt) return `${codeName(x.neu)} eingetragen`;
+  if(!x.neu) return `${codeName(x.alt)} gelöscht`;
+  if(x.alt === 'urlaub' && x.neu === 'urlaub✓') return 'Urlaub genehmigt';
+  if(x.alt === 'urlaub✓' && x.neu === 'urlaub') return 'Urlaub-Genehmigung zurückgenommen';
+  return `${codeName(x.alt)} → ${codeName(x.neu)}`;
+}
+let protoFilter = '';
+async function protokollDialog(reiter){
+  const verw = darfVerwalten();
+  reiter ||= verw && offeneAntraege().length ? 'todo' : 'log';
+  dialog(`<h3>${verw ? 'Offene Anträge & Protokoll' : 'Protokoll'}</h3><div class="unter" id="protoUnter">Lade …</div><div id="protoInhalt"></div><div class="reihe" style="margin-top:12px;justify-content:flex-end"><button class="btn out" id="protoZu">Schließen</button></div>`,
+    d => d.querySelector('#protoZu').onclick = zu);
+  try{ if(zugang() && !nurLesen) await todoLaden(); }catch(e){ toast(e.message); }
+  zeigeProtokoll(reiter);
+}
+function zeigeProtokoll(reiter){
+  const box = $('protoInhalt'); if(!box) return;
+  const verw = darfVerwalten(), offen = offeneAntraege();
+  const knopf = (r, txt) => `<button data-r="${r}" class="${reiter === r ? 'on' : ''}">${txt}</button>`;
+  $('protoUnter').innerHTML = (verw ? `<span class="seg" id="protoReiter">${knopf('todo', `Offen (${offen.length})`)}${knopf('log', 'Protokoll')}</span>` : '')
+    + (reiter === 'log' ? ` <select id="protoWer" style="margin-left:6px"><option value="">alle</option>${personen().map(p => `<option value="${esc(p.k)}" ${protoFilter === p.k ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('')}</select>` : '');
+  if(reiter === 'todo'){
+    const je = {}; offen.forEach(x => (je[x.m] ||= []).push(x));
+    box.innerHTML = Object.keys(je).length ? Object.entries(je).map(([m, l]) => `<div class="todo-m"><h4><span>${monatName(m)}</span>
+        <button class="btn gh" data-zeig="${m}">Ansehen</button>${nurLesen ? '' : `<button class="btn" data-gen="${m}">${icon('check')}Genehmigen</button>`}</h4>`
+        + l.map(x => `<div class="z">${pk(person(x.k))}<span>${esc(person(x.k).name || x.k)}: <b>${spannen(x.tage)}</b> <span class="hint">(${x.tage.filter(werktag).length} Werktage)</span></span></div>`).join('') + '</div>').join('')
+      : '<div class="hint" style="padding:10px 0">Keine offenen Urlaubsanträge (aktuelles und nächstes Jahr). ✓</div>';
+  }else{
+    const g = protokollEintraege().filter(x => !protoFilter || x.k === protoFilter || x.von === protoFilter).slice(0, 200);
+    const zeit = am => new Date(am).toLocaleString('de-DE', {day: 'numeric', month: 'numeric', year: '2-digit', hour: '2-digit', minute: '2-digit'});
+    box.innerHTML = (g.length ? g.map(x => `<div class="proto-z ${x.alt === '?' ? 'alt' : ''}"><small>${zeit(x.am)}</small><div class="was"><b>${esc(x.von || '?')}</b>${x.k && x.k !== x.von ? ' für <b>' + esc(x.k) + '</b>' : ''}: ${protokollText(x)}${x.tage[0] ? ` <span class="tg">· ${spannen(x.tage.filter(Boolean))}</span>` : ''}</div></div>`).join('')
+      : '<div class="hint" style="padding:10px 0">Noch keine Einträge.</div>')
+      + `<div class="hint" style="margin-top:8px">Erfasst: Dienste, Wünsche, Urlaub, Genehmigungen (geladene Monate, aktuelles + nächstes Jahr). Wunsch-/Urlaubsänderungen vor v1.51 nur als Eintragszeit, Löschungen davon nicht.</div>`
+      + (istAdmin() ? `<div class="hint"><a href="https://github.com/${TEAM_REPO}/commits/main/plan" target="_blank" rel="noopener">Vollständige Historie auf GitHub</a></div>` : '');
+  }
+  icons(box);
+  const pr = $('protoReiter'); if(pr) pr.querySelectorAll('button').forEach(b => b.onclick = ()=> zeigeProtokoll(b.dataset.r));
+  const pw = $('protoWer'); if(pw) pw.onchange = ()=>{ protoFilter = pw.value; zeigeProtokoll('log'); };
+  box.querySelectorAll('[data-gen]').forEach(b => b.onclick = ()=>{ genehmigen(b.dataset.gen); zeigeProtokoll('todo'); });
+  box.querySelectorAll('[data-zeig]').forEach(b => b.onclick = ()=>{ zu(); ym = b.dataset.zeig; merken('planung_monat', ym); document.querySelector('nav.tabs [data-tab="urlaub"]').click(); });
+}
+$('protoBtn').onclick = ()=> protokollDialog();
+
 /* Urlaub genehmigen: je Monat, Planer/Admin. Genehmigt wird genau der Stand beim
    Klick (spaeter eingetragene Tage bleiben beantragt); ok = {von, am} am Eintrag. */
 function urlaubeIm(m){
@@ -2404,6 +2540,7 @@ async function start(){
   catch(e){ status('err', 'Fehler'); toast(e.message); if(/Token|Repo/.test(e.message)) anmelden(''); return; }
   render();
   if(!ich()) ichWaehlen();
+  if(darfVerwalten()) todoLaden().then(render, ()=>{});
 }
 /* Zoom je Geraet (CSS zoom auf <html>), 70–200 % */
 let zoom = +load('planung_zoom', 1) || 1;
