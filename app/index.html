@@ -1485,6 +1485,7 @@ if('showDirectoryPicker' in window){
 }
 
 /* --- Online (GitHub Contents API, AES-GCM) --- */
+const TEAM_REPO = 'nomiknomik/tagesdoku-team';   // vor allem, was beim Start syncOrt() aufruft (1.67 brach sonst ab)
 const LS_SYNC = 'tagesdoku_sync';   // {repo, token, pw, sha, zuletzt} - bewusst NICHT im Backup
 let sync = load(LS_SYNC, {});
 const saveSync = ()=> localStorage.setItem(LS_SYNC, JSON.stringify(sync));   // nicht save(): kein Dirty-Flag
@@ -1897,7 +1898,6 @@ $('adminOk').onclick = async ()=>{
 };
 /* Vor 1.52 eingerichtet (QR ab 1.42): Team-Nutzer hatten einen Namen bzw. das
    Team-Repo (1.51 hat den Namen geloescht) und nie selbst einen Code erzeugt. */
-const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_UMZUG = 'tagesdoku_umzug';   // Admin-Backup ins Team-Repo: einmal gefragt (nur Geraet)
 if(sync.repo && !sync.qr && !localStorage.getItem(LS_TEILEN)
    && (sync.name || sync.repo.toLowerCase() === TEAM_REPO)){ sync.qr = true; saveSync(); }
@@ -4029,7 +4029,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.68';
+const APP_VERSION = '1.69';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
