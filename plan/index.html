@@ -64,6 +64,13 @@ nav.tabs .ic{width:16px;height:16px}
 .hknopf{position:relative;border:1px solid var(--border);background:var(--card);border-radius:999px;width:38px;height:38px;display:grid;place-items:center;cursor:pointer;color:var(--text2);padding:0}
 .hknopf:hover{border-color:var(--primary);color:var(--primary)}
 .hknopf .badge{position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font:700 11px/18px system-ui,sans-serif;font-style:normal;padding:0 5px;text-align:center}
+#meldText{font:inherit;font-size:14px;border:1px solid var(--border);border-radius:12px;padding:10px;resize:vertical}
+.meld-bild{width:100%;max-height:260px;object-fit:contain;object-position:top;border:1px solid var(--border);border-radius:10px;background:#fff}
+.meld-z{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--card);font-size:13px}
+.meld-z.erledigt{opacity:.55}
+.meld-z .kopf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+.meld-z .kopf small{color:var(--muted)} .meld-z .kopf .btn{margin-left:auto;padding:4px 10px;font-size:12px;min-height:0}
+.meld-z p{margin:4px 0;white-space:pre-wrap}
 .proto-filter{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
 .proto-filter #protoF_zeit{grid-column:1/-1}
 .proto-filter select{min-width:0;font-size:13px}
@@ -424,7 +431,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
   .logo small{display:none}
   .monat{margin-left:0;width:100%;justify-content:space-between;order:5}
   nav.tabs{order:4}
-  #protoBtn{order:4}
+  #protoBtn,#hilfeBtn{order:4}
   nav.tabs button span.txt{display:none}
   main{padding:14px 16px 60px}
   .zeile.kopf{display:none}
@@ -509,6 +516,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
       <button class="rund" id="mVor" title="Nächster Monat"><span data-icon="chevronRight"></span></button>
     </div>
     <div class="zoom"><button id="undoBtn" title="Rückgängig (Strg+Z), bis 10 Schritte"><span data-icon="undo"></span></button><button id="redoBtn" title="Wiederholen (Strg+Y)"><span data-icon="redo"></span></button><i class="zoom-trenn"></i><button id="zoomMinus" title="verkleinern (je Gerät)">−</button><span id="zoomWert">100 %</span><button id="zoomPlus" title="vergrößern (je Gerät)">+</button></div>
+    <button class="hknopf" id="hilfeBtn" title="Problem oder Idee melden"><b style="font-size:17px;line-height:1">@</b><i class="badge hidden" id="hilfeZahl"></i></button>
     <button class="hknopf" id="protoBtn" title="Protokoll und offene Anträge"><span data-icon="activity"></span><i class="badge hidden" id="todoZahl"></i></button>
     <button class="status" id="status" data-st="off" title="Jetzt speichern bzw. neu laden"><span data-icon="cloud"></span><span id="statusTxt">offline</span></button>
     <div class="ich" id="ichBtn" title="Angemeldet als"></div>
@@ -756,7 +764,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.68';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.69';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1326,7 +1334,7 @@ function render(){
   $('ichBtn').title = adminGeraet() ? 'Angemeldet als – Klick: Person wechseln (Admin)' : 'Angemeldet als';
   $('ichWechsel').classList.toggle('hidden', !!ich() && !adminGeraet());   // Person wechseln nur Admin
   $('adminLogin').classList.toggle('hidden', adminGeraet());
-  todoBadge();
+  todoBadge(); hilfeBadge();
   if(tab === 'plan') renderPlan();
   if(tab === 'meine') renderMeine();
   if(tab === 'cfg') renderCfg();
@@ -2260,6 +2268,121 @@ function zeigeProtokoll(reiter){
 }
 $('protoBtn').onclick = ()=> protokollDialog();
 
+/* =================== Rueckmeldung an Admin (1.69) ===================
+   @ im Kopf: ERST Screenshot nur vom App-Fenster (html2canvas rendert die Seite selbst, keine
+   Bildschirmfreigabe), DANN Meldefenster - es ist so nie auf dem Bild. Ablage im privaten Team-Repo
+   plan/meldungen/<zeit>-<kuerzel>.json (+ .jpg); Admin-Geraet sieht Zaehler, Liste, erledigt-Haken. */
+const MELD_DIR = 'plan/meldungen/';
+let h2cLaden = null;
+const html2canvasHolen = ()=> h2cLaden ||= new Promise((ok, nein) => {
+  if(window.html2canvas) return ok(window.html2canvas);
+  const sc = document.createElement('script');
+  sc.src = 'https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.11/dist/html2canvas-pro.min.js';   // -pro: kann color-mix()/color()
+  sc.onload = ()=> ok(window.html2canvas); sc.onerror = ()=>{ h2cLaden = null; nein(new Error('Screenshot-Modul nicht ladbar')); };
+  document.head.appendChild(sc);
+});
+async function appFoto(){
+  const h2c = await html2canvasHolen();
+  $('tip').classList.add('hidden'); document.querySelectorAll('.toast').forEach(x => x.remove());
+  const sc = Math.min(1, 1100 / innerWidth);   // klein halten (Upload, Repo-Groesse)
+  const c = await h2c(document.body, {x: scrollX, y: scrollY, width: innerWidth, height: innerHeight, windowWidth: innerWidth, windowHeight: innerHeight,
+    scale: sc * (devicePixelRatio > 1 ? 1.5 : 1), backgroundColor: getComputedStyle(document.body).backgroundColor || '#fff', logging: false, useCORS: true,
+    ignoreElements: el => el.id === 'dlg' || el.id === 'tip' || el.classList.contains('toast')});
+  return c.toDataURL('image/jpeg', .72);
+}
+const meldungen = () => Object.entries(files).filter(([p, f]) => p.startsWith(MELD_DIR) && p.endsWith('.json') && f && f.data)
+  .map(([p, f]) => ({pfad: p, ...f.data})).sort((a, b) => b.am - a.am);
+async function meldungenLaden(){
+  const b = await baumHolen(true);
+  await Promise.all(b.filter(x => x.startsWith(MELD_DIR) && x.endsWith('.json')).map(lesen));
+}
+function hilfeBadge(){
+  const n = adminGeraet() ? meldungen().filter(m => m.status !== 'erledigt').length : 0;
+  $('hilfeZahl').textContent = n; $('hilfeZahl').classList.toggle('hidden', !n);
+}
+async function ghRoh(pfad){   // Datei als Blob (Screenshot ansehen)
+  const z = zugang();
+  const r = await fetch(`https://api.github.com/repos/${z.repo}/contents/${pfad}`, {cache: 'no-store', headers: {Authorization: 'Bearer ' + z.token, Accept: 'application/vnd.github.raw'}});
+  if(!r.ok) throw new Error('GitHub antwortet mit ' + r.status + '.');
+  return URL.createObjectURL(await r.blob());
+}
+$('hilfeBtn').onclick = async ()=>{
+  if(!zugang() || nurLesen) return toast('Melden geht nur mit Verbindung.');
+  let bild = null, fehler = '';
+  $('hilfeBtn').disabled = true;
+  try{ bild = await appFoto(); }catch(e){ fehler = e.message; }
+  $('hilfeBtn').disabled = false;
+  meldeDialog(bild, fehler);
+};
+function meldeDialog(bild, fehler, reiter = 'neu'){
+  const adm = adminGeraet(), offen = meldungen().filter(m => m.status !== 'erledigt').length;
+  dialog(`<h3>Rückmeldung an den Admin</h3>
+    ${adm ? `<div class="seg" id="meldReiter" style="margin-bottom:10px"><button data-r="neu" class="${reiter === 'neu' ? 'on' : ''}">Melden</button><button data-r="liste" class="${reiter === 'liste' ? 'on' : ''}">Meldungen (${offen})</button></div>` : ''}
+    <div id="meldInhalt"></div>`, el => {
+    const zeig = r => {
+      reiter = r; el.querySelectorAll('#meldReiter button').forEach(b => b.classList.toggle('on', b.dataset.r === r));
+      const box = $('meldInhalt');
+      if(r === 'neu'){
+        box.innerHTML = `<div class="unter">Problem, Fehler oder Idee beschreiben.</div>
+          <textarea id="meldText" rows="5" style="width:100%;box-sizing:border-box" placeholder="Was ist passiert bzw. was wünschst du dir?"></textarea>
+          ${bild ? `<label class="f" style="flex-direction:row;align-items:center;gap:8px;margin:10px 0 6px"><input type="checkbox" id="meldBildAn"> Screenshot dieses App-Fensters anhängen</label>
+            <img class="meld-bild hidden" id="meldVorschau" src="${bild}" alt="Screenshot">` : ''}
+          <div class="fuss"><button class="btn gh" id="dlgZu">Abbrechen</button><button class="btn" id="meldSenden">${icon('send')}Senden</button></div>`;
+        icons(box);
+        $('dlgZu').onclick = zu;
+        if($('meldBildAn')) $('meldBildAn').onchange = e => $('meldVorschau').classList.toggle('hidden', !e.target.checked);   // Bild nur auf Wunsch (Standard aus)
+        $('meldText').focus();
+        $('meldSenden').onclick = async ()=>{
+          const text = $('meldText').value.trim();
+          if(!text) return toast('Bitte kurz beschreiben.');
+          const mit = bild && $('meldBildAn').checked;
+          const id = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14) + '-' + (ichK || 'X');
+          const daten = {am: Date.now(), von: ichK || '?', text, version: PLAN_VERSION, reiter: tab, monat: ym,
+            ansicht: tab === 'plan' ? ansicht : '', fenster: innerWidth + '×' + innerHeight, geraet: navigator.userAgent.slice(0, 160),
+            bild: mit ? id + '.jpg' : '', status: 'offen'};
+          $('meldSenden').disabled = true; $('meldSenden').textContent = 'Sende …';
+          try{
+            if(mit) await gh('PUT', MELD_DIR + id + '.jpg', {message: `Meldung ${id} (Bild)`, content: bild.split(',')[1]});
+            const r = await gh('PUT', MELD_DIR + id + '.json', {message: `Meldung ${id}`, content: kodieren(JSON.stringify(daten, null, 1))});
+            files[MELD_DIR + id + '.json'] = {data: daten, sha: r.content && r.content.sha};
+            zu(); toast('Danke – Meldung ist beim Admin.'); hilfeBadge();
+          }catch(e){ toast(e.message); $('meldSenden').disabled = false; $('meldSenden').textContent = 'Senden'; }
+        };
+      }else{
+        box.innerHTML = '<div class="hint">Lade …</div>';
+        meldungenLaden().catch(e => toast(e.message)).then(()=>{
+          if(reiter !== 'liste') return;
+          const l = meldungen(), zeit = am => new Date(am).toLocaleString('de-DE', {day: 'numeric', month: 'numeric', year: '2-digit', hour: '2-digit', minute: '2-digit'});
+          box.innerHTML = (l.length ? l.map(m => `<div class="meld-z ${m.status === 'erledigt' ? 'erledigt' : ''}"><div class="kopf"><b>${esc(m.von)}</b><small>${zeit(m.am)} · v${esc(m.version)} · ${esc(m.reiter)}${m.ansicht ? '/' + esc(m.ansicht) : ''} · ${esc(m.monat)} · ${esc(m.fenster)}</small>
+              <button class="btn out" data-erl="${esc(m.pfad)}">${m.status === 'erledigt' ? 'wieder offen' : icon('check') + 'erledigt'}</button></div>
+              <p>${esc(m.text)}</p>${m.bild ? `<button class="btn gh" data-bild="${esc(MELD_DIR + m.bild)}" style="padding:4px 10px;font-size:12px">Screenshot ansehen</button><div data-platz="${esc(m.bild)}"></div>` : ''}</div>`).join('')
+            : '<div class="hint">Noch keine Meldungen.</div>') + `<div class="fuss"><button class="btn gh" id="dlgZu">Schließen</button></div>`;
+          icons(box); hilfeBadge();
+          $('dlgZu').onclick = zu;
+          box.querySelectorAll('[data-bild]').forEach(b => b.onclick = async ()=>{
+            b.textContent = 'Lade …';
+            try{ const u = await ghRoh(b.dataset.bild); b.remove(); box.querySelector(`[data-platz="${b.dataset.bild.slice(MELD_DIR.length)}"]`).innerHTML = `<a href="${u}" target="_blank" rel="noopener"><img class="meld-bild" src="${u}" alt="Screenshot"></a>`; }
+            catch(e){ toast(e.message); b.textContent = 'Screenshot ansehen'; }
+          });
+          box.querySelectorAll('[data-erl]').forEach(b => b.onclick = async ()=>{
+            const pf = b.dataset.erl, f = files[pf]; b.disabled = true;
+            try{
+              const j = await gh('GET', pf), d = j ? JSON.parse(dekodieren(j.content)) : f.data;
+              d.status = d.status === 'erledigt' ? 'offen' : 'erledigt';
+              if(d.status === 'erledigt') d.erledigt = {von: ichK || 'Admin', am: Date.now()}; else delete d.erledigt;
+              const r = await gh('PUT', pf, {message: `Meldung ${d.status}`, content: kodieren(JSON.stringify(d, null, 1)), ...(j ? {sha: j.sha} : {})});
+              files[pf] = {data: d, sha: r.content && r.content.sha};
+              zeig('liste');
+            }catch(e){ toast(e.message); b.disabled = false; }
+          });
+        });
+      }
+    };
+    el.querySelectorAll('#meldReiter button').forEach(b => b.onclick = ()=> zeig(b.dataset.r));
+    zeig(reiter);
+  });
+}
+
 /* Urlaub genehmigen: je Monat, Planer/Admin. Genehmigt wird genau der Stand beim
    Klick (spaeter eingetragene Tage bleiben beantragt); ok = {von, am} am Eintrag. */
 function urlaubeIm(m){
@@ -2758,6 +2881,7 @@ async function start(){
   render();
   if(!ich()) ichWaehlen();
   if(darfVerwalten()) todoLaden().then(render, ()=>{});
+  if(adminGeraet()) meldungenLaden().then(hilfeBadge, ()=>{});
 }
 /* Zoom je Geraet (CSS zoom auf <html>), 70–200 % */
 let zoom = +load('planung_zoom', 1) || 1;
