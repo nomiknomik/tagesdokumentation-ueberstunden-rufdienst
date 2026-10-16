@@ -396,7 +396,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
         <div class="card">
           <h3><span data-icon="users"></span>Dienste im Monat</h3>
           <div id="zaehler"></div>
-          <div class="hint" style="margin-top:6px">Klick auf eine Person hebt ihre Tage hervor.</div>
+          <div class="hint" style="margin-top:6px">Klick hebt die Tage einer Person hervor, Doppelklick öffnet ihren Wunschkalender.</div>
         </div>
         <div class="card">
           <h3><span data-icon="info"></span>Legende</h3>
@@ -580,7 +580,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.21';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.22';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1083,7 +1083,10 @@ function renderPlan(){
   const frei = Array.from({length: n}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
   z += `<div class="hint" style="margin-top:8px">${frei ? frei + ' Tag' + (frei > 1 ? 'e' : '') + ' noch ohne Dienst' : 'Alle Tage besetzt ✓'}</div>`;
   $('zaehler').innerHTML = z;
-  $('zaehler').querySelectorAll('.prow').forEach(el => el.onclick = ()=>{ markK = markK === el.dataset.k ? '' : el.dataset.k; renderPlan(); });
+  $('zaehler').querySelectorAll('.prow').forEach(el => {
+    el.onclick = ()=>{ markK = markK === el.dataset.k ? '' : el.dataset.k; renderPlan(); };
+    el.ondblclick = ()=>{ markK = ''; fuerK = el.dataset.k; document.querySelector('nav.tabs button[data-tab="meine"]').click(); window.scrollTo({top: 0}); };
+    el.title = 'Klick: Tage hervorheben · Doppelklick: Wunschkalender öffnen'; });
 }
 
 /* Matrix: eine Zeile je Kalenderwoche, Hintergrund = Besetzung (blass) */
