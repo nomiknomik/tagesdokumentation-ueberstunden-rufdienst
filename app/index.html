@@ -1883,6 +1883,10 @@ let zugangQr = false;
    nach abgebrochener PIN-Eingabe. Freischalten ueber den Gist-Token des Kontos,
    dem das Team-Repo gehoert. Reine Anzeige-Sperre. */
 const LS_ADMIN = 'tagesdoku_admin';   // nur Geraet, nicht im Backup
+/* Admin-Anmeldung nur ueber …/app/#admin oder 5 schnelle Tipps auf die Ueberschrift (1.72) -
+   sonst unsichtbar; Notausgang z. B. mit neu erzeugtem GitHub-Token. Tipp-Geste auch fuer die
+   installierte App (iOS: eigener Speicher, keine Adresszeile) */
+let ADMIN_TUER = /(^#|[&#])admin\b/.test(location.hash);
 const istAdmin = ()=> localStorage.getItem(LS_ADMIN) === '1';
 function zugangAnsicht(){
   const qr = !istAdmin();
@@ -1890,8 +1894,13 @@ function zugangAnsicht(){
   $('syncQrInfo').style.display = qr ? '' : 'none';
   ['sync_token','qr_token'].forEach(id => $(id).classList.toggle('maskiert', qr));   // Admin sieht den Token im Klartext
   $('syncFelderCnt').textContent = qr ? 'Personalnr., Passwort' : 'Repo, Token, Personalnr., Passwort';
-  $('adminAuf').style.display = qr ? '' : 'none'; if(!qr) $('adminBox').style.display = 'none';
+  $('adminAuf').style.display = qr && ADMIN_TUER ? '' : 'none'; if(!qr || !ADMIN_TUER) $('adminBox').style.display = 'none';
 }
+{ let n = 0, t0 = 0;
+  document.querySelector('.hdtxt h1').addEventListener('click', ()=>{
+    const jetzt = Date.now(); n = jetzt - t0 < 3000 ? n + 1 : 1; if(n === 1) t0 = jetzt;
+    if(n >= 5 && !ADMIN_TUER){ ADMIN_TUER = true; zugangAnsicht(); toast(istAdmin() ? 'Schon Admin.' : 'Admin-Anmeldung unter Einstellungen → Online-Backup.'); }
+  }); }
 $('adminAuf').onclick = ()=>{ $('adminBox').style.display = $('adminBox').style.display === 'none' ? '' : 'none'; $('adminMsg').textContent = ''; };
 $('adminOk').onclick = async ()=>{
   const t = $('admin_token').value.trim(), msg = $('adminMsg');
@@ -4028,7 +4037,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.71';
+const APP_VERSION = '1.72';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){

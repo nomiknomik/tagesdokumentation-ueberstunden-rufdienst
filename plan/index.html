@@ -768,7 +768,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.71';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.72';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1353,7 +1353,7 @@ const darfEinteilen = () => cfg.gruppen.oa.einteilen !== 'planer' || !!(ich() &&
 const adminGeraet = () => localStorage.getItem('tagesdoku_admin') === '1';
 /* Admin-Zugaenge (Admin-Anmeldung, Repo+Token direkt) nur ueber die Adresse …/plan/#admin (1.71) -
    nie dauerhaft sichtbar; Notausgang z. B. mit neu erzeugtem GitHub-Token */
-const ADMIN_TUER = /(^#|[&#])admin\b/.test(location.hash);
+let ADMIN_TUER = /(^#|[&#])admin\b/.test(location.hash);   // oder 5 schnelle Tipps auf „Dienstplanung“ (1.72)
 const istAdmin = () => adminGeraet() && !ich();
 /* Rechte nur in der Oberflaeche: der Team-Token darf technisch alles im Repo.
    Planer/Admin verwalten (Team, Einstellungen, alle Personen, Urlaub genehmigen),
@@ -2724,6 +2724,10 @@ $('ichWechsel').onclick = ()=> ichWaehlen();
 $('ichBtn').onclick = ()=> ichWaehlen();
 /* Admin-Anmeldung (1.62) wie in der Tagesdoku: Gist-Token des Kontos, dem das Team-Repo gehoert
    (GET /user). Setzt tagesdoku_admin fuer die ganze Domain und beendet eine Simulation. */
+/* 5 schnelle Tipps (Logo im Kopf bzw. Titel im Erstlogin) oeffnen die Admin-Tuer */
+const fuenfTipps = (el, fn) => { let n = 0, t0 = 0; el.addEventListener('click', ()=>{
+  const jetzt = Date.now(); n = jetzt - t0 < 3000 ? n + 1 : 1; if(n === 1) t0 = jetzt; if(n >= 5){ n = 0; fn(); } }); };
+fuenfTipps(document.querySelector('.logo .mark'), ()=>{ if(ADMIN_TUER) return; ADMIN_TUER = true; render(); toast(adminGeraet() ? 'Schon Admin.' : 'Admin-Anmeldung unter Einstellungen → Zugang.'); });
 $('adminLogin').onclick = async ()=>{
   const t = (prompt('Admin-Token (GitHub-Token des Admin-Kontos):') || '').trim(); if(!t) return;
   try{
@@ -2840,6 +2844,7 @@ function anmelden(vorgabe){
       <label class="f" style="flex:1">Token<input type="password" id="aTok"></label></div></details>${ADMIN_TUER ? '' : '-->'}
     <div class="msg" id="aMsg"></div>
     <div class="fuss"><button class="btn" id="aOk">${icon('key')}Verbinden</button></div>`, el => {
+    if(!ADMIN_TUER) fuenfTipps(el.querySelector('h3'), ()=>{ ADMIN_TUER = true; anmelden($('aCode').value); });
     $('aOk').onclick = async ()=>{
       $('aMsg').className = 'msg'; $('aMsg').textContent = 'Prüfe …';
       try{
