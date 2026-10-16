@@ -650,7 +650,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.37';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.38';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1459,7 +1459,7 @@ function renderMeine(){
   let h = WT.slice(1).map(x => `<div class="kk">${x}</div>`).join('');
   for(let i = 1; i < wt(ds(y, mo, 1)); i++) h += '<div class="leer"></div>';
   for(let d = 1; d <= n; d++){
-    const s = ds(y, mo, d), e = eintrag(p.k, s), ft = feiertag(s), tz = (teilzeitFrei(p, s) && !(e && e.typ === 'da')) || !!(e && TYPEN[e.typ] && TYPEN[e.typ].abw);   // abwesend = schraffiert
+    const s = ds(y, mo, d), e = eintrag(p.k, s), ft = feiertag(s), tz = werktag(s) && ((teilzeitFrei(p, s) && !(e && e.typ === 'da')) || !!(e && TYPEN[e.typ] && TYPEN[e.typ].abw));   // abwesend = schraffiert, Wochenende/Feiertag nie
     let inh = '';
     if(e && TYPEN[e.typ] && e.typ !== 'da' && e.typ !== 'frei') inh = `<span class="chip t-${e.typ} ${TYPEN[e.typ].stufen && e.stufe !== 'hart' ? 'weich' : ''} ${e.typ === 'urlaub' && !e.ok ? 'offen' : ''}"${e.typ === 'urlaub' ? ` title="${e.ok ? 'genehmigt' : 'beantragt – wartet auf Genehmigung'}"` : ''}>${icon(TYPEN[e.typ].icon)}<span class="txt">${TYPEN[e.typ].stufen ? (e.stufe === 'hart' ? 'hart' : 'weich') : esc(TYPEN[e.typ].name)}${e.typ === 'urlaub' ? (e.ok ? ' ✓' : ' ?') : ''}</span></span>`;
     if(dienstVon(s) === p.k) inh += `<span class="mein-d">Dienst</span>`;
@@ -1544,7 +1544,7 @@ $('tzAdd').onclick = ()=>{
 /* Pinsel: Typ waehlen, dann Tage antippen oder darueberstreichen. Beginnt der
    Strich auf einem Tag mit genau diesem Eintrag, loescht der Strich. */
 const PINSEL = [['da','anwesend','check'], ['frei','frei','moon'], ['fza','FZA','clock'], ['urlaub','Urlaub','sun'], ['fb','Fortbildung','book'],
-  ['wunsch','Wunsch','heart'], ['nogo','No-Go','ban'], ['weg','Radierer','x']];
+  ['wunsch','Dienstwunsch','heart'], ['nogo','No-Go','ban'], ['weg','Radierer','x']];
 let pinsel = '', pinselStufe = 'weich', strich = null;
 function pinselLeiste(){
   $('pinsel').innerHTML = `<span class="hint" style="font-weight:700">Pinsel:</span>`
