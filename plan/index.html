@@ -769,7 +769,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.80';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.81';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1227,8 +1227,9 @@ function weSerie(k, s){
   for(let x = plus(sa, 7); weGearbeitet(k, x); x = plus(x, 7)) n++;
   return n;
 }
-/* Regel „kein Dienst nach freiem Wochenende“: gilt am Montag, wenn Sa und So kein eigener Dienst war */
-const regelFreiWE = (p, s) => wt(s) === 1 && dienstVon(plus(s, -1)) !== p.k && dienstVon(plus(s, -2)) !== p.k;
+/* Regeln „… nach freiem Wochenende“: nur an einem normalen Arbeits-Montag (kein Feiertag, Ferien egal),
+   wenn Sa und So kein eigener Dienst war */
+const regelFreiWE = (p, s) => wt(s) === 1 && werktag(s) && dienstVon(plus(s, -1)) !== p.k && dienstVon(plus(s, -2)) !== p.k;
 /* Bewertung einer Person fuer den Dienst am Tag s */
 function bewerte(p, s){
   const tags = [], e = eintrag(p.k, s); let score = 0;
