@@ -36,6 +36,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Token (gleiche Domain, `tagesdoku_sync`/`tagesdoku_teilen`) oder Einladung
   (`planung_zugang`), Person in `planung_ich`. Schreiben über `aendern()`: Änderung
   als Funktion, auf frischen Repo-Stand neu angewandt (SHA-Konflikt → wiederholen).
+  Abruf-Limit: alle Geräte teilen den Team-Token (5000/h, auch Tagesdoku) → `lesen()` mit ETag
+  (304 zählt nicht), `ladeAlles()` holt nur Dateien, die laut `baumHolen()` (ebenfalls ETag) existieren.
   Hochladen gesammelt (Wunsch): alle 120 s, beim Verlassen von Fenster/Tab oder per
   Klick auf die Wolke (`#status`), nie je Eingabe. Pinsel im Wunsch-Kalender;
   Teilzeit-Muster gelten nur an Werktagen (`teilzeitFrei()` → nie WE/Feiertag);

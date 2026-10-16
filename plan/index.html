@@ -390,6 +390,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
   .zeile > div:empty{display:none}
   .kal button{min-height:58px;padding:4px}
   .kal button .chip .txt{display:none}
+  .kal button .mein-d{font-size:9px;padding:0 3px;max-width:100%;overflow:hidden}
   .cfggrid{grid-template-columns:1fr}
   #druckBtn{display:none}
   .raster{font-size:12px}
@@ -653,7 +654,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.43';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.44';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -803,20 +804,24 @@ function zugang(){
 /* ---------- GitHub Contents API ---------- */
 const dekodieren = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, '')), c => c.charCodeAt(0)));
 const kodieren = s => { const u = new TextEncoder().encode(s); let r = ''; for(let i = 0; i < u.length; i += 0x8000) r += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(r); };
-async function gh(method, pfad, body){
+async function gh(method, pfad, body, etag){
   const z = zugang();
   if(!z) throw new Error('Kein Zugang eingerichtet.');
   const res = await fetch(`https://api.github.com/repos/${z.repo}/contents/${pfad}` + (method === 'GET' ? '?t=' + Date.now() : ''), {
     method, cache:'no-store',
-    headers:{Authorization:'Bearer ' + z.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'},
+    headers:{Authorization:'Bearer ' + z.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28',
+      ...(etag ? {'If-None-Match': etag} : {})},
     body: body && JSON.stringify(body)
   });
+  if(res.status === 304) return {unveraendert: true};   // zaehlt nicht gegen das Abruf-Limit
   if(method === 'GET' && res.status === 404) return null;
   if(res.status === 409 || res.status === 422) return {konflikt: true};
   if(res.status === 401) throw new Error('Token ungültig oder abgelaufen.');
   if(res.status === 403) throw new Error('Token darf nicht schreiben oder Abruf-Limit erreicht.');
   if(!res.ok) throw new Error('GitHub antwortet mit ' + res.status + '.');
-  return res.json();
+  const j = await res.json();
+  if(method === 'GET') j._etag = res.headers.get('ETag');
+  return j;
 }
 async function repoPruefen(){
   const z = zugang();
@@ -826,8 +831,11 @@ async function repoPruefen(){
 }
 async function lesen(pfad){
   if(queue[pfad]) return files[pfad];   // lokale Aenderung wartet noch: nicht ueberschreiben
-  const j = await gh('GET', pfad);
-  files[pfad] = j ? {data: JSON.parse(dekodieren(j.content)), sha: j.sha} : {data: null, sha: null};
+  /* bedingter Abruf (ETag): unveraenderte Dateien kommen als 304 und belasten das
+     gemeinsame Stundenlimit des Team-Tokens (5000/h fuer alle Geraete) nicht */
+  const alt = files[pfad], j = await gh('GET', pfad, null, alt && alt.data && alt.etag);
+  if(j && j.unveraendert) return alt;
+  files[pfad] = j ? {data: JSON.parse(dekodieren(j.content)), sha: j.sha, etag: j._etag} : {data: null, sha: null};
   return files[pfad];
 }
 function cacheSchreiben(){
@@ -953,7 +961,11 @@ async function ladeAlles(){
     cfg = Object.assign(clone(CFG_LEER), c.data || {});
     const pf = [-3, -2, -1, 0, 1].map(n => pfadDienst(ymPlus(ym, n)));   // 3 Vormonate fuer die Fairness
     personen().forEach(p => [-3, -2, -1, 0, 1].forEach(n => pf.push(pfadWunsch(p.k, ymPlus(ym, n)))));   // Vormonate: Abwesenheiten fuer die Fairness
-    await Promise.all(pf.map(lesen));
+    /* nur vorhandene Dateien abrufen (Verzeichnisbaum, 1 Abruf bzw. 304): fehlende Dateien
+       kosten sonst bei jedem Abgleich je einen 404 vom gemeinsamen Limit */
+    let da = null;
+    try{ da = new Set(await baumHolen(true)); }catch(e){}
+    await Promise.all(pf.map(x => !da || da.has(x) || queue[x] ? lesen(x) : (files[x] = {data: null, sha: null})));
     cacheSchreiben();
     nurLesen = false; $('banner').classList.add('hidden');
     if(Object.keys(queue).length) ungespeichert(); else if(!flushLaeuft) status('ok', 'aktuell');
@@ -1712,14 +1724,15 @@ const urlaubstage = (p, y) => {   // nur Werktage verbrauchen Urlaub
   return {n, fb, offen};
 };
 /* Wunschdateien eines Jahres: Verzeichnisbaum (1 Abruf, 1 min gemerkt), dann nur vorhandene Dateien */
-let baum = null, baumT = 0;
+let baum = null, baumT = 0, baumEtag = '';
 async function baumHolen(frisch){
   if(frisch || !baum || Date.now() - baumT > 60000){
     const z = zugang();
     const r = await fetch(`https://api.github.com/repos/${z.repo}/git/trees/HEAD?recursive=1&t=${Date.now()}`, {cache:'no-store',
-      headers:{Authorization:'Bearer ' + z.token, Accept:'application/vnd.github+json'}});
+      headers:{Authorization:'Bearer ' + z.token, Accept:'application/vnd.github+json', ...(baum && baumEtag ? {'If-None-Match': baumEtag} : {})}});
+    if(r.status === 304){ baumT = Date.now(); return baum; }
     if(!r.ok) throw new Error('GitHub antwortet mit ' + r.status + '.');
-    baum = ((await r.json()).tree || []).map(t => t.path); baumT = Date.now();
+    baum = ((await r.json()).tree || []).map(t => t.path); baumT = Date.now(); baumEtag = r.headers.get('ETag');
   }
   return baum;
 }
