@@ -257,6 +257,11 @@ table.tda{border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-s
 .tda thead .tda-n{background:#E6E2DA;font-weight:700}
 .tda td.d{font-weight:700}
 .tda td.a{color:#5A5048}
+.tda td.h{color:#00636E;font-style:italic}
+.tda-wahl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.tda-wahl button{border:1.5px solid var(--border);background:#fff;border-radius:10px;padding:9px 4px;font-weight:700;cursor:pointer}
+.tda-wahl button.dienst{border-color:var(--primary);color:var(--primary)}
+.tda-wahl button.on{background:var(--primary);border-color:var(--primary);color:#fff}
 .tda td[data-tag]{cursor:pointer} .tda td[data-tag]:hover{outline:2px solid var(--primary);outline-offset:-2px}
 
 /* Nachbarmonate in der Matrix */
@@ -734,7 +739,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.53';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.54';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1245,7 +1250,7 @@ async function monatWechseln(n){
 $('mZur').onclick = ()=> monatWechseln(-1);
 $('mVor').onclick = ()=> monatWechseln(1);
 $('druckBtn').onclick = ()=>{
-  $('druckSeite').textContent = ansicht === 'kompakt' ? '@page{size:A4 landscape;margin:8mm} main{max-width:none;padding:0;zoom:1 !important} .tabelle.kompakt{overflow:visible;box-shadow:none;border:0}'
+  $('druckSeite').textContent = ansicht === 'kompakt' && darfVeroeffentlichen() ? '@page{size:A4 landscape;margin:8mm} main{max-width:none;padding:0;zoom:1 !important} .tabelle.kompakt{overflow:visible;box-shadow:none;border:0}'
     + ' .tda{font-size:8.5pt;table-layout:fixed;width:100%} .tda th,.tda td{min-width:0;padding:3px 0} .tda .tda-n{min-width:0;width:175px;position:static;padding:3px 4px;overflow:hidden}' : '';
   window.print();
 };
@@ -1375,13 +1380,14 @@ function renderPlan(){
       + `<div class="dzelle ${darfEinteilen() ? '' : 'gesperrt'}" data-tag="${s}">${dzelle}</div>`
       + `<div>${bz}</div><div>${ab}</div><div>${wu}</div><div style="flex-direction:column;align-items:flex-start">${hw}</div></div>`;
   }
-  const matrix = ansicht === 'matrix' && innerWidth > 760, kompakt = ansicht === 'kompakt';
+  const matrix = ansicht === 'matrix' && innerWidth > 760, kompakt = ansicht === 'kompakt' && darfVeroeffentlichen();   // TDA nur Planer/Admin
+  $('ansichtSeg').querySelector('[data-a="kompakt"]').style.display = darfVeroeffentlichen() ? '' : 'none';
   $('ansichtSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === (kompakt ? 'kompakt' : matrix ? 'matrix' : 'liste')));
   const tab_ = $('planTab'); tab_.innerHTML = kompakt ? kompaktHtml() : matrix ? matrixHtml(info) : h; tab_.classList.toggle('dimm', !!markK && !kompakt);
   tab_.classList.toggle('matrix', matrix); tab_.classList.toggle('kompakt', kompakt);
   document.querySelector('#tab-plan .planwrap').classList.toggle('breit', kompakt);   // Kompakt: volle Breite, ohne Seitenleiste
   tab_.querySelectorAll('[data-nachbar]').forEach(el => el.onclick = ()=> monatWechseln(+el.dataset.nachbar));
-  if(kompakt) tab_.querySelectorAll('td[data-tag]').forEach(el => el.onclick = ()=>{ if(darfEinteilen()) waehlen(el.dataset.tag); });
+  if(kompakt) tab_.querySelectorAll('td[data-tag]').forEach(el => el.onclick = ()=>{ if(!nurLesen) tdaWahl(el.dataset.k, el.dataset.tag); });
   tab_.querySelectorAll('.dzelle').forEach(el => el.onclick = e => {
     const v = e.target.closest('[data-vorschlag]');
     if(v){ e.stopPropagation(); const [s, k] = v.dataset.vorschlag.split('|'); einteilen(s, k); return; }
@@ -1420,10 +1426,15 @@ const TDA_ABW = {urlaub: 'U', fb: 'Fo', fza: 'FZA', frei: '0', tz: '0'};
 const tdaDienst = s => { const a = dienstArt(s); return a === 'RBD' ? 'RBD1' : a; };
 const tdaName = p => { const t = (p.name || p.k).trim().split(/\s+/); const n = t.length > 1 ? t.pop() + ', ' + t.join(' ') : t[0];
   return n + (p.pnr ? ` (${p.pnr})` : ''); };
+/* TDA-Code von Hand (1.54, Planer/Admin): dienst-Datei tda = {tag: {kuerzel: code}}, '' = leer.
+   Reihenfolge: Dienst > Urlaub/FB/FZA/frei > Hand-Code > abgeleitet (WE 0, Teilzeit 0, Amb2/Amb4). */
+const tdaHand = (k, s) => { const d = dienstDaten(ymVon(s)); const t = d && d.tda && d.tda[s]; return t && k in t ? t[k] : undefined; };
 function tdaCode(p, s){
   if(dienstVon(s) === p.k) return ['d', tdaDienst(s)];
+  const a = abwesend(p, s), hand = tdaHand(p.k, s);
+  if(a && a !== 'tz' && werktag(s)) return ['a', TDA_ABW[a] || a];
+  if(hand !== undefined) return [hand ? 'h' : 'h leer', hand];
   if(!werktag(s)) return ['', '0'];   // wie TDA: Wochenende/Feiertag ohne Dienst = 0, auch im Urlaub
-  const a = abwesend(p, s);
   if(a) return ['a', TDA_ABW[a] || a];
   return ['', wt(s) === 1 ? 'Amb2' : 'Amb4'];   // Regeldienst wie in der Tagesdoku: Mo Amb2, sonst Amb4
 }
@@ -1432,10 +1443,59 @@ function kompaktHtml(){
   const kl = s => feiertag(s) || wt(s) === 7 ? 'so' : wt(s) === 6 ? 'sa' : '';
   let h = `<table class="tda"><thead><tr><th class="tda-n" rowspan="2">${monatName(ym)}</th>${tage.map(s => `<th class="${kl(s)}" title="${esc(feiertag(s))}">${WT[wt(s)]}</th>`).join('')}</tr>`
     + `<tr>${tage.map(s => `<th class="${kl(s)}">${+s.slice(8)}</th>`).join('')}</tr></thead><tbody>`;
-  for(const p of personen())
+  for(const p of [...personen()].sort((a, b) => tdaName(a).localeCompare(tdaName(b), 'de')))   // wie TDA: nach Nachname
     h += `<tr><td class="tda-n">${esc(tdaName(p))}</td>${tage.map(s => { const [c, t] = tdaCode(p, s);
-      return `<td class="${kl(s)} ${c}" data-tag="${s}"${c === 'a' && t === 'U' && !urlOk(eintrag(p.k, s)) ? ' title="Urlaub beantragt – noch nicht genehmigt"' : ''}>${t}</td>`; }).join('')}</tr>`;
-  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U Urlaub · Fo Fortbildung · FZA Freizeitausgleich · 0 frei. Klick auf einen Tag: Dienst einteilen.</div>`;
+      return `<td class="${kl(s)} ${c}" data-tag="${s}" data-k="${esc(p.k)}"${c === 'a' && t === 'U' && !urlOk(eintrag(p.k, s)) ? ' title="Urlaub beantragt – noch nicht genehmigt"' : ''}>${t}</td>`; }).join('')}</tr>`;
+  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U Urlaub · Fo Fortbildung · FZA Freizeitausgleich · 0 frei. Klick auf ein Feld: Code wählen – Dienst hat je Tag nur eine Person, der bisherige wird leer.</div>`;
+}
+/* Feld in der TDA-Ansicht setzen. Dienst -> einteilen (Vorgaenger bekommt Hand-Code leer);
+   U/Fo/FZA -> Wunsch-Eintrag, gleich genehmigt (Planer); Amb2/Amb4/0/leer -> Hand-Code.
+   Alles in einer Aktion = ein Rueckgaengig-Schritt. */
+const TDA_TYP = {U: 'urlaub', Fo: 'fb', FZA: 'fza'};
+function tdaHandSetzen(k, s, code){   // code undefined = Hand-Code entfernen
+  aendern(pfadDienst(ymVon(s)), {tage:{}, log:[]}, `TDA ${k} ${kurzDat(s)}`, d => {
+    const alt = d.tda && d.tda[s] && k in d.tda[s] ? d.tda[s][k] : undefined;
+    if(alt === code) return;
+    d.tda ||= {};
+    if(code === undefined){ if(d.tda[s]){ delete d.tda[s][k]; if(!Object.keys(d.tda[s]).length) delete d.tda[s]; } }
+    else (d.tda[s] ||= {})[k] = code;
+    (d.log ||= []).push({am: Date.now(), von: ichK, tag: s, tdaK: k, alt: alt ?? '', neu: code ?? ''});
+  });
+}
+function tdaSetzen(k, s, code){
+  const p = person(k), dienst = tdaDienst(s), alt = dienstVon(s);
+  const e = eintrag(k, s), weg = e && TYPEN[e.typ] && TYPEN[e.typ].abw;
+  if(code === dienst){
+    if(weg) aendern(pfadWunsch(k, ymVon(s)), {tage:{}}, `${k} Eintrag gelöscht`, d => { if(d.tage) delete d.tage[s]; });
+    if(alt && alt !== k) tdaHandSetzen(alt, s, '');   // bisheriger Dienst bleibt leer, bis etwas gewaehlt ist
+    tdaHandSetzen(k, s, undefined);
+    einteilen(s, k);
+    return;
+  }
+  if(alt === k) einteilen(s, '');
+  if(TDA_TYP[code]){
+    const typ = TDA_TYP[code];
+    aendern(pfadWunsch(k, ymVon(s)), {tage:{}}, `${k} ${TYPEN[typ].name}`, d => {
+      d.tage ||= {}; d.tage[s] = {typ, von: ichK, am: Date.now(), ok: {von: ichK || 'Admin', am: Date.now()}};
+    });
+    tdaHandSetzen(k, s, undefined);
+    return;
+  }
+  if(weg) aendern(pfadWunsch(k, ymVon(s)), {tage:{}}, `${k} Eintrag gelöscht`, d => { if(d.tage) delete d.tage[s]; });
+  tdaHandSetzen(k, s, code);
+}
+function tdaWahl(k, s){
+  if(!darfVeroeffentlichen()) return;
+  const p = person(k), [, akt] = tdaCode(p, s), dienst = tdaDienst(s), alt = dienstVon(s);
+  const codes = [dienst, 'U', 'Fo', 'FZA', 'Amb2', 'Amb4', '0', ''];
+  dialog(`<h3>${esc(tdaName(p))}</h3><div class="unter">${WTL[wt(s)]}, ${kurzDat(s)}${feiertag(s) ? ' · ' + esc(feiertag(s)) : ''}${alt && alt !== k ? ` · Dienst hat ${esc(alt)} – wird bei ${dienst} leer` : ''}</div>
+    <div class="tda-wahl">${codes.map(c => `<button data-c="${c}" class="${c === akt ? 'on' : ''} ${c === dienst ? 'dienst' : ''}">${c || 'leer'}</button>`).join('')}</div>
+    <div class="fuss"><button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
+  el => {
+    $('dlgZu').onclick = zu;
+    el.querySelectorAll('[data-c]').forEach(b => b.onclick = ()=>{ zu(); if(b.dataset.c !== akt) tdaSetzen(k, s, b.dataset.c); });
+    dialogTaste = e => { const b = [...el.querySelectorAll('[data-c]')].find(x => (x.dataset.c || 'leer').toLowerCase().startsWith(e.key.toLowerCase())); if(b && e.key.length === 1){ e.preventDefault(); b.click(); } };
+  }, true);
 }
 
 /* Matrix: eine Zeile je Kalenderwoche, Hintergrund = Besetzung (blass) */
@@ -2018,7 +2078,7 @@ function protokollEintraege(){
     const w = pfad.match(/^plan\/wuensche\/([^/]+)\//), d = /^plan\/dienst\//.test(pfad);
     if(!w && !d) continue;
     const log = f.data.log || [];
-    log.forEach(x => { if(x.tag) r.push({...x, k: w ? w[1] : '', dienst: d}); else r.push({...x, dienst: d, meta: true}); });
+    log.forEach(x => { if(x.tag) r.push({...x, k: w ? w[1] : x.tdaK || '', dienst: d}); else r.push({...x, dienst: d, meta: true}); });
     if(w){   // vor Einfuehrung des Protokolls: nur Eintragszeit am Eintrag
       const erst = log.length ? Math.min(...log.map(x => x.am)) : Infinity;
       for(const [s, e] of Object.entries(f.data.tage || {})){
@@ -2039,6 +2099,7 @@ function protokollEintraege(){
 }
 function protokollText(x){
   if(x.meta) return x.zurueckgenommen ? 'Signatur zurückgenommen' : x.veroeffentlicht ? 'Dienstplan signiert' : 'Dienstplan';
+  if(x.tdaK) return `TDA-Code: ${x.alt === undefined || x.alt === '' ? '–' : x.alt} → ${x.neu === '' ? 'leer/Standard' : x.neu}`;
   if(x.dienst) return `Dienst: ${x.alt || 'leer'} → ${x.neu || 'leer'}${x.auto ? ' (automatisch)' : ''}${x.rueck ? ' (rückgängig/wiederholt)' : ''}`;
   if(x.alt === '?') return `${codeName(x.neu)} eingetragen <i class="hint">(vor dem Protokoll)</i>`;
   if(!x.alt) return `${codeName(x.neu)} eingetragen`;

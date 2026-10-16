@@ -96,6 +96,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   TDA-Ansicht (1.46, intern `kompakt`, dritte Wahl neben Liste/Matrix, `kompaktHtml()`): Monat wie TDA – Zeilen
   „Nachname, Vorname (Pers.-Nr.)“ (`p.pnr`, Team-Tabelle), Spalten Tage, Sa gelb, So/Feiertag grün;
   Codes ZD1/ZD2/RBD1/RBD2, U, Fo, FZA, 0 (frei/WE), Regeldienst Amb2 (Mo)/Amb4 (wie Tagesdoku `derive()`). Ohne Seitenleiste; Drucken = A4 quer.
+  Seit 1.54 nur Planer/Admin (`darfVeroeffentlichen()`), Zeilen nach Nachname. Klick auf ein Feld = Code wählen
+  (`tdaWahl()`/`tdaSetzen()`): Dienstcode → `einteilen()`, bisheriger Diensthabender bekommt Hand-Code leer;
+  U/Fo/FZA → Wunsch-Eintrag gleich genehmigt; Amb2/Amb4/0/leer → Hand-Code in der Dienstdatei
+  `tda = {tag: {kürzel: code}}` (`tdaHand()`, mit Log `tdaK`). Vorrang: Dienst > Abwesenheit > Hand-Code > abgeleitet.
   Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
   `body.wochendruck` blendet beim Druck alles außer `#wochendruck` aus).
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
