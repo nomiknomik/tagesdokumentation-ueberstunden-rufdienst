@@ -752,7 +752,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.63';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.64';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1316,6 +1316,7 @@ function render(){
   $('mTitel').textContent = monatName(ym);
   const p = ich();
   $('ichBtn').innerHTML = p ? `${pk(p)}<b>${esc(p.name || p.k)}</b>` : '<span class="hint">nicht angemeldet</span>';
+  $('ichBtn').classList.toggle('hidden', !adminGeraet() && !!p);   // 1.64: Kopf-Knopf nur Admin (Personenwahl), sonst in Einstellungen → Zugang
   $('ichBtn').title = adminGeraet() ? 'Angemeldet als – Klick: Person wechseln (Admin)' : 'Angemeldet als';
   $('ichWechsel').classList.toggle('hidden', !!ich() && !adminGeraet());   // Person wechseln nur Admin
   $('adminLogin').classList.toggle('hidden', adminGeraet());
@@ -2455,7 +2456,7 @@ function renderCfg(){
   $('gMax').value = cfg.maxDienste; $('gWe').value = cfg.maxWeFolge; $('gUa').value = cfg.urlaubAnspruch; $('gUp').value = cfg.urlaubPlan;
   // Zugang
   const z = zugang();
-  $('zugInfo').innerHTML = z ? `Repo <b>${esc(z.repo)}</b> · Token aus ${esc(z.quelle || 'Einladung')}` : 'Kein Zugang.';
+  $('zugInfo').innerHTML = (ich() ? `Angemeldet als <b>${esc(ich().name || ich().k)}</b> (${esc(ich().k)})<br>` : '') + (z ? `Repo <b>${esc(z.repo)}</b> · Token aus ${esc(z.quelle || 'Einladung')}` : 'Kein Zugang.');
 }
 $('nAdd').onclick = ()=>{
   const k = $('nK').value.trim().toUpperCase().replace(/[^A-ZÄÖÜ0-9]/g, '');
