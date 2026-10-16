@@ -105,7 +105,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Ansicht, die Personenwahl bleibt sein Rückweg. Wünsche/Urlaub öffnen seit 1.65 immer mit der eigenen Person (`fuerK`/`urlK` = `ichK` beim Reiterwechsel; Doppelklick im Plan setzt danach); seit 1.66 sind dort alle Personen wählbar, fremde ohne `darfFuer()` nur ansehen (`#meinLesen`, Pinsel aus, rechte Spalte gesperrt). Kopf-Knopf `#ichBtn` seit 1.64 nur auf dem Admin-Gerät; „Angemeldet als“ für alle in der Karte Zugang. Ohne gewählte Person darf jedes Gerät einmal wählen.
   1.62: „Admin-Anmeldung“ in der Karte Zugang (Gist-Token, `GET /user` = Besitzer `TEAM_REPO`, setzt
   `tagesdoku_admin`) und „Repo und Token direkt“ im Erstlogin seit 1.71 nur über `…/plan/#admin` (`ADMIN_TUER`) oder
-  seit 1.72 5 schnelle Tipps auf das Kopf-Logo bzw. den Erstlogin-Titel (`fuenfTipps()`, auch für installierte App) –
+  seit 1.72 7 schnelle Tipps (4 s) auf das Kopf-Logo bzw. den Erstlogin-Titel (`fuenfTipps()`, auch für installierte App) –
   Notausgang: neuen GitHub-Token erzeugen; Nicht-Verwalter sehen in den Einstellungen nur die Karte `.frei` (Zugang).
   Halber Tag weg (1.58, Typ `halb`, `zeit` 'vm'|'nm', `uhr` = freier Text): nicht `abw`, zählt nur im
   eigenen Besetzungsfenster (`halbWeg()` in `besetzung()`/`urlBesetzung()`); Pinsel „½ Tag“ im Urlaub-Reiter
@@ -253,8 +253,8 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   leere Kopfdaten-`cfg.pnr`) + Passwort. Admin nur mit `tagesdoku_admin`='1'
   (Gerät): Migration = hat `tagesdoku_teilen` oder synct von Hand mit eigenem
   Repo (≠ `TEAM_REPO`); sonst „Admin-Anmeldung“ mit Gist-Token, geprüft über
-  `GET /user` = Besitzer des Team-Repos (Knopf `#adminAuf` seit 1.72 nur über `#admin` in der Adresse oder 5 schnelle
-  Tipps auf die Überschrift, `ADMIN_TUER`). Oder per Admin-QR („Admin-Gerät
+  `GET /user` = Besitzer des Team-Repos (Knopf `#adminAuf` seit 1.72 nur über `#admin` in der Adresse oder 7 schnelle
+  Tipps (4 s) auf die Überschrift, `ADMIN_TUER`). Oder per Admin-QR („Admin-Gerät
   hinzufügen“): PIN-verschlüsselt mit `g` (Gist-Token) und `admin:1`, nur als
   QR oder kopierter `#zugang2=`-Link (kein Gist; seit 1.68, für PC ohne Kamera), setzt Flag und `tagesdoku_teilen`, eigener Sync unberührt. Admin sieht den Token im Klartext,
   PIN wird in `tagesdoku_teilen` gemerkt. Nur Anzeige – der Token liegt technisch im Browser. „Lokal geändert“

@@ -1883,7 +1883,7 @@ let zugangQr = false;
    nach abgebrochener PIN-Eingabe. Freischalten ueber den Gist-Token des Kontos,
    dem das Team-Repo gehoert. Reine Anzeige-Sperre. */
 const LS_ADMIN = 'tagesdoku_admin';   // nur Geraet, nicht im Backup
-/* Admin-Anmeldung nur ueber …/app/#admin oder 5 schnelle Tipps auf die Ueberschrift (1.72) -
+/* Admin-Anmeldung nur ueber …/app/#admin oder 7 schnelle Tipps auf die Ueberschrift (1.72) -
    sonst unsichtbar; Notausgang z. B. mit neu erzeugtem GitHub-Token. Tipp-Geste auch fuer die
    installierte App (iOS: eigener Speicher, keine Adresszeile) */
 let ADMIN_TUER = /(^#|[&#])admin\b/.test(location.hash);
@@ -1898,8 +1898,8 @@ function zugangAnsicht(){
 }
 { let n = 0, t0 = 0;
   document.querySelector('.hdtxt h1').addEventListener('click', ()=>{
-    const jetzt = Date.now(); n = jetzt - t0 < 3000 ? n + 1 : 1; if(n === 1) t0 = jetzt;
-    if(n >= 5 && !ADMIN_TUER){ ADMIN_TUER = true; zugangAnsicht(); toast(istAdmin() ? 'Schon Admin.' : 'Admin-Anmeldung unter Einstellungen → Online-Backup.'); }
+    const jetzt = Date.now(); n = jetzt - t0 < 4000 ? n + 1 : 1; if(n === 1) t0 = jetzt;
+    if(n >= 7 && !ADMIN_TUER){ ADMIN_TUER = true; zugangAnsicht(); toast(istAdmin() ? 'Schon Admin.' : 'Admin-Anmeldung unter Einstellungen → Online-Backup.'); }
   }); }
 $('adminAuf').onclick = ()=>{ $('adminBox').style.display = $('adminBox').style.display === 'none' ? '' : 'none'; $('adminMsg').textContent = ''; };
 $('adminOk').onclick = async ()=>{
@@ -4037,7 +4037,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.72';
+const APP_VERSION = '1.73';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
