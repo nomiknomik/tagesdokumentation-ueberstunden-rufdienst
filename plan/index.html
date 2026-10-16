@@ -565,6 +565,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <h3 style="margin:0"><span data-icon="calendar"></span>Einträge</h3>
           <label class="f" style="flex-direction:row;align-items:center;gap:8px">für <select id="fuerSel"></select></label>
         </div>
+        <div class="banner hidden" id="meinLesen" style="margin-bottom:10px">Nur ansehen – eintragen kannst du nur für dich selbst.</div>
         <div class="pinsel" id="pinsel"></div>
         <div class="kal" id="kal"></div>
         <div class="hint" style="margin-top:10px">Tag antippen: Dienstwunsch, No-Go, Urlaub, Fortbildung, FZA (Freizeitausgleich) oder frei eintragen.
@@ -752,7 +753,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.65';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.66';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1780,9 +1781,10 @@ $('pubBtn').onclick = ()=>{
 /* =================== Meine Wuensche =================== */
 let fuerK = '';
 function renderMeine(){
-  if(!fuerK || !person(fuerK) || !darfFuer(fuerK)) fuerK = ichK;
-  $('fuerSel').disabled = !darfVerwalten();
-  $('fuerSel').innerHTML = personen().filter(p => darfFuer(p.k)).map(p => `<option value="${esc(p.k)}" ${p.k === fuerK ? 'selected' : ''}>${esc(p.name || p.k)}${p.k === ichK ? ' (ich)' : ''}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
+  /* 1.66: alle duerfen jede Person ansehen (Standard: ich); eintragen nur, wer fuer sie darf */
+  if(!fuerK || !person(fuerK)) fuerK = ichK;
+  $('fuerSel').disabled = false;
+  $('fuerSel').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === fuerK ? 'selected' : ''}>${esc(p.name || p.k)}${p.k === ichK ? ' (ich)' : ''}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
   const p = person(fuerK);
   if(!p) return;
   const y = +ym.slice(0,4), mo = +ym.slice(5,7), n = tageIm(ym);
@@ -1799,9 +1801,14 @@ function renderMeine(){
     h += `<button data-tag="${s}" class="${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''} ${tz ? 'tz' : ''} ${rcls}"><span class="n">${d}</span>${ft ? `<span class="fn">${esc(ft)}</span>` : ''}${inh}</button>`;
   }
   $('kal').innerHTML = h;
-  $('kal').querySelectorAll('button[data-tag]').forEach(b => b.onclick = ()=>{ if(!pinsel) eintragDialog(p, b.dataset.tag); });
+  const lesen = !darfFuer(p.k);
+  if(lesen) pinsel = '';
+  $('kal').querySelectorAll('button[data-tag]').forEach(b => b.onclick = ()=>{ if(lesen) return toast('Nur ansehen – eintragen nur für dich selbst.'); if(!pinsel) eintragDialog(p, b.dataset.tag); });
   $('kal').classList.toggle('malen', !!pinsel);
   pinselLeiste();
+  $('pinsel').classList.toggle('hidden', lesen);
+  $('tab-meine').querySelectorAll('.zwei > div:last-child :is(input,select,button,textarea)').forEach(x => x.disabled = lesen);
+  $('meinLesen').classList.toggle('hidden', !lesen);
   // Regeln
   $('regelListe').innerHTML = (p.regeln || []).map((r, i) => `<div class="lz"><span class="tag ${r.typ === 'kein' ? (r.stufe === 'hart' ? 'r' : 'o') : 'g'}">${r.stufe}</span>
     <span class="t">${r.typ === 'kein' ? 'Kein Dienst' : 'Dienst bevorzugt'} am ${WTL[r.wt]}</span><button class="x" data-i="${i}">${icon('x')}</button></div>`).join('')
@@ -2083,8 +2090,8 @@ function renderUrlaub(){
   const y = +ym.slice(0, 4);
   if(!urlVon || y < urlVon - 1 || y > urlBis + 1){ urlVon = urlBis = y; }
   urlVon = Math.min(urlVon, y); urlBis = Math.max(urlBis, y);
-  if(!urlK || !person(urlK) || !darfFuer(urlK)) urlK = ichK;
-  $('urlSel').innerHTML = personen().filter(p => darfFuer(p.k)).map(p => `<option value="${esc(p.k)}" ${p.k === urlK ? 'selected' : ''}>${esc(p.name || p.k)}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
+  if(!urlK || !person(urlK)) urlK = ichK;   // 1.66: alle Personen waehlbar, eintragen nur mit darfFuer (pinselTag)
+  $('urlSel').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === urlK ? 'selected' : ''}>${esc(p.name || p.k)}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
   /* ½ Tag nur beim Chef anbieten (bei OA selten) - vorhandene Eintraege werden bei allen angezeigt */
   const chef = (person(urlK) || {}).rolle === 'chef';
   if(urlTyp === 'halb' && !chef) urlTyp = 'urlaub';
@@ -2093,8 +2100,8 @@ function renderUrlaub(){
   $('urlHalbZeit').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.z === urlHalb));
   $('urlTyp').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === urlTyp));
   const t = urlTyp === 'termin' && alleTermine().find(x => x.id === termId);
-  $('urlTermInfo').innerHTML = urlTyp === 'termin' ? (t ? `Pinsel: <b style="color:${TERMIN[t.art].farbe}">${esc(t.name)}</b>` : 'Rechts bei „Termine“ einen Termin zum Pinseln wählen (✎) oder neu anlegen.') : '';
-  $('urlSel').disabled = urlTyp === 'termin' || !darfVerwalten();
+  $('urlTermInfo').innerHTML = urlTyp === 'termin' ? (t ? `Pinsel: <b style="color:${TERMIN[t.art].farbe}">${esc(t.name)}</b>` : 'Rechts bei „Termine“ einen Termin zum Pinseln wählen (✎) oder neu anlegen.') : !darfFuer(urlK) ? '<b>Nur ansehen</b> – eintragen nur für dich selbst.' : '';
+  $('urlSel').disabled = urlTyp === 'termin';
   const fehlt = [];
   for(let j = urlVon; j <= urlBis; j++) if(!urlGeladen[j]) fehlt.push(j);
   if(fehlt.length && zugang() && !nurLesen){
@@ -2264,7 +2271,7 @@ function urlSeite(immer){
     return `<div class="prow ${p.k === urlK ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${[u.offen ? u.offen + ' beantragt' : '', u.fb ? u.fb + ' Tage Fortbildung' : ''].filter(Boolean).join(' · ')}</small></div>`
       + `<div class="zahl">${u.n}<small> / ${ziel}</small></div></div><div class="balken"><i class="${u.n > anspruch ? 'voll' : ''}" style="width:${Math.min(100, u.n / Math.max(1, ziel) * 100)}%;${u.n >= ziel ? 'background:var(--success)' : ''}"></i></div>`; }).join('');
   $('urlInfo').textContent = `Urlaubstage ${y} an Werktagen (ohne Wochenende/Feiertag). Ziel: ${ziel} von ${anspruch} verplanen.`;
-  $('urlZaehler').querySelectorAll('.prow').forEach(el => el.onclick = ()=>{ if(!darfFuer(el.dataset.k)) return; urlK = el.dataset.k; if(urlTyp === 'termin') urlTyp = 'urlaub'; renderUrlaub(); });
+  $('urlZaehler').querySelectorAll('.prow').forEach(el => el.onclick = ()=>{ urlK = el.dataset.k; if(urlTyp === 'termin') urlTyp = 'urlaub'; renderUrlaub(); });
 }
 $('urlSel').onchange = e => { urlK = e.target.value; renderUrlaub(); };
 $('urlTyp').querySelectorAll('button').forEach(b => b.onclick = ()=>{ urlTyp = b.dataset.t; renderUrlaub(); });
