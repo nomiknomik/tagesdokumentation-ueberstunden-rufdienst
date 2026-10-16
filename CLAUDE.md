@@ -136,7 +136,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `von/bis`) tageweise pinselbar; Art `feiertag` (1.75, nur Planer) = arbeitsfrei wie gesetzlicher Feiertag
   (`ftExtra()` in `feiertag()`; alte `cfg.feiertage` werden beim Planer einmal dorthin verschoben, Einstellungen
   zeigen nur noch die automatischen BW-Feiertage). BW-Schulferien fest in `BW_FERIEN` bis Sommer 2030
-  (2028–2030 aus Drittquellen, `u` = ⚠ prüfen), immer über `werktagKern()` auf Mo–Fr gekürzt (offizielle
+  (laut Kultusministerium, Stand 10/2026; Herbst 2030 noch offen; `u` = ⚠ prüfen für spätere Drittquellen), immer über `werktagKern()` auf Mo–Fr gekürzt (offizielle
   Angaben enden oft am Samstag); weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv, ebenfalls gekürzt);
   Winterferien legt jede Schule selbst fest → von Hand. Urlaub-Kacheln: Besetzung
   vorm.|nachm. (`urlBesetzung()`; Vortags-Dienst zählt als da, heutiger Dienst –

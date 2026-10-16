@@ -765,7 +765,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.75';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.76';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1980,23 +1980,24 @@ function werktagKern(von, bis){
   while(bis > von && wtag(bis) >= 6) bis = verschieb(bis, -1);
   return [von, bis];
 }
-/* BW-Schulferien. Offizielle Angaben enden/beginnen oft am Samstag - fuer die Planung auf Mo-Fr
-   gekuerzt (werktagKern). 2028-2030 aus Drittquellen (KM-Seite nicht erreichbar), u = bitte pruefen. */
+/* BW-Schulferien laut Kultusministerium (km.baden-wuerttemberg.de/de/service/ferien, Stand 10/2026, bis
+   Sommer 2030; Herbst 2030 noch nicht veroeffentlicht). Offizielle Angaben enden oft am Samstag - fuer die
+   Planung auf Mo-Fr gekuerzt (werktagKern). Schulfreier Gruendonnerstag (2027, 2028) ist mit eingerechnet. */
 const BW_FERIEN = [
   ['2025-12-22', '2026-01-05', 'Weihnachtsferien'], ['2026-03-30', '2026-04-11', 'Osterferien'],
   ['2026-05-26', '2026-06-05', 'Pfingstferien'], ['2026-07-30', '2026-09-12', 'Sommerferien'],
-  ['2026-10-26', '2026-10-31', 'Herbstferien'], ['2026-12-23', '2027-01-09', 'Weihnachtsferien'],
+  ['2026-10-26', '2026-10-30', 'Herbstferien'], ['2026-12-23', '2027-01-09', 'Weihnachtsferien'],
   ['2027-03-25', '2027-04-03', 'Osterferien'], ['2027-05-18', '2027-05-29', 'Pfingstferien'],
   ['2027-07-29', '2027-09-11', 'Sommerferien'], ['2027-11-02', '2027-11-06', 'Herbstferien'],
   ['2027-12-23', '2028-01-08', 'Weihnachtsferien'],
-  ['2028-04-13', '2028-04-22', 'Osterferien', 1], ['2028-06-06', '2028-06-17', 'Pfingstferien'],
+  ['2028-04-13', '2028-04-22', 'Osterferien'], ['2028-06-06', '2028-06-17', 'Pfingstferien'],
   ['2028-07-27', '2028-09-09', 'Sommerferien'], ['2028-10-30', '2028-11-03', 'Herbstferien'],
   ['2028-12-23', '2029-01-05', 'Weihnachtsferien'],
   ['2029-03-26', '2029-04-07', 'Osterferien'], ['2029-05-22', '2029-06-01', 'Pfingstferien'],
   ['2029-07-26', '2029-09-08', 'Sommerferien'], ['2029-10-29', '2029-11-02', 'Herbstferien'],
   ['2029-12-22', '2030-01-05', 'Weihnachtsferien'],
-  ['2030-04-15', '2030-04-26', 'Osterferien', 1], ['2030-06-11', '2030-06-21', 'Pfingstferien', 1],
-  ['2030-07-25', '2030-09-07', 'Sommerferien', 1]
+  ['2030-04-15', '2030-04-26', 'Osterferien'], ['2030-06-11', '2030-06-21', 'Pfingstferien'],
+  ['2030-07-25', '2030-09-07', 'Sommerferien']
 ].map(([von, bis, name, u]) => { [von, bis] = werktagKern(von, bis); return {id: 'bw' + von, art: 'ferien', name, von, bis, bw: true, unsicher: !!u}; });
 const tageVon = t => t.tage ? t.tage : null;
 const imTermin = (t, s) => t.tage ? t.tage.includes(s) : (t.von <= s && s <= (t.bis || t.von));
