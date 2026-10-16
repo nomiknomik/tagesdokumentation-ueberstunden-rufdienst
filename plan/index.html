@@ -315,6 +315,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .seg button{border:0;background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:600;color:var(--text2)}
 .seg button.on{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .fuss{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.tip{position:fixed;z-index:70;pointer-events:none;background:#2A2420;color:#fff;font-size:12.5px;line-height:1.45;
+  padding:7px 10px;border-radius:9px;box-shadow:0 8px 20px rgba(0,0,0,.25);white-space:pre-line;max-width:320px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:#fff;border-radius:999px;padding:10px 18px;
   z-index:60;font-weight:600;box-shadow:0 10px 24px rgba(0,0,0,.2)}
 .msg{font-size:12.5px;margin-top:8px}
@@ -569,6 +571,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 </main>
 
 <div id="dlg"></div>
+<div id="tip" class="tip hidden"></div>
 
 <script>
 'use strict';
@@ -580,7 +583,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.22';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.23';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1818,6 +1821,29 @@ $('zoomMinus').onclick = ()=> zoomSetzen(zoom - .1);
 $('zoomPlus').onclick = ()=> zoomSetzen(zoom + .1);
 $('zoomWert').ondblclick = ()=> zoomSetzen(1);
 zoomSetzen(zoom);
+/* Sofort-Tooltips statt der traegen Browser-Tooltips: title wird beim ersten
+   Ueberfahren in data-tip verschoben und an der Maus angezeigt. */
+(()=>{
+  const tip = $('tip'); let el = null;
+  const zeig = (e, ziel) => {
+    if(ziel.hasAttribute('title')){ ziel.dataset.tip = ziel.getAttribute('title'); ziel.removeAttribute('title'); }
+    if(!ziel.dataset.tip){ tip.classList.add('hidden'); return; }
+    if(el !== ziel){ el = ziel; tip.textContent = ziel.dataset.tip; }
+    tip.classList.remove('hidden');
+    const r = tip.getBoundingClientRect();
+    let x = e.clientX + 14, y = e.clientY + 16;
+    if(x + r.width > innerWidth - 8) x = e.clientX - r.width - 10;
+    if(y + r.height > innerHeight - 8) y = e.clientY - r.height - 10;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  };
+  document.addEventListener('mousemove', e => {
+    const ziel = e.target.closest && e.target.closest('[title],[data-tip]');
+    if(!ziel || strich){ el = null; tip.classList.add('hidden'); return; }
+    zeig(e, ziel);
+  }, {passive: true});
+  document.addEventListener('mousedown', ()=> tip.classList.add('hidden'));
+  document.addEventListener('mouseleave', ()=> tip.classList.add('hidden'));
+})();
 /* Version + Update: ausstehende Aenderungen speichern, dann ohne Cache neu laden */
 $('verBtn').textContent = 'v' + PLAN_VERSION;
 { const t = load('planung_tab', 'plan'); const b = document.querySelector(`nav.tabs button[data-tab="${t}"]`);

@@ -49,6 +49,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   über Anteil an max./WE-Diensten/Folgetage; Einträge `auto:true` (gestrichelt),
   „Vorschlag verwerfen“ entfernt nur diese.
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
+  Tooltips sofort über `#tip` (global: `title` wird beim Überfahren zu `data-tip`).
   Besetzung nur Vormittag / Nachmittag (vor/ab 11; `besRegel()` fasst alte 3-Fenster-
   Konfiguration zusammen), keine Dienstart (ZD1…)
   in der Oberfläche – Funktionen statt Abrechnungsart folgen später.
