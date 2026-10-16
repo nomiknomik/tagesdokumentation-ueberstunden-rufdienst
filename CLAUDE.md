@@ -90,6 +90,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
   = Planer/Admin/niemand ist Planer; sonst nur eigene Einträge (`darfFuer()`), Einstellungen
   nur lesen (`cfgSperren()`, Karte `.frei` ausgenommen), „Person wechseln“ gesperrt.
+  Halber Tag weg (1.58, Typ `halb`, `zeit` 'vm'|'nm', `uhr` = freier Text): nicht `abw`, zählt nur im
+  eigenen Besetzungsfenster (`halbWeg()` in `besetzung()`/`urlBesetzung()`); Pinsel „½ Tag“ im Urlaub-Reiter
+  und im Wunsch-Dialog nur beim Chef (`rolle` 'chef'), Anzeige bei allen (halb gefüllter Chip). Keine Freigabe.
   Urlaub, FB und FZA (`FREIGABE`/`pflicht()`, seit 1.52) = Antrag; Planer genehmigt je Monat im Urlaub-Reiter (`genehmigKnopf()`/`genehmigen()`,
   `ok:{von,am}` am Eintrag, genau der Stand beim Klick). Beantragt = gestrichelt; Genehmigtes
   ändert nur der Planer (`gesperrtFuer()`). Abwesend zählt er schon als Antrag.

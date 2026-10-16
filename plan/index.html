@@ -322,6 +322,14 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 .ur-chip.ur-chip.offen{background:#fff;color:var(--f);border:1.5px dashed var(--f);padding:0 5px;opacity:1}
 .ur-chip.fza{background:color-mix(in srgb,var(--f) 16%,#fff);color:var(--f);opacity:1}
 .ur-chip.fb{background:#fff;color:var(--f);border:1px solid var(--f)}
+.ur-chip.halb{background:#fff;color:var(--f);border:1px solid var(--f);opacity:1}
+.ur-chip.halb.vm{background:linear-gradient(90deg,color-mix(in srgb,var(--f) 22%,#fff) 50%,#fff 50%)}
+.ur-chip.halb.nm{background:linear-gradient(90deg,#fff 50%,color-mix(in srgb,var(--f) 22%,#fff) 50%)}
+.mx-mini.mx-mini.halb{background:#fff;color:var(--f);border:1.5px solid var(--f)}
+.mx-mini.mx-mini.halb.vm{background:linear-gradient(90deg,color-mix(in srgb,var(--f) 30%,#fff) 50%,#fff 50%)}
+.mx-mini.mx-mini.halb.nm{background:linear-gradient(90deg,#fff 50%,color-mix(in srgb,var(--f) 30%,#fff) 50%)}
+.chip.halb{background:#fff;border:1px dashed var(--border);font-size:11px}
+#urlHalbBox{display:inline-flex;gap:6px;align-items:center}
 .ur-chip.tz{background:transparent;color:var(--muted);border:1px dashed var(--muted);opacity:1}
 
 /* ---------- Meine Eintraege ---------- */
@@ -541,6 +549,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
             <div><span class="tausch"></span>&nbsp;nach Signatur getauscht</div>
             <div><span class="dchip auto" style="padding:2px 8px">Name</span>automatisch verteilt (Vorschlag)</div>
             <div><span class="chip t-urlaub offen" style="padding:2px 8px">Urlaub</span>beantragt, noch nicht genehmigt</div>
+            <div><span class="mx-mini halb vm" style="--f:#8E3B6B;min-width:26px">CH</span>½ Tag weg – links gefüllt = vormittags, rechts = nachmittags</div>
           </div>
         </div>
       </aside>
@@ -607,7 +616,9 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
       <div>
         <div class="werkzeug">
           <label class="f" style="flex-direction:row;align-items:center;gap:8px">Eintragen für <select id="urlSel"></select></label>
-          <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button><button data-t="fza">FZA</button><button data-t="termin">Termin</button></span>
+          <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button><button data-t="fza">FZA</button><button data-t="halb" title="Nur vormittags oder nachmittags weg">½ Tag</button><button data-t="termin">Termin</button></span>
+          <span id="urlHalbBox" class="hidden"><span class="seg" id="urlHalbZeit"><button data-z="vm" class="on">vormittags</button><button data-z="nm">nachmittags</button></span>
+            <input type="text" id="urlHalbUhr" placeholder="Uhrzeit, z. B. ab 13 Uhr (optional)" style="width:190px"></span>
           <span class="hint" id="urlTermInfo"></span>
           <span class="hint desk">Antippen oder über Tage streichen; nochmal = löschen. Urlaub zählt nur an Werktagen.</span>
           <span class="hint mobil">Tippen = ein Tag · lang drücken = Pinsel (gestrichelt, endet 3 s nach dem Loslassen) · nochmal = löschen</span>
@@ -739,7 +750,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.57';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.58';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -851,6 +862,7 @@ const TYPEN = {
   fb:     {name:'Fortbildung', icon:'book', abw:true},
   frei:   {name:'frei', icon:'moon', abw:true},
   fza:    {name:'FZA', icon:'clock', abw:true},   // Freizeitausgleich fuer Ueberstunden
+  halb:   {name:'½ Tag weg', icon:'logOut'},      // 1.58: nur vormittags/nachmittags abwesend (zeit 'vm'|'nm', uhr = Text), v.a. Chef
   da:     {name:'anwesend', icon:'check'}
 };
 const ABW_NAME = {urlaub:'Urlaub', fb:'Fortbildung', frei:'frei', fza:'Freizeitausgleich (FZA)', tz:'Teilzeit frei'};
@@ -959,7 +971,7 @@ const UNDO_MAX = 10;
    Hochladen auf dem frischen Stand. Dienst-Aenderungen loggen selbst, nur deren
    Rueckgaengig laeuft hierueber. */
 const LOG_MAX = 400;
-const wCode = e => e ? e.typ + (e.ok ? '✓' : '') + (e.stufe === 'hart' ? '!' : '') : '';
+const wCode = e => e ? e.typ + (e.typ === 'halb' ? '-' + (e.zeit || 'vm') : '') + (e.ok ? '✓' : '') + (e.stufe === 'hart' ? '!' : '') : '';
 function mitLog(fn, pfad){
   const am = Date.now(), von = ichK || '?', dienst = /^plan\/dienst\//.test(pfad), code = dienst ? (e => (e && e.oa) || '') : wCode;
   return (d, remote) => {
@@ -1130,6 +1142,10 @@ function abwesend(p, s){
   if(e && e.typ === 'da') return '';
   return teilzeitFrei(p, s) ? 'tz' : '';
 }
+/* halber Tag weg (1.58): 'vm' | 'nm' | '' - zaehlt nur im jeweiligen Besetzungsfenster (vor/ab 11) */
+const halbWeg = (p, s) => { const e = eintrag(p.k, s); return werktag(s) && e && e.typ === 'halb' ? e.zeit || 'vm' : ''; };
+const HALB_TXT = {vm: 'vormittags weg', nm: 'nachmittags weg'};
+const halbTitel = (p, s) => { const e = eintrag(p.k, s); return `${p.name || p.k}: ${HALB_TXT[e.zeit || 'vm']}${e.uhr ? ' (' + e.uhr + ')' : ''}`; };
 const gefaehrdet = (p, s) => werktag(s) && dienstVon(plus(s, -1)) === p.k && !abwesend(p, s);
 const maxDienste = p => Math.floor((cfg.maxDienste || 13) * (p.quote || 100) / 100);
 const diensteIm = (k, m) => { const d = dienstDaten(m); return d && d.tage ? Object.values(d.tage).filter(x => x.oa === k).length : 0; };
@@ -1139,14 +1155,17 @@ const diensteIm = (k, m) => { const d = dienstDaten(m); return d && d.tage ? Obj
 function besetzung(s, ohneDienstVortag){
   if(!werktag(s)) return null;
   const dh = dienstVon(s), regel = besRegel(wt(s));
-  let sicher = 0, dhDa = 0, gef = [];
+  let dhDa = 0, gef = [];
+  const sicher = [0, 0];   // je Fenster (Vormittag, Nachmittag); halber Tag weg fehlt nur in seinem Fenster
   for(const p of personen()){
     if(abwesend(p, s)) continue;
     if(p.k === dh){ dhDa = 1; continue; }
     if(p.k !== ohneDienstVortag && gefaehrdet(p, s)){ gef.push(p); continue; }
-    sicher++;
+    const h = halbWeg(p, s);
+    if(h !== 'vm') sicher[0]++;
+    if(h !== 'nm') sicher[1]++;
   }
-  const w = [sicher, sicher + dhDa];
+  const w = [sicher[0], sicher[1] + dhDa];
   const st = w.map((n, i) => n >= regel.soll[i] ? 'ok' : n >= regel.min[i] ? 'kn' : (n + gef.length >= regel.min[i] && n > 0) ? 'kn' : 'rot');
   return {w, st, gef, regel, dh};
 }
@@ -1263,6 +1282,7 @@ function wochenStatus(p, s){
   if(a) return ['abw', {fb:'Fortbildung', fza:'FZA', frei:'frei', tz:'frei (TZ)'}[a] + (pflicht(a) && !urlOk(e) ? ' (beantr.)' : '')];
   if(!werktag(s)) return ['', ''];
   if(gefaehrdet(p, s)) return ['gef', 'nach Dienst'];
+  if(halbWeg(p, s)) return ['da', halbWeg(p, s) === 'vm' ? 'nur nachm.' : 'nur vorm.'];
   return ['da', 'da'];
 }
 function wochenplanHtml(){
@@ -1356,6 +1376,7 @@ function renderPlan(){
       const a = abwesend(p, s);
       if(a) ab += `<span class="chip t-${a} ${pflicht(a) && !urlOk(eintrag(p.k, s)) ? 'offen' : ''}" title="${esc(ABW_NAME[a] + (pflicht(a) && !urlOk(eintrag(p.k, s)) ? ' (beantragt)' : ''))}">${pk(p)}${icon(ABW_ICON[a])}</span>`;
       else if(gefaehrdet(p, s)) ab += `<span class="chip gef" title="Dienst am Vortag – fehlt evtl.">${pk(p)}${icon('moon')}</span>`;
+      else if(halbWeg(p, s)) ab += `<span class="chip halb" title="${esc(halbTitel(p, s))}">${pk(p)}${halbWeg(p, s) === 'vm' ? '½ vorm.' : '½ nachm.'}</span>`;
     }
     // Wuensche
     let wu = '';
@@ -1374,6 +1395,7 @@ function renderPlan(){
       hwRot: b && b.w[0] === 0 ? 'bis 11 Uhr evtl. kein OA' : b && b.st.includes('rot') ? 'unterbesetzt ' + b.st.map((x, i) => x === 'rot' ? FENSTER[i] : '').filter(Boolean).join(', ') : '',
       hwGrau: hinweise(s).map(x => x.text), kongr: kongresse(s), mark: cls.includes('mark'), heute: s === hz,
       abw: personen().map(p => [p, abwesend(p, s), gefaehrdet(p, s)]).filter(x => x[1] || x[2]),
+      halb: personen().filter(p => !abwesend(p, s) && halbWeg(p, s)),
       wu: personen().map(p => [p, eintrag(p.k, s)]).filter(x => x[1] && (x[1].typ === 'wunsch' || x[1].typ === 'nogo')),
       tipp: dp ? bewerte(dp, s).tags.map(t => t[1]).join(' · ') : ''});
     h += `<div class="${cls}">${terminBand(s)}<div class="tagzelle"><span class="wt">${WT[w]}</span><b>${d}.</b>${ft ? `<span class="ftn">${esc(ft)}</span>` : ''}</div>`
@@ -1525,7 +1547,8 @@ function matrixHtml(info){
         ? (pflicht(a) && !urlOk(eintrag(p.k, x.s))
           ? `<span class="mx-mini offen" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a] + ' (beantragt)')}">${esc(p.k)}</span>`
           : `<span class="mx-mini" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a])}">${esc(p.k)}</span>`)
-        : `<span class="mx-mini gef" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('');
+        : `<span class="mx-mini gef" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('')
+        + x.halb.map(p => `<span class="mx-mini halb ${halbWeg(p, x.s)}" style="--f:${farbe(p)}" title="${esc(halbTitel(p, x.s))}">${esc(p.k)}</span>`).join('');
       const wu = x.wu.map(([p, e]) => `<span class="mx-wu ${e.typ} ${e.stufe === 'hart' ? 'hart' : ''}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + ' ' + (e.stufe || ''))}">${icon(TYPEN[e.typ].icon)}${esc(p.k)}</span>`).join('');
       /* Hinweise als kleine Symbole neben dem Datum, Text per Maus-Tooltip */
       const hw = (x.hwRot || x.hwGrau.length || x.kongr.length) ? `<div class="mx-hwi">`
@@ -1803,7 +1826,7 @@ function pinselTag(s, k = fuerK, typ = pinsel){
   const p = person(k);
   if(!p || !strich || strich.erledigt.has(s)) return;
   strich.erledigt.add(s);
-  if(['da','frei','fza','fb'].includes(typ) && !werktag(s)) return;   // Wochenende/Feiertag auslassen (Urlaub nicht)
+  if(['da','frei','fza','fb','halb'].includes(typ) && !werktag(s)) return;   // Wochenende/Feiertag auslassen (Urlaub nicht)
   const alt = eintrag(p.k, s), sperre = gesperrtFuer(p.k, alt);
   if(sperre){ if(!strich.gemeldet){ strich.gemeldet = true; toast(sperre); } return; }
   if((typ === 'da' || typ === 'frei') && !(alt && alt.typ === typ)) blockBruch(p, s, typ === 'da');
@@ -1822,10 +1845,11 @@ function pinselTag(s, k = fuerK, typ = pinsel){
       aendern(pfadWunsch(p.k, ymVon(s)), {tage:{}}, `${p.k} frei`, d => { if(d.tage) delete d.tage[s]; });
     return;
   }
-  if(strich.loeschen === undefined) strich.loeschen = typ === 'weg' || !!(alt && alt.typ === typ);
+  if(strich.loeschen === undefined) strich.loeschen = typ === 'weg' || !!(alt && alt.typ === typ && (typ !== 'halb' || (alt.zeit || 'vm') === urlHalb));
   if(strich.loeschen && !(alt && (typ === 'weg' || alt.typ === typ))) return;
-  if(!strich.loeschen && alt && alt.typ === typ && (alt.stufe || 'weich') === (TYPEN[typ].stufen ? pinselStufe : 'weich')) return;
-  const wert = strich.loeschen ? null : {typ, ...(TYPEN[typ].stufen ? {stufe: pinselStufe} : {})};
+  if(!strich.loeschen && alt && alt.typ === typ && typ !== 'halb' && (alt.stufe || 'weich') === (TYPEN[typ].stufen ? pinselStufe : 'weich')) return;
+  const uhr = typ === 'halb' && $('urlHalbUhr').value.trim();
+  const wert = strich.loeschen ? null : {typ, ...(TYPEN[typ].stufen ? {stufe: pinselStufe} : {}), ...(typ === 'halb' ? {zeit: urlHalb, ...(uhr ? {uhr} : {})} : {})};
   aendern(pfadWunsch(p.k, ymVon(s)), {tage:{}}, `${p.k} ${wert ? TYPEN[typ].name : 'Eintrag gelöscht'}`, d => {
     d.tage ||= {};
     if(wert) d.tage[s] = {...wert, von: ichK, am: Date.now()}; else delete d.tage[s];
@@ -1923,7 +1947,7 @@ function terminTag(s){
 const kongresse = s => termineAm(s).filter(t => t.art === 'kongress').map(t => t.name);
 
 /* =================== Urlaub (durchgehend scrollend) =================== */
-let urlK = '', urlTyp = 'urlaub', urlGeladen = {}, urlScrollZiel = '', urlVon = 0, urlBis = 0, urlJahrSeite = 0;
+let urlHalb = 'vm', urlK = '', urlTyp = 'urlaub', urlGeladen = {}, urlScrollZiel = '', urlVon = 0, urlBis = 0, urlJahrSeite = 0;
 const urlaubstage = (p, y) => {   // nur Werktage verbrauchen Urlaub
   let n = 0, fb = 0, offen = 0;
   for(let m = 1; m <= 12; m++){
@@ -1965,9 +1989,10 @@ function urlBesetzung(s){
   /* Wer am Vortag Dienst hatte, zaehlt hier als anwesend (Annahme: kommt).
      Der heutige Diensthabende - eingeteilt oder noch offen - kommt erst um 11. */
   const r = besRegel(wt(s)), dhDa = dh ? da.some(p => p.k === dh) : da.length > 0;
-  const w = [da.length - (dhDa ? 1 : 0), da.length];
+  const halb = h => da.filter(p => halbWeg(p, s) === h).length;
+  const w = [da.length - (dhDa ? 1 : 0) - halb('vm'), da.length - halb('nm')];
   const st = w.map((n, i) => n >= r.soll[i] ? 'ok' : n >= r.min[i] ? 'kn' : 'rot');
-  const tip = 'Anwesend:\n' + (da.map(p => (p.name || p.k) + (p.k === dh ? ' (Dienst ab 11)' : '')).join('\n') || '–');
+  const tip = 'Anwesend:\n' + (da.map(p => (p.name || p.k) + (p.k === dh ? ' (Dienst ab 11)' : '') + (halbWeg(p, s) ? ' (' + HALB_TXT[halbWeg(p, s)] + ')' : '')).join('\n') || '–');
   return {w, st, tip};
 }
 function urlTagHtml(s){
@@ -1978,6 +2003,8 @@ function urlTagHtml(s){
     const e = eintrag(p.k, s);
     if(e && (e.typ === 'urlaub' || e.typ === 'fb' || e.typ === 'fza'))
       chips += `<span class="ur-chip ${e.typ} ${!e.ok ? 'offen' : ''}" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + (e.ok ? ' (genehmigt)' : ' (beantragt)'))}">${esc(p.k)}</span>`;
+    else if(e && e.typ === 'halb' && werktag(s))
+      chips += `<span class="ur-chip halb ${e.zeit || 'vm'}" style="--f:${farbe(p)}" title="${esc(halbTitel(p, s))}">${esc(p.k)}½</span>`;
     else if(!we && !ft && teilzeitFrei(p, s) && !(e && e.typ === 'da') && p.k === urlK)
       chips += `<span class="ur-chip tz" title="Teilzeit frei">${esc(p.k)}</span>`;
   }
@@ -1996,6 +2023,12 @@ function renderUrlaub(){
   urlVon = Math.min(urlVon, y); urlBis = Math.max(urlBis, y);
   if(!urlK || !person(urlK) || !darfFuer(urlK)) urlK = ichK;
   $('urlSel').innerHTML = personen().filter(p => darfFuer(p.k)).map(p => `<option value="${esc(p.k)}" ${p.k === urlK ? 'selected' : ''}>${esc(p.name || p.k)}${p.rolle === 'chef' ? ' – Chefarzt' : ''}</option>`).join('');
+  /* ½ Tag nur beim Chef anbieten (bei OA selten) - vorhandene Eintraege werden bei allen angezeigt */
+  const chef = (person(urlK) || {}).rolle === 'chef';
+  if(urlTyp === 'halb' && !chef) urlTyp = 'urlaub';
+  $('urlTyp').querySelector('[data-t="halb"]').style.display = chef ? '' : 'none';
+  $('urlHalbBox').classList.toggle('hidden', urlTyp !== 'halb');
+  $('urlHalbZeit').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.z === urlHalb));
   $('urlTyp').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === urlTyp));
   const t = urlTyp === 'termin' && alleTermine().find(x => x.id === termId);
   $('urlTermInfo').innerHTML = urlTyp === 'termin' ? (t ? `Pinsel: <b style="color:${TERMIN[t.art].farbe}">${esc(t.name)}</b>` : 'Rechts bei „Termine“ einen Termin zum Pinseln wählen (✎) oder neu anlegen.') : '';
@@ -2051,7 +2084,7 @@ function spannen(tage){   // sortierte Tage -> „6.–9.10., 13.10.“
   for(const s of t){ const l = r[r.length - 1]; if(l && plus(l[1], 1) === s) l[1] = s; else r.push([s, s]); }
   return r.map(([a, b]) => a === b ? kurzDat(a) : (a.slice(0, 7) === b.slice(0, 7) ? +a.slice(8) + '.' : kurzDat(a)) + '–' + kurzDat(b)).join(', ');
 }
-const codeName = c => { if(!c) return 'leer'; const t = c.replace(/[✓!]/g, ''); return ((TYPEN[t] || {}).name || t) + (c.includes('!') ? ' (hart)' : '') + (c.includes('✓') ? ' (genehmigt)' : ''); };
+const codeName = c => { if(!c) return 'leer'; if(c.startsWith('halb-')) return '½ Tag ' + (c.endsWith('nm') ? 'nachmittags' : 'vormittags') + ' weg'; const t = c.replace(/[✓!]/g, ''); return ((TYPEN[t] || {}).name || t) + (c.includes('!') ? ' (hart)' : '') + (c.includes('✓') ? ' (genehmigt)' : ''); };
 function protokollEintraege(){
   const r = [];
   for(const [pfad, f] of Object.entries(files)){
@@ -2173,6 +2206,7 @@ function urlSeite(immer){
 }
 $('urlSel').onchange = e => { urlK = e.target.value; renderUrlaub(); };
 $('urlTyp').querySelectorAll('button').forEach(b => b.onclick = ()=>{ urlTyp = b.dataset.t; renderUrlaub(); });
+$('urlHalbZeit').querySelectorAll('button').forEach(b => b.onclick = ()=>{ urlHalb = b.dataset.z; renderUrlaub(); });
 const urlMalen = s => urlTyp === 'termin' ? terminTag(s) : pinselTag(s, urlK, urlTyp);
 $('urlTab').addEventListener('pointerdown', e => {
   if(e.pointerType === 'touch') return;   // Touch: eigene Steuerung unten (Scrollen bleibt frei)
@@ -2252,12 +2286,14 @@ function eintragDialog(p, s){
   const e = eintrag(p.k, s) || {};
   const sperre = gesperrtFuer(p.k, e);
   if(sperre) return toast(sperre);
-  let typ = e.typ || 'wunsch', stufe = e.stufe || 'weich';
+  let typ = e.typ || 'wunsch', stufe = e.stufe || 'weich', zeit = e.zeit || 'vm';
   dialog(`<h3>${WTL[wt(s)]}, ${kurzDat(s)}${feiertag(s) ? ' · ' + esc(feiertag(s)) : ''}</h3>
     <div class="unter">${esc(p.name || p.k)}${teilzeitFrei(p, s) ? ' · laut Teilzeitmuster frei' : ''}${pflicht(e.typ) ? (e.ok ? ` · ${TYPEN[e.typ].name} genehmigt (${esc(e.ok.von)}, ${new Date(e.ok.am).toLocaleDateString('de-DE')})` : ` · ${TYPEN[e.typ].name} beantragt`) : ''}</div>
-    <div class="typwahl">${Object.entries(TYPEN).map(([k, t]) => `<button data-typ="${k}" class="${k === typ ? 'on' : ''}">${icon(t.icon)}${t.name}</button>`).join('')}</div>
+    <div class="typwahl">${Object.entries(TYPEN).filter(([k]) => k !== 'halb' || p.rolle === 'chef' || e.typ === 'halb').map(([k, t]) => `<button data-typ="${k}" class="${k === typ ? 'on' : ''}">${icon(t.icon)}${t.name}</button>`).join('')}</div>
     <div id="stufeBox" style="margin-bottom:12px"><div class="seg"><button data-s="weich">weich</button><button data-s="hart">hart</button></div>
       <span class="hint" style="margin-left:8px">hart = möglichst unbedingt</span></div>
+    <div id="halbBox" class="reihe" style="margin-bottom:12px"><div class="seg"><button data-z="vm">vormittags</button><button data-z="nm">nachmittags</button></div>
+      <input type="text" id="eUhr" value="${esc(e.uhr || '')}" placeholder="Uhrzeit (optional)" style="flex:1"></div>
     <div class="reihe"><label class="f">bis einschließlich<input type="date" id="eBis" value="${s}" min="${s}"></label>
       <label class="f" style="flex:1">Notiz<input type="text" id="eNotiz" value="${esc(e.notiz || '')}" placeholder="optional"></label></div>
     <div class="fuss">${e.typ ? `<button class="btn out" id="eDel">${icon('trash')}Löschen</button>` : ''}<button class="btn gh" id="dlgZu">Abbrechen</button><button class="btn" id="eOk">${icon('check')}Speichern</button></div>`,
@@ -2266,9 +2302,12 @@ function eintragDialog(p, s){
       el.querySelectorAll('[data-typ]').forEach(b => b.classList.toggle('on', b.dataset.typ === typ));
       el.querySelectorAll('[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === stufe));
       $('stufeBox').style.display = TYPEN[typ].stufen ? '' : 'none';
+      $('halbBox').style.display = typ === 'halb' ? '' : 'none';
+      el.querySelectorAll('[data-z]').forEach(b => b.classList.toggle('on', b.dataset.z === zeit));
     };
     el.querySelectorAll('[data-typ]').forEach(b => b.onclick = ()=>{ typ = b.dataset.typ; upd(); });
     el.querySelectorAll('[data-s]').forEach(b => b.onclick = ()=>{ stufe = b.dataset.s; upd(); });
+    el.querySelectorAll('[data-z]').forEach(b => b.onclick = ()=>{ zeit = b.dataset.z; upd(); });
     upd();
     $('dlgZu').onclick = zu;
     const setzen = wert => {
@@ -2287,7 +2326,7 @@ function eintragDialog(p, s){
       }
       zu();
     };
-    $('eOk').onclick = ()=> setzen({typ, ...(TYPEN[typ].stufen ? {stufe} : {}), ...($('eNotiz').value.trim() ? {notiz: $('eNotiz').value.trim()} : {})});
+    $('eOk').onclick = ()=> setzen({typ, ...(TYPEN[typ].stufen ? {stufe} : {}), ...(typ === 'halb' ? {zeit, ...($('eUhr').value.trim() ? {uhr: $('eUhr').value.trim()} : {})} : {}), ...($('eNotiz').value.trim() ? {notiz: $('eNotiz').value.trim()} : {})});
     if($('eDel')) $('eDel').onclick = ()=> setzen(null);
   });
 }
