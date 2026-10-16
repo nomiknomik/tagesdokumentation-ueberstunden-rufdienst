@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0A8592"/><stop offset="1" stop-color="#004A5E"/></linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#002A33" flood-opacity=".35"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <!-- Pfeilkreis (Tausch / Wiederkehr) -->
+  <g fill="none" stroke="#FAF5EC" stroke-width="15" stroke-linecap="round">
+    <path d="M118 330A150 150 0 0 1 340 84"/>
+    <path d="M394 160A150 150 0 0 1 406 286"/>
+    <path d="M134 366A150 150 0 0 0 324 386"/>
+  </g>
+  <path d="M347 64l26 52l-49 -8z" fill="#FAF5EC" stroke="#FAF5EC" stroke-width="8" stroke-linejoin="round"/>
+  <!-- Kalender -->
+  <g filter="url(#s)">
+    <path d="M140 196v136a28 28 0 0 0 28 28h176a28 28 0 0 0 28-28V196z" fill="#FAF5EC"/>
+    <path d="M140 196v-26a28 28 0 0 1 28-28h176a28 28 0 0 1 28 28v26z" fill="#ECA54E"/>
+  </g>
+  <circle cx="195" cy="166" r="15" fill="#015666"/><circle cx="317" cy="166" r="15" fill="#015666"/>
+  <rect x="186" y="124" width="18" height="46" rx="9" fill="#FAF5EC"/><rect x="308" y="124" width="18" height="46" rx="9" fill="#FAF5EC"/>
+  <g fill="#D9CDBE">
+    <rect x="158" y="212" width="40" height="38" rx="8"/><rect x="210" y="212" width="40" height="38" rx="8"/><rect x="262" y="212" width="40" height="38" rx="8"/><rect x="314" y="212" width="40" height="38" rx="8"/>
+    <rect x="158" y="260" width="40" height="38" rx="8"/><rect x="210" y="260" width="40" height="38" rx="8"/><rect x="314" y="260" width="40" height="38" rx="8"/>
+    <rect x="158" y="308" width="40" height="38" rx="8"/><rect x="210" y="308" width="40" height="38" rx="8"/><rect x="262" y="308" width="40" height="38" rx="8"/>
+  </g>
+  <rect x="262" y="260" width="40" height="38" rx="8" fill="#03606E"/>
+  <path d="M285 268a12 12 0 1 0 9 19a13 13 0 0 1 -9 -19z" fill="#FAF5EC"/>
+  <!-- Uhr -->
+  <circle cx="372" cy="342" r="58" fill="#015666"/>
+  <circle cx="372" cy="342" r="48" fill="#ECA54E" filter="url(#s)"/>
+  <circle cx="372" cy="342" r="36" fill="#FAF5EC"/>
+  <path d="M372 318v26l18 13" fill="none" stroke="#015666" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

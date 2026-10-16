@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FAF5EC">
 <title>Dienstplanung</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dienstplan">
 <style>
 :root{
   --primary:#00636E; --primary-dark:#004A56; --primary-soft:#E3F0EF;
@@ -174,8 +179,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-box.ok{background:linear-gradient(180deg,#F3F9F5,#FBFDFB)}
 .mx-box.kn{background:linear-gradient(180deg,#FCF5EA,#FFFBF5)}
 .mx-box.rot{background:linear-gradient(180deg,#FAEAE5,#FFF7F4);border-color:rgba(194,73,46,.25)}
-.mx-box.we{background:repeating-linear-gradient(135deg,#F6F0E5 0 8px,#F9F4EB 8px 16px)}
-.mx-box.ft{background:repeating-linear-gradient(135deg,#F5E9E5 0 8px,#F9F0ED 8px 16px)}
+.mx-box.we{background:#F7F3EC}
+.mx-box.ft{background:#F9EFEC}
 .mx-box.heute{box-shadow:0 0 0 2px var(--primary)}
 .mx-box .dzelle{position:absolute;inset:0;border-radius:14px}
 .mx-box .dzelle:hover{background:rgba(0,99,110,.04)}
@@ -208,9 +213,23 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-wu.wunsch{color:#2F7D4A;border-color:#A8D8B8;background:#F3FAF5} .mx-wu.nogo{color:#A6543F;border-color:#EBC2B6;background:#FCF3F0}
 .mx-wu.hart{border-style:solid}
 
+/* Ruhige Matrix (Design D, 1.33): Personenfarbe nur als Punkt vor dem Namen, Tage weiss,
+   Kuerzel grau, Zahlen nur bei Problemen farbig */
+.mx-box.ok,.mx-box.kn{background:#fff}
+.mx-box.rot{background:#FFF7F4}
+.mx-zahl b.ok{color:var(--muted)}
+.mx-dienst{background:#FBF8F3;border-color:transparent;color:var(--text)}
+.mx-dienst .nn{font-weight:600;padding-left:0}
+.mx-dienst::before{content:'';width:9px;height:9px;border-radius:9px;background:var(--f);flex:0 0 auto;margin-left:4px}
+.mx-dienst.leer::before{display:none}
+.mx-dienst.auto{border-color:rgba(43,36,32,.28)}
+.mx-mini{background:#E9E3DA;color:var(--text2);opacity:1}
+.mx-mini.offen,.mx-mini.gef{background:#fff;border-style:dashed;border-color:#B8AD9F}
+.prow .pk{filter:saturate(.5)}
+
 /* Nachbarmonate in der Matrix */
 .mx-box.nachbar{opacity:.42;filter:saturate(.35);cursor:pointer;background:#fff}
-.mx-box.nachbar.we{background:repeating-linear-gradient(135deg,#F6F0E5 0 8px,#F9F4EB 8px 16px)}
+.mx-box.nachbar.we{background:#F7F3EC}
 .mx-box.nachbar:hover{opacity:.7}
 .mx-woche.rand{height:58px;overflow:hidden}
 .mx-woche.rand.oben{align-items:end;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 85%);mask-image:linear-gradient(to bottom,transparent,#000 85%)}
@@ -222,7 +241,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .tm-band{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;gap:1px;z-index:3}
 /* Kachel schneidet den Balken an ihren Rundungen ab -> Balken folgt der Kachelform */
 .mx-box{overflow:hidden}
-.tm-band i{display:block;height:3px;opacity:.5}
+.tm-band i{display:block;height:3px;opacity:.35}
 .tm-band:hover i{opacity:.9}
 .lz.term-akt{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
 .x.pin:hover{color:var(--primary)}
@@ -295,6 +314,8 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 .liste{display:grid;gap:8px}
 .lz{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 10px}
 .lz .t{flex:1}
+.ein-qr{margin:12px 0 6px;width:200px;height:200px;background:#fff;border-radius:12px;padding:6px}
+.ein-qr svg{width:100%;height:100%}
 .tz-bis{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);font-weight:600}
 .tz-bis input{padding:4px 6px;font-size:12px;width:128px}
 .x{border:0;background:transparent;color:var(--muted);cursor:pointer;padding:4px;display:flex}
@@ -376,7 +397,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 <body>
 <header>
   <div class="hd">
-    <div class="logo"><div class="mark"><span data-icon="calendar"></span></div><div>Dienstplanung <button class="version" id="verBtn" title="Auf Update prüfen und neu laden"></button><small>Oberärzte · Allgemein- und Viszeralchirurgie</small></div></div>
+    <div class="logo"><img class="mark" src="icon.svg" alt=""><div>Dienstplanung <button class="version" id="verBtn" title="Auf Update prüfen und neu laden"></button><small>Oberärzte · Allgemein- und Viszeralchirurgie</small></div></div>
     <nav class="tabs">
       <button data-tab="plan" class="on"><span data-icon="grid"></span><span class="txt">Plan</span></button>
       <button data-tab="meine"><span data-icon="heart"></span><span class="txt">Wünsche</span></button>
@@ -589,6 +610,17 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
         </div>
         <div class="msg" id="bakMsg"></div>
       </div>
+      <div class="card">
+        <h3><span data-icon="send"></span>Einladung</h3>
+        <div class="hint">Persönlicher Link und QR-Code: Das Gerät ist danach fest dieser Person zugeordnet (keine „Wer bist du?“-Auswahl).
+          Gültig 24 Stunden, öffnen nur mit PIN – die PIN getrennt mitteilen.</div>
+        <div class="reihe" style="margin-top:10px">
+          <label class="f">für<select id="einPers"></select></label>
+          <label class="f">PIN<input type="text" id="einPin" inputmode="numeric" style="width:110px"></label>
+          <button class="btn" id="einMake"><span data-icon="key"></span>Einladung erstellen</button>
+        </div>
+        <div id="einOut"></div>
+      </div>
       <div class="card frei">
         <h3><span data-icon="key"></span>Zugang</h3>
         <div class="hint" id="zugInfo"></div>
@@ -614,7 +646,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.32';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.33';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -642,6 +674,7 @@ const ICONS = {
   plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
   x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   send:'<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   printer:'<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
   clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   sliders:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
@@ -1161,7 +1194,7 @@ function nachbarBox(s){
   const p = person(dienstVon(s)), ft = feiertag(s);
   return `<div class="mx-box nachbar ${ft ? 'ft' : wt(s) >= 6 ? 'we' : ''}" data-nachbar="${s < ym ? -1 : 1}" title="${monatName(ymVon(s))} öffnen">${terminBand(s)}`
     + `<div class="mx-dat">${+s.slice(8)}.${s.slice(8) === '01' ? +s.slice(5, 7) + '.' : ''}</div>`
-    + (p ? `<div class="mx-dienst" style="background:${tint(farbe(p), .1)};border-color:${tint(farbe(p), .3)};color:${farbe(p)}"><b class="nn">${esc(nachn(p))}</b></div>` : '')
+    + (p ? `<div class="mx-dienst" style="--f:${farbe(p)}"><b class="nn">${esc(nachn(p))}</b></div>` : '')
     + '</div>';
 }
 function matrixHtml(info){
@@ -1183,15 +1216,15 @@ function matrixHtml(info){
         + zweiFenster(x.b).map(([n, st]) => `<b class="${st}">${n}</b>`).join('<i>|</i>') + '</div>';
       const f = x.dp ? farbe(x.dp) : '';
       const dienst = x.dp
-        ? `<div class="mx-dienst ${dienstAuto(x.s) ? 'auto' : ''}" style="background:${tint(f, .13)};border-color:${tint(f, .45)};color:${f}" title="${esc((x.dp.name || x.dp.k) + (x.tipp ? ' · ' + x.tipp : ''))}"><b class="nn">${esc(nachn(x.dp))}</b>`
+        ? `<div class="mx-dienst ${dienstAuto(x.s) ? 'auto' : ''}" style="--f:${f}" title="${esc((x.dp.name || x.dp.k) + (x.tipp ? ' · ' + x.tipp : ''))}"><b class="nn">${esc(nachn(x.dp))}</b>`
           + (x.warn ? `<span class="${x.warn === 'r' ? 'warn' : 'warno'}">${icon('alert')}</span>` : '')
           + (x.getauscht ? '<span class="tausch" title="nach Veröffentlichung geändert"></span>' : '') + `</div>`
         : `<div class="mx-dienst leer">${x.partner ? `<span class="vorschlag" data-vorschlag="${x.s}|${x.partner}" title="wie ${x.w === 7 ? 'Freitag' : 'Sonntag'} übernehmen">${esc(x.partner)} wie ${x.w === 7 ? 'Fr' : 'So'}?</span>` : darfEinteilen() ? '+ einteilen' : '–'}</div>`;
       const abw = x.abw.filter(([p, a]) => a).map(([p, a, g]) => a
         ? (a === 'urlaub' && !urlOk(eintrag(p.k, x.s))
-          ? `<span class="mx-mini offen" style="color:${farbe(p)};border-color:${farbe(p)}" title="${esc((p.name || p.k) + ': Urlaub (beantragt)')}">${esc(p.k)}</span>`
-          : `<span class="mx-mini" style="background:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a])}">${esc(p.k)}</span>`)
-        : `<span class="mx-mini gef" style="color:${farbe(p)};border-color:${farbe(p)}" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('');
+          ? `<span class="mx-mini offen" title="${esc((p.name || p.k) + ': Urlaub (beantragt)')}">${esc(p.k)}</span>`
+          : `<span class="mx-mini" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a])}">${esc(p.k)}</span>`)
+        : `<span class="mx-mini gef" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('');
       const wu = x.wu.map(([p, e]) => `<span class="mx-wu ${e.typ} ${e.stufe === 'hart' ? 'hart' : ''}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + ' ' + (e.stufe || ''))}">${icon(TYPEN[e.typ].icon)}${esc(p.k)}</span>`).join('');
       /* Hinweise als kleine Symbole neben dem Datum, Text per Maus-Tooltip */
       const hw = (x.hwRot || x.hwGrau.length || x.kongr.length) ? `<div class="mx-hwi">`
@@ -1772,6 +1805,8 @@ const cfgAendern = (was, fn) => aendern(pfadCfg, CFG_LEER, was, d => { Object.ke
 const personAendern = (k, was, fn) => cfgAendern(`${k}: ${was}`, d => { const q = d.personen.find(x => x.k === k); if(q) fn(q); });
 
 function renderCfg(){
+  const einAlt = $('einPers').value;
+  $('einPers').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === einAlt ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('');
   setTimeout(cfgSperren);
   // Team
   $('teamTab').innerHTML = `<tr><th></th><th>Kürzel</th><th>Name</th><th>Rolle</th><th>Teams</th><th>Planer</th><th>aktiv</th></tr>` +
@@ -1934,6 +1969,55 @@ async function zugangEntschluesseln(code, pin){
   if(!z.bis || Date.now() > z.bis) throw new Error('Einladung abgelaufen – bitte neuen Code anfordern.');
   return z;
 }
+/* Persoenliche Einladung (Planer/Admin): wie in der Tagesdoku PIN-verschluesselt
+   {r, t, p: Kuerzel, bis}; mit Gist-Token des Admins als geheimer Gist (Link nur
+   #einladung=<id>, die Tagesdoku raeumt Gists > 24 h weg), sonst #zugang2=<code>. */
+const ZUGANG_GUELTIG = 24 * 3600 * 1000, GIST_BESCHR = 'tagesdoku-einladung';
+const b64url = u => { let r = ''; for(let i = 0; i < u.length; i += 0x8000) r += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(r).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+async function zugangKodieren(r, t, pin, extra){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const basis = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations: 600000, hash:'SHA-256'}, basis, {name:'AES-GCM', length:256}, false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, new TextEncoder().encode(JSON.stringify({r, t, ...extra, bis: Date.now() + ZUGANG_GUELTIG}))));
+  const alles = new Uint8Array(28 + ct.length); alles.set(salt); alles.set(iv, 16); alles.set(ct, 28);
+  return b64url(alles);
+}
+let qrLib = null;
+const ladeQr = ()=> qrLib ||= new Promise((ok, fail)=>{
+  const sc = document.createElement('script'); sc.src = '../app/qrcode.js';
+  sc.onload = ()=> ok(window.qrcode); sc.onerror = ()=>{ qrLib = null; fail(new Error('QR-Modul nicht geladen')); };
+  document.head.appendChild(sc);
+});
+let einLink = '';
+$('einMake').onclick = async ()=>{
+  const p = person($('einPers').value), pin = $('einPin').value.trim(), z = zugang();
+  if(!p) return toast('Person wählen.');
+  if(!pin) return toast('PIN festlegen.');
+  if(!z) return toast('Kein Zugang auf diesem Gerät.');
+  $('einOut').innerHTML = '<div class="hint" style="margin-top:10px">Erstelle …</div>';
+  try{
+    const code = await zugangKodieren(z.repo, z.token, pin, {p: p.k});
+    const gist = load('tagesdoku_teilen', {}).gist;
+    einLink = location.origin + location.pathname + '#zugang2=' + code;
+    if(gist){
+      const r = await fetch('https://api.github.com/gists', {method:'POST', cache:'no-store',
+        headers:{Authorization:'Bearer ' + gist, Accept:'application/vnd.github+json'},
+        body: JSON.stringify({public:false, description:GIST_BESCHR, files:{'einladung.txt':{content: code}}})});
+      if(r.ok) einLink = location.origin + location.pathname + '#einladung=' + (await r.json()).id;
+    }
+    const qr = (await ladeQr())(0, 'M'); qr.addData(einLink); qr.make();
+    const bis = new Date(Date.now() + ZUGANG_GUELTIG).toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+    $('einOut').innerHTML = `<div class="ein-qr">${qr.createSvgTag({cellSize:4, margin:2, scalable:true})}</div>
+      <div class="hint">Für <b>${esc(p.name || p.k)}</b> · PIN <b>${esc(pin)}</b> getrennt mitteilen · gültig bis ${bis}</div>
+      <div class="reihe" style="margin-top:8px"><button class="btn out" id="einCopy">${icon('copy')}Link kopieren</button><button class="btn out" id="einMail">${icon('send')}Per E-Mail</button></div>`;
+    $('einCopy').onclick = ()=> navigator.clipboard.writeText(einLink).then(()=> toast('Link kopiert.'), ()=> toast('Kopieren nicht möglich.'));
+    $('einMail').onclick = ()=>{
+      const text = `Hallo,\n\nhier dein persönlicher Zugang zur Dienstplanung:\n\n${einLink}\n\n1. Link am PC oder Handy öffnen.\n2. Die PIN eingeben – die bekommst du getrennt von dieser Mail. Der Link gilt 24 Stunden.\n\nDas Gerät ist danach dir zugeordnet. Bitte den Link nicht weiterleiten.`;
+      location.href = 'mailto:?subject=' + encodeURIComponent('Zugang Dienstplanung') + '&body=' + encodeURIComponent(text);
+    };
+  }catch(e){ $('einOut').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; }
+};
 async function gistCode(id){
   const r = await fetch('https://api.github.com/gists/' + id, {cache:'no-store'}).catch(()=> null);
   if(r && r.ok){ const f = Object.values((await r.json()).files || {})[0]; return String(f && f.content || '').trim(); }
@@ -1966,6 +2050,7 @@ function anmelden(vorgabe){
           catch(e){ throw new Error(/abgelaufen|unvollständig/.test(e.message) ? e.message : 'PIN falsch.'); }
         }
         localStorage.setItem(LS_ZUGANG, JSON.stringify({repo: z.r, token: z.t, quelle: 'Einladung'}));
+        if(z.p){ ichK = z.p; localStorage.setItem(LS_ICH, JSON.stringify(ichK)); }   // persoenliche Einladung: Geraet = diese Person
         await repoPruefen();
         history.replaceState(null, '', location.pathname);
         zu(); start();
@@ -2004,7 +2089,7 @@ function ichWaehlen(){
 
 async function start(){
   const h = location.hash;
-  if(/zugang2=|einladung=/.test(h) && !load(LS_ZUGANG, null)){ anmelden(h.slice(1)); return; }
+  if(/zugang2=|einladung=/.test(h)){ anmelden(h.slice(1)); return; }   // auch bei bestehendem Zugang: Einladung legt die Person fest
   if(!zugang()){ anmelden(''); return; }
   try{ await ladeAlles(); }
   catch(e){ status('err', 'Fehler'); toast(e.message); if(/Token|Repo/.test(e.message)) anmelden(''); return; }
