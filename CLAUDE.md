@@ -84,6 +84,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Urlaub = Antrag; Planer genehmigt je Monat im Urlaub-Reiter (`genehmigKnopf()`/`genehmigen()`,
   `ok:{von,am}` am Eintrag, genau der Stand beim Klick). Beantragt = gestrichelt; genehmigten
   Urlaub ändert nur der Planer (`gesperrtFuer()`). Abwesend zählt er schon als Antrag.
+  Kompaktansicht (1.46, dritte Wahl neben Liste/Matrix, `kompaktHtml()`): Monat wie TDA – Zeilen
+  „Nachname, Vorname (Pers.-Nr.)“ (`p.pnr`, Team-Tabelle), Spalten Tage, Sa gelb, So/Feiertag grün;
+  Codes ZD1/ZD2/RBD1/RBD2, U*, FB, FZA, 0 (frei/WE), leer = da. Ohne Seitenleiste; Drucken = A4 quer.
   Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
   `body.wochendruck` blendet beim Druck alles außer `#wochendruck` aus).
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes

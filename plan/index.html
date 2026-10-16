@@ -233,6 +233,20 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .mx-mini.offen,.mx-mini.gef{background:#fff;color:var(--f);border:1.5px dashed var(--f);opacity:1}
 .prow .pk{filter:saturate(.75)}
 
+/* Kompakt (TDA-Ansicht) */
+.tabelle.kompakt{overflow-x:auto;padding:0}
+.planwrap.breit{grid-template-columns:minmax(0,1fr)} .planwrap.breit > .seite{display:none}
+table.tda{border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:13px;width:100%;background:#fff}
+.tda th,.tda td{border:1px solid #D6D3CE;padding:4px 2px;text-align:center;min-width:34px;white-space:nowrap}
+.tda thead th{background:#C8C8C8;font-weight:400;color:#222}
+.tda thead th.sa{background:#E8E36A} .tda thead th.so{background:#9FD98C}
+.tda td.sa{background:#FFFDA8} .tda td.so{background:#C6F2B5}
+.tda .tda-n{text-align:left;padding:4px 8px;min-width:190px;position:sticky;left:0;background:#F2F0EC;z-index:1}
+.tda thead .tda-n{background:#E6E2DA;font-weight:700}
+.tda td.d{font-weight:700}
+.tda td.a{color:#5A5048}
+.tda td[data-tag]{cursor:pointer} .tda td[data-tag]:hover{outline:2px solid var(--primary);outline-offset:-2px}
+
 /* Nachbarmonate in der Matrix */
 .mx-box.nachbar{opacity:.42;filter:saturate(.35);cursor:pointer;background:#fff}
 .mx-box.nachbar.we{background:#F7F3EC}
@@ -452,7 +466,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
     <div class="planwrap">
       <div>
         <div class="werkzeug">
-          <span class="seg" id="ansichtSeg"><button data-a="liste">Liste</button><button data-a="matrix">Matrix</button></span>
+          <span class="seg" id="ansichtSeg"><button data-a="liste">Liste</button><button data-a="matrix">Matrix</button><button data-a="kompakt" title="Monat wie in TDA – zum Übertragen">Kompakt</button></span>
           <span class="pill entwurf" id="pubPill">Entwurf</span>
           <span class="hint" id="pubInfo"></span>
           <span style="flex:1"></span>
@@ -665,6 +679,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 
 <div id="dlg"></div>
 <div id="wochendruck"></div>
+<style id="druckSeite"></style>
 <div id="tip" class="tip hidden"></div>
 
 <script>
@@ -677,7 +692,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.45';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.46';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1165,7 +1180,11 @@ async function monatWechseln(n){
 }
 $('mZur').onclick = ()=> monatWechseln(-1);
 $('mVor').onclick = ()=> monatWechseln(1);
-$('druckBtn').onclick = ()=> window.print();
+$('druckBtn').onclick = ()=>{
+  $('druckSeite').textContent = ansicht === 'kompakt' ? '@page{size:A4 landscape;margin:8mm} main{max-width:none;padding:0;zoom:1 !important} .tabelle.kompakt{overflow:visible;box-shadow:none;border:0}'
+    + ' .tda{font-size:8.5pt;table-layout:fixed;width:100%} .tda th,.tda td{min-width:0;padding:3px 0} .tda .tda-n{min-width:0;width:175px;position:static;padding:3px 4px;overflow:hidden}' : '';
+  window.print();
+};
 /* Wochenplaene drucken: alle Wochen des Monats, je Seite A4 quer, Zeilen = Personen,
    Spalten = Mo-So, Fuss = sicher anwesend vorm./nachm. */
 function wochenStatus(p, s){
@@ -1289,11 +1308,13 @@ function renderPlan(){
       + `<div class="dzelle ${darfEinteilen() ? '' : 'gesperrt'}" data-tag="${s}">${dzelle}</div>`
       + `<div>${bz}</div><div>${ab}</div><div>${wu}</div><div style="flex-direction:column;align-items:flex-start">${hw}</div></div>`;
   }
-  const matrix = ansicht === 'matrix' && innerWidth > 760;
-  $('ansichtSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === (matrix ? 'matrix' : 'liste')));
-  const tab_ = $('planTab'); tab_.innerHTML = matrix ? matrixHtml(info) : h; tab_.classList.toggle('dimm', !!markK);
-  tab_.classList.toggle('matrix', matrix);
+  const matrix = ansicht === 'matrix' && innerWidth > 760, kompakt = ansicht === 'kompakt';
+  $('ansichtSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === (kompakt ? 'kompakt' : matrix ? 'matrix' : 'liste')));
+  const tab_ = $('planTab'); tab_.innerHTML = kompakt ? kompaktHtml() : matrix ? matrixHtml(info) : h; tab_.classList.toggle('dimm', !!markK && !kompakt);
+  tab_.classList.toggle('matrix', matrix); tab_.classList.toggle('kompakt', kompakt);
+  document.querySelector('#tab-plan .planwrap').classList.toggle('breit', kompakt);   // Kompakt: volle Breite, ohne Seitenleiste
   tab_.querySelectorAll('[data-nachbar]').forEach(el => el.onclick = ()=> monatWechseln(+el.dataset.nachbar));
+  if(kompakt) tab_.querySelectorAll('td[data-tag]').forEach(el => el.onclick = ()=>{ if(darfEinteilen()) waehlen(el.dataset.tag); });
   tab_.querySelectorAll('.dzelle').forEach(el => el.onclick = e => {
     const v = e.target.closest('[data-vorschlag]');
     if(v){ e.stopPropagation(); const [s, k] = v.dataset.vorschlag.split('|'); einteilen(s, k); return; }
@@ -1323,6 +1344,31 @@ function renderPlan(){
     el.onclick = ()=>{ markK = markK === el.dataset.k ? '' : el.dataset.k; renderPlan(); };
     el.ondblclick = ()=>{ markK = ''; fuerK = el.dataset.k; document.querySelector('nav.tabs button[data-tab="meine"]').click(); window.scrollTo({top: 0}); };
     el.title = 'Klick: Tage hervorheben · Doppelklick: Wunschkalender öffnen'; });
+}
+
+/* Kompakt: Monat wie in TDA (Zeilen = Personen, Spalten = Tage, Sa gelb, So/Feiertag gruen),
+   Zellen mit TDA-Kuerzeln zum Abtippen. Werktag ohne Dienst/Abwesenheit bleibt leer
+   (Funktion Amb… traegt der Planer in TDA ein). */
+const TDA_ABW = {urlaub: 'U*', fb: 'FB', fza: 'FZA', frei: '0', tz: '0'};
+const tdaDienst = s => { const a = dienstArt(s); return a === 'RBD' ? 'RBD1' : a; };
+const tdaName = p => { const t = (p.name || p.k).trim().split(/\s+/); const n = t.length > 1 ? t.pop() + ', ' + t.join(' ') : t[0];
+  return n + (p.pnr ? ` (${p.pnr})` : ''); };
+function tdaCode(p, s){
+  if(dienstVon(s) === p.k) return ['d', tdaDienst(s)];
+  if(!werktag(s)) return ['', '0'];   // wie TDA: Wochenende/Feiertag ohne Dienst = 0, auch im Urlaub
+  const a = abwesend(p, s);
+  if(a) return ['a', TDA_ABW[a] || a];
+  return ['', ''];
+}
+function kompaktHtml(){
+  const n = tageIm(ym), tage = Array.from({length: n}, (_, i) => ds(+ym.slice(0, 4), +ym.slice(5, 7), i + 1));
+  const kl = s => feiertag(s) || wt(s) === 7 ? 'so' : wt(s) === 6 ? 'sa' : '';
+  let h = `<table class="tda"><thead><tr><th class="tda-n" rowspan="2">${monatName(ym)}</th>${tage.map(s => `<th class="${kl(s)}" title="${esc(feiertag(s))}">${WT[wt(s)]}</th>`).join('')}</tr>`
+    + `<tr>${tage.map(s => `<th class="${kl(s)}">${+s.slice(8)}</th>`).join('')}</tr></thead><tbody>`;
+  for(const p of personen())
+    h += `<tr><td class="tda-n">${esc(tdaName(p))}</td>${tage.map(s => { const [c, t] = tdaCode(p, s);
+      return `<td class="${kl(s)} ${c}" data-tag="${s}"${c === 'a' && t === 'U*' && !urlOk(eintrag(p.k, s)) ? ' title="Urlaub beantragt"' : ''}>${t}</td>`; }).join('')}</tr>`;
+  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · U* Urlaub · FB Fortbildung · FZA Freizeitausgleich · 0 frei · leer = da (Funktion in TDA eintragen). Klick auf einen Tag: Dienst einteilen.</div>`;
 }
 
 /* Matrix: eine Zeile je Kalenderwoche, Hintergrund = Besetzung (blass) */
@@ -1994,10 +2040,11 @@ function renderCfg(){
   $('einPers').innerHTML = personen().map(p => `<option value="${esc(p.k)}" ${p.k === einAlt ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('');
   setTimeout(cfgSperren);
   // Team
-  $('teamTab').innerHTML = `<tr><th></th><th>Kürzel</th><th>Name</th><th>Rolle</th><th>Teams</th><th>Planer</th><th>aktiv</th></tr>` +
+  $('teamTab').innerHTML = `<tr><th></th><th>Kürzel</th><th>Name</th><th>Pers.-Nr.</th><th>Rolle</th><th>Teams</th><th>Planer</th><th>aktiv</th></tr>` +
     cfg.personen.map(p => `<tr data-k="${esc(p.k)}"><td><input type="color" class="farbe" value="${farbe(p)}" data-f="farbe"></td>
       <td><b>${esc(p.k)}</b>${p.k === ichK ? ' <span class="tag n">ich</span>' : ''}</td>
       <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td>
+      <td><input type="text" value="${esc(p.pnr || '')}" data-f="pnr" style="width:80px" inputmode="numeric" title="Personalnummer wie in TDA (für die Kompaktansicht)"></td>
       <td><select data-f="rolle"><option value="oa" ${p.rolle !== 'chef' ? 'selected' : ''}>OA</option><option value="chef" ${p.rolle === 'chef' ? 'selected' : ''}>Chef</option></select></td>
       <td>${cfg.teams.map(t => `<label class="chk"><input type="checkbox" data-team="${esc(t.id)}" ${(p.teams || []).includes(t.id) ? 'checked' : ''}>${esc(t.name)}</label>`).join('')}</td>
       <td><input type="checkbox" data-f="planer" ${p.planer ? 'checked' : ''}></td>
