@@ -806,7 +806,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.88';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.89';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1527,7 +1527,11 @@ function renderPlan(){
   const tab_ = $('planTab'); tab_.innerHTML = woche ? wocheHtml() : kompakt ? kompaktHtml() : matrix ? matrixHtml(info) : h; tab_.classList.toggle('dimm', !!markK && !kompakt && !woche);
   tab_.classList.toggle('matrix', matrix); tab_.classList.toggle('kompakt', kompakt); tab_.classList.toggle('woche', woche);
   document.querySelector('#tab-plan .planwrap').classList.toggle('breit', kompakt || woche);
-  if(woche) $('woMehr').onclick = async ()=>{ wocheMehr++; await wocheLaden(ymPlus(ym, wocheMehr)); renderPlan(); };   // Kompakt: volle Breite, ohne Seitenleiste
+  /* 1.89: endlos scrollen - nahe am Ende den naechsten Monat laden (max. 2 Jahre voraus) */
+  if(woche && wocheMehr < 24){ const ob = new IntersectionObserver(async es => {
+    if(!es[0].isIntersecting) return; ob.disconnect();
+    wocheMehr++; await wocheLaden(ymPlus(ym, wocheMehr)); if(tab === 'plan' && ansicht === 'woche') renderPlan(); }, {rootMargin: '600px'});
+    ob.observe($('woMehr')); }   // Kompakt: volle Breite, ohne Seitenleiste
   tab_.querySelectorAll('[data-nachbar]').forEach(el => el.onclick = ()=> monatWechseln(+el.dataset.nachbar));
   if(kompakt) tab_.querySelectorAll('td[data-tag]').forEach(el => el.onclick = ()=>{ if(!nurLesen) tdaWahl(el.dataset.k, el.dataset.tag); });
   tab_.querySelectorAll('.dzelle').forEach(el => el.onclick = e => {
@@ -1676,7 +1680,7 @@ function wocheHtml(){
     }
     if(wo) h += `<section class="wo-monat"><div class="wo-kopf"><b>${monatName(m)}</b><div class="wo-wt">${WT.slice(1, 6).map(x => `<div>${x}</div>`).join('')}</div></div>${wo}</section>`;
   }
-  return h + `<div class="wo-mehr"><button class="btn" id="woMehr">Weitere Wochen (${monatName(ymPlus(ym, wocheMehr + 1))})</button></div>`;
+  return h + `<div class="wo-mehr hint" id="woMehr">${wocheMehr < 24 ? 'lädt …' : ''}</div>`;
 }
 
 /* Matrix: eine Zeile je Kalenderwoche, Hintergrund = Besetzung (blass) */

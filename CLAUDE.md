@@ -130,7 +130,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Woche (1.85, vierte Plan-Ansicht, alle, auch Handy, `wocheHtml()`): Sprechstunde/OP-Planung, nur Mo–Fr, je Tag
   die Anwesenden (nur Nachname ohne Kürzel seit 1.87, nach Nachname, Zusatz „ab 11“ = Dienst, „n. D.“ = nach Dienst, vorm./nachm. bei `halb`), Zahl
   vorm.|nachm. wie `urlBesetzung()`, „weg:“ + Termine; ab aktueller Woche (sonst Monatsbeginn) bis Ende Folgemonat,
-  „Weitere Wochen“ lädt je einen Monat (`wocheMehr`, `wocheLaden()`); ≤ 760 px je Tag eine Zeile. Reine Ansicht.
+  endlos scrollend (1.89, IntersectionObserver auf `#woMehr`, lädt je einen Monat nach, max. 24 Monate; `wocheMehr`, `wocheLaden()`); ≤ 760 px je Tag eine Zeile. Reine Ansicht.
   Seit 1.88 je Monat ein Abschnitt (`.wo-monat`, Wochen am Monatswechsel geteilt, Trennlinie), Kopf mit Monat +
   Wochentagen bleibt beim Scrollen oben (sticky unter dem App-Kopf über `--kopfH`, per ResizeObserver gemessen);
   keine KW-Zeilen, Kachel nur Tageszahl (am Handy „Mo 9.“, Wochentagszeile dort ausgeblendet).
