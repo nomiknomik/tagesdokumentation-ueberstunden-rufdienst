@@ -771,7 +771,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.83';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.84';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1939,14 +1939,21 @@ $('tzAdd').onclick = ()=>{
    Strich auf einem Tag mit genau diesem Eintrag, loescht der Strich. */
 const PINSEL = [['da','anwesend','check'], ['frei','frei','moon'], ['fza','FZA','clock'], ['urlaub','Urlaub','sun'], ['fb','Fortbildung','book'],
   ['wunsch','Dienstwunsch','heart'], ['nogo','No-Go','ban'], ['weg','Radierer','x']];
-let pinsel = '', pinselStufe = 'weich', strich = null;
+let pinsel = '', pinselStufe = 'weich', strich = null, halbUhr = '';
 function pinselLeiste(){
+  const chef = person(fuerK)?.rolle === 'chef';   // halber Tag nur beim Chef (1.84)
+  if(!chef && pinsel === 'halb') pinsel = '';
+  const liste = chef ? [...PINSEL.slice(0, 5), ['halb', '½ Tag', 'logOut'], ...PINSEL.slice(5)] : PINSEL;
   $('pinsel').innerHTML = `<span class="hint" style="font-weight:700">Pinsel:</span>`
     + `<button data-p="" class="${pinsel ? '' : 'on'}">aus</button>`
-    + PINSEL.map(([k, n, ic]) => `<button data-p="${k}" class="${pinsel === k ? 'on' : ''}">${icon(ic)}${n}</button>`).join('')
-    + (pinsel === 'wunsch' || pinsel === 'nogo' ? `<span class="seg"><button data-st="weich" class="${pinselStufe === 'weich' ? 'on' : ''}">weich</button><button data-st="hart" class="${pinselStufe === 'hart' ? 'on' : ''}">hart</button></span>` : '');
+    + liste.map(([k, n, ic]) => `<button data-p="${k}" class="${pinsel === k ? 'on' : ''}">${icon(ic)}${n}</button>`).join('')
+    + (pinsel === 'wunsch' || pinsel === 'nogo' ? `<span class="seg"><button data-st="weich" class="${pinselStufe === 'weich' ? 'on' : ''}">weich</button><button data-st="hart" class="${pinselStufe === 'hart' ? 'on' : ''}">hart</button></span>` : '')
+    + (pinsel === 'halb' ? `<span class="seg"><button data-z="vm" class="${urlHalb === 'vm' ? 'on' : ''}">vormittags</button><button data-z="nm" class="${urlHalb === 'nm' ? 'on' : ''}">nachmittags</button></span>`
+      + `<input type="text" id="pinHalbUhr" placeholder="Uhrzeit (optional)" style="width:150px" value="${esc(halbUhr)}">` : '');
   $('pinsel').querySelectorAll('[data-p]').forEach(b => b.onclick = ()=>{ pinsel = b.dataset.p; renderMeine(); });
   $('pinsel').querySelectorAll('[data-st]').forEach(b => b.onclick = ()=>{ pinselStufe = b.dataset.st; pinselLeiste(); });
+  $('pinsel').querySelectorAll('[data-z]').forEach(b => b.onclick = ()=>{ urlHalb = b.dataset.z; pinselLeiste(); });
+  if($('pinHalbUhr')) $('pinHalbUhr').oninput = e => halbUhr = e.target.value;
 }
 function pinselTag(s, k = fuerK, typ = pinsel){
   const p = person(k);
@@ -1974,7 +1981,7 @@ function pinselTag(s, k = fuerK, typ = pinsel){
   if(strich.loeschen === undefined) strich.loeschen = typ === 'weg' || !!(alt && alt.typ === typ && (typ !== 'halb' || (alt.zeit || 'vm') === urlHalb));
   if(strich.loeschen && !(alt && (typ === 'weg' || alt.typ === typ))) return;
   if(!strich.loeschen && alt && alt.typ === typ && typ !== 'halb' && (alt.stufe || 'weich') === (TYPEN[typ].stufen ? pinselStufe : 'weich')) return;
-  const uhr = typ === 'halb' && $('urlHalbUhr').value.trim();
+  const uhr = typ === 'halb' && ($('tab-urlaub').classList.contains('hidden') ? halbUhr : $('urlHalbUhr').value).trim();
   const wert = strich.loeschen ? null : {typ, ...(TYPEN[typ].stufen ? {stufe: pinselStufe} : {}), ...(typ === 'halb' ? {zeit: urlHalb, ...(uhr ? {uhr} : {})} : {})};
   aendern(pfadWunsch(p.k, ymVon(s)), {tage:{}}, `${p.k} ${wert ? TYPEN[typ].name : 'Eintrag gelöscht'}`, d => {
     d.tage ||= {};
