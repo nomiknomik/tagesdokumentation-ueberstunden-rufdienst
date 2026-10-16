@@ -257,6 +257,7 @@ table.tda{border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-s
 .tda thead .tda-n{background:#E6E2DA;font-weight:700}
 .tda td.d{font-weight:700}
 .tda td.a{color:#5A5048}
+.tda td.offen{text-decoration:underline dashed;text-underline-offset:3px;color:#B5651D}
 .tda-wahl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
 .tda-wahl button{border:1.5px solid var(--border);background:#fff;border-radius:10px;padding:9px 4px;font-weight:700;cursor:pointer}
 .tda-wahl button.dienst{border-color:var(--primary);color:var(--primary)}
@@ -738,7 +739,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.56';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.57';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1439,8 +1440,9 @@ function kompaktHtml(){
     + `<tr>${tage.map(s => `<th class="${kl(s)}">${+s.slice(8)}</th>`).join('')}</tr></thead><tbody>`;
   for(const p of [...personen()].sort((a, b) => tdaName(a).localeCompare(tdaName(b), 'de')))   // wie TDA: nach Nachname
     h += `<tr><td class="tda-n">${esc(tdaName(p))}</td>${tage.map(s => { const [c, t] = tdaCode(p, s);
-      return `<td class="${kl(s)} ${c}" data-tag="${s}" data-k="${esc(p.k)}"${c === 'a' && t === 'U' && !urlOk(eintrag(p.k, s)) ? ' title="Urlaub beantragt – noch nicht genehmigt"' : ''}>${t}</td>`; }).join('')}</tr>`;
-  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U Urlaub · Fo Fortbildung · FZA Freizeitausgleich · 0 frei. Klick auf ein Feld: ändern – Dienst hat je Tag nur eine Person.</div>`;
+      const e = eintrag(p.k, s), offen = c === 'a' && e && pflicht(e.typ) && !e.ok;
+      return `<td class="${kl(s)} ${c} ${offen ? 'offen' : ''}" data-tag="${s}" data-k="${esc(p.k)}"${offen ? ` title="${esc(TYPEN[e.typ].name)} beantragt – noch nicht genehmigt"` : ''}>${t}</td>`; }).join('')}</tr>`;
+  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U Urlaub · Fo Fortbildung · FZA Freizeitausgleich · 0 frei · <u style="text-decoration-style:dashed;color:#B5651D">U</u> = beantragt, noch nicht genehmigt. Klick auf ein Feld: ändern – Dienst hat je Tag nur eine Person.</div>`;
 }
 /* TDA ist nur eine Ansicht auf die echten Daten (1.56): ein Klick aendert Dienst bzw.
    Wunsch-Eintrag, nichts Eigenes. Regeldienst = anwesend (Amb2 Mo / Amb4 Di-Fr), 0 = frei.
@@ -1450,7 +1452,7 @@ const tdaRegel = s => wt(s) === 1 ? 'Amb2' : 'Amb4';
 function tdaSetzen(k, s, code){
   const p = person(k), e = eintrag(k, s), alt = dienstVon(s);
   const wunsch = wert => {   // Eintrag im Wunschkalender setzen (null = loeschen)
-    if((e ? e.typ : null) === (wert ? wert.typ : null) && !(wert && wert.ok && !e.ok)) return;   // schon so
+    if((e ? e.typ : null) === (wert ? wert.typ : null)) return;   // schon so (Genehmigung bleibt)
     aendern(pfadWunsch(k, ymVon(s)), {tage:{}}, `${k} ${wert ? TYPEN[wert.typ].name : 'Eintrag gelöscht'}`, d => {
       d.tage ||= {}; if(wert) d.tage[s] = {...wert, von: ichK, am: Date.now()}; else delete d.tage[s];
     });
@@ -1459,7 +1461,7 @@ function tdaSetzen(k, s, code){
   if(code === tdaDienst(s)){ if(abw && werktag(s)) wunsch(null); einteilen(s, k); return; }
   if(alt === k) einteilen(s, '');
   if(!werktag(s)) return;   // WE/Feiertag: ohne Dienst immer 0
-  if(TDA_TYP[code]) wunsch({typ: TDA_TYP[code], ok: {von: ichK || 'Admin', am: Date.now()}});   // vom Planer = genehmigt
+  if(TDA_TYP[code]) wunsch({typ: TDA_TYP[code]});   // Antrag wie ueberall - genehmigt wird im Urlaub-Reiter/To-do
   else if(code === '0') wunsch(teilzeitFrei(p, s) ? null : {typ: 'frei'});
   else if(code === tdaRegel(s)) wunsch(teilzeitFrei(p, s) ? {typ: 'da'} : null);
 }

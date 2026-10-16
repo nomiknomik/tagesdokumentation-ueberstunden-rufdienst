@@ -98,7 +98,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Codes ZD1/ZD2/RBD1/RBD2, U, Fo, FZA, 0 (frei/WE), Regeldienst Amb2 (Mo)/Amb4 (wie Tagesdoku `derive()`). Ohne Seitenleiste; Drucken = A4 quer.
   Seit 1.54 nur Planer/Admin (`darfVeroeffentlichen()`), Zeilen nach Nachname. Reine Ansicht (1.56): Klick
   auf ein Feld (`tdaWahl()`/`tdaSetzen()`) ändert nur echte Daten – Dienstcode → `einteilen()` (Vorgänger
-  fällt auf Regeldienst zurück), U/Fo/FZA → Wunsch-Eintrag gleich genehmigt, Regeldienst (Amb2 Mo/Amb4
+  fällt auf Regeldienst zurück), U/Fo/FZA → Wunsch-Eintrag als Antrag (1.57, nicht genehmigt; in TDA gestrichelt unterstrichen), Regeldienst (Amb2 Mo/Amb4
   Di–Fr, `tdaRegel()`) → anwesend (`da` an Teilzeit-freien Tagen), 0 → `frei`; WE/Feiertag nur Dienst/0.
   Keine eigenen TDA-Codes (die `tda`-Felder aus 1.54/1.55 in Dienstdateien werden ignoriert).
   Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
