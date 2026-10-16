@@ -1,4 +1,4 @@
-const CACHE = 'tagesdoku-v76';
+const CACHE = 'tagesdoku-v77';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf',
@@ -8,7 +8,7 @@ const SHELL = [
 ];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c =>
-    Promise.all(SHELL.map(u => c.add(u).catch(() => null)))
+    Promise.all(SHELL.map(u => c.add(new Request(u, {cache: 'reload'})).catch(() => null)))   // nicht die bis 10 min alte HTTP-Cache-Kopie
   ).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
@@ -21,15 +21,18 @@ self.addEventListener('fetch', e => {
   if (new URL(e.request.url).hostname === 'api.github.com') return;   // Online-Backup nie aus dem Cache
   const isPage = e.request.mode === 'navigate' || e.request.url.endsWith('/index.html') || e.request.url.endsWith('/app/');
   if (isPage) {
-    // Network-first fuer die App-Seite selbst: Updates kommen sofort an,
-    // ohne dass die Cache-Version manuell hochgezaehlt werden muss.
-    e.respondWith(
-      fetch(e.request.url, {cache: 'no-cache', credentials: 'same-origin'}).then(res => {   // am HTTP-Cache vorbei (Pages: max-age 600)
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
-        return res;
-      }).catch(() => caches.match(e.request))
-    );
+    /* Cache-first: Start sofort, auch offline. Frisch aus dem Netz nur, wenn die
+       Seite es ausdruecklich verlangt (Update-Pruefung: cache 'reload'/'no-store')
+       oder noch nichts im Cache liegt. Neue Versionen bringt sonst der neue SW
+       (install laedt die Shell frisch). */
+    const netz = () => fetch(e.request.url, {cache: 'no-cache', credentials: 'same-origin'}).then(res => {
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)).catch(() => {}); }
+      return res;
+    });
+    const frisch = e.request.cache === 'reload' || e.request.cache === 'no-store';
+    e.respondWith(frisch
+      ? netz().catch(() => caches.match('./index.html'))
+      : caches.match('./index.html').then(hit => hit || netz()));
     return;
   }
   e.respondWith(

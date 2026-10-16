@@ -141,7 +141,7 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   Wolke. Meldungen zeigen Repo + Datei-Kennung (`syncOrt()`) zum Gerätevergleich.
 - Seit 1.67 auch Admin-Backup im Team-Repo mit Personalnr. + Passwort (Pflicht für
   alle). Admin-QR trägt Team-Repo/-Token in die Sync-Felder ein; Admin mit eigenem
-  Repo wird einmal zum Umzug gefragt (`tagesdoku_umzug`), alte Datei bleibt.
+  Repo zog 1.67–1.70 einmal um (Code in 1.71 entfernt, alle Geräte umgezogen).
 - Erste Verbindung ohne Basis: nur einseitige Einträge werden übernommen, Konflikt
   nur bei verschiedenen Werten auf beiden Seiten.
 - `hasContent()` entscheidet, was als erfasst gilt; `persist()` und Export
@@ -151,11 +151,14 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
 - Notausgang (eigenes `<script>` vor dem Hauptskript): bleibt die Version „v–“ und
   fliegt ein Fehler, wird der Chip zu „⚠️ Fehler – hier tippen“ (`notUpdate()`:
   `fetch(…, {cache:'reload'})`, SW-Update, neu laden). Update-Suche ebenfalls mit
-  `cache:'reload'`; SW holt die Seite mit `cache:'no-cache'` (Pages: max-age 600).
-- Service Worker: `index.html` network-first, Rest cache-first, `api.github.com`
-  nie über den SW. Neu laden nach SW-Wechsel nur bei Update, nie beim ersten Besuch
-  (`ersterBesuch`) – sonst geht ein per Link geöffneter Einladungs-Code verloren.
-  Playwright-Tests mit `serviceWorkers:'block'` sehen das nicht.
+  `cache:'reload'`.
+- Service Worker (seit 1.71): alles cache-first, auch `index.html` (Start sofort,
+  offline, schwaches WLAN); frisch nur bei `request.cache` 'reload'/'no-store' oder
+  leerem Cache. Neue Version kommt über neuen SW (install lädt Shell mit
+  `cache:'reload'`) bzw. `updateImHintergrund()` (max. 1×/24 h, `tagesdoku_update`),
+  gilt ab nächstem Öffnen – kein automatisches Neuladen mehr. Sofort: Tipp auf
+  Version. `api.github.com` nie über den SW. Playwright-Tests mit
+  `serviceWorkers:'block'` sehen das nicht.
 - Backup/Sync: `save()` setzt `tagesdoku_dirty`; Sync-Zugangsdaten
   (`tagesdoku_sync`) nur über `saveSync()`, nie im Backup. Online-Datei im
   privaten Repo, AES-GCM/PBKDF2, Abgleich über Datei-SHA. Dateiname

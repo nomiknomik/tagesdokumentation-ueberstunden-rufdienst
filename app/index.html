@@ -1840,7 +1840,6 @@ function zugangUebernehmen(z, kopieZeigen){
   if(z.admin && z.g){   // Admin-Geraet: Weitergabe-Daten + Admin-Flag; eigener Sync bleibt unberuehrt
     localStorage.setItem(LS_ADMIN, '1');
     localStorage.setItem(LS_TEILEN, JSON.stringify({...load(LS_TEILEN, {}), repo: z.r, token: z.t, gist: z.g}));
-    localStorage.setItem(LS_UMZUG, '1');
     zugangQr = false; zugangAnsicht();
     document.querySelector('nav button[data-tab=cfg]').click();
     karteAuf($('syncFelder')); $('syncFelder').open = true;
@@ -1911,7 +1910,6 @@ $('adminOk').onclick = async ()=>{
 };
 /* Vor 1.52 eingerichtet (QR ab 1.42): Team-Nutzer hatten einen Namen bzw. das
    Team-Repo (1.51 hat den Namen geloescht) und nie selbst einen Code erzeugt. */
-const LS_UMZUG = 'tagesdoku_umzug';   // Admin-Backup ins Team-Repo: einmal gefragt (nur Geraet)
 if(sync.repo && !sync.qr && !localStorage.getItem(LS_TEILEN)
    && (sync.name || sync.repo.toLowerCase() === TEAM_REPO)){ sync.qr = true; saveSync(); }
 /* Bis 1.63 war Admin, wer nicht per QR kam. Admin bleibt nur, wer schon
@@ -1920,20 +1918,8 @@ if(localStorage.getItem(LS_ADMIN) === null)
   localStorage.setItem(LS_ADMIN, localStorage.getItem(LS_TEILEN)
     || (sync.repo && !sync.qr && sync.repo.toLowerCase() !== TEAM_REPO) ? '1' : '0');
 zugangAnsicht();
-/* 1.67: Admin-Backup aus eigenem Repo ins Team-Repo (einheitlich, ein Ort fuer alle
-   Geraete). Einmal fragen; die alte Datei im eigenen Repo bleibt unangetastet. */
 { const t = load(LS_TEILEN, {});   // Admin-Geraet ohne Sync: Team-Zugang schon eintragen
   if(istAdmin() && !syncAktiv() && t.token && !$('sync_repo').value){ $('sync_repo').value = t.repo || TEAM_REPO; $('sync_token').value = t.token; } }
-setTimeout(()=>{
-  const t = load(LS_TEILEN, {});
-  if(!istAdmin() || !syncAktiv() || sync.repo.toLowerCase() === TEAM_REPO || !t.token || localStorage.getItem(LS_UMZUG)) return;
-  localStorage.setItem(LS_UMZUG, '1');
-  if(!confirm(`Dein Online-Backup liegt noch im eigenen Repo ${sync.repo}, die anderen Geräte nutzen das Team-Repo.\n\nJetzt ins Team-Repo umziehen? Personalnummer und Passwort bleiben gleich, die Daten dieses Geräts werden dort gesichert. Die alte Datei bleibt im eigenen Repo liegen.`)) return;
-  const pnr = sync.kennung || String(cfg.pnr || '').replace(/\s+/g,'');
-  $('sync_repo').value = TEAM_REPO; $('sync_token').value = t.token; $('sync_pnr').value = pnr;
-  if(!pnr){ zuDenZugangsdaten(); $('syncMsg').innerHTML = '<span class="note">Bitte Personalnummer eintragen und „Verbinden“ tippen.</span>'; return; }
-  $('syncSave').click();
-}, 1500);
 $('qrPinOk').onclick = async ()=>{
   const pin = $('qrPinIn').value.trim(); if(!pin || !pinCode) return;
   $('qrPinMsg').textContent = 'Prüfe …';
@@ -4042,7 +4028,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.70';
+const APP_VERSION = '1.71';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
@@ -4123,22 +4109,24 @@ $('appVersion').onclick = async ()=>{
   }
 };
 
+/* Start immer sofort aus dem App-Speicher (auch offline / schwaches WLAN).
+   Update-Pruefung hoechstens einmal am Tag im Hintergrund; eine neue Version
+   gilt ab dem naechsten Oeffnen - kein Neuladen mitten in einer Eingabe.
+   Sofort: Tipp auf die Versionsnummer. */
+const LS_UPDATE = 'tagesdoku_update';   // Zeitpunkt der letzten Pruefung (nur Geraet)
+async function updateImHintergrund(){
+  if(!navigator.onLine || Date.now() - (+localStorage.getItem(LS_UPDATE) || 0) < 864e5) return;
+  try{
+    const txt = await (await fetch('index.html', {cache:'reload'})).text();   // SW legt die frische Seite in den Cache
+    localStorage.setItem(LS_UPDATE, String(Date.now()));
+    const m = txt.match(/const APP_VERSION = '([^']+)'/);
+    if(navigator.serviceWorker) (await navigator.serviceWorker.getRegistrations()).forEach(r => r.update());
+    if(m && m[1] !== APP_VERSION) toast('Update v' + m[1] + ' geladen – aktiv beim nächsten Öffnen (oder auf die Version tippen).');
+  }catch(e){}
+}
 if('serviceWorker' in navigator){
-  /* Neu laden nur bei einem Update. Beim ersten Besuch (noch kein SW) wuerde das
-     Neuladen eine gerade per Link geoeffnete Einladung verwerfen. */
-  const ersterBesuch = !navigator.serviceWorker.controller;
-  navigator.serviceWorker.register('sw.js').then(reg=>{
-    if(!reg) return;
-    reg.update();
-    reg.addEventListener('updatefound', ()=>{
-      const nw = reg.installing;
-      if(nw) nw.addEventListener('statechange', ()=>{ if(nw.state==='activated' && !ersterBesuch) location.reload(); });
-    });
-  });
-  let swReloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
-    if(swReloaded || ersterBesuch) return; swReloaded = true; location.reload();
-  });
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  setTimeout(updateImHintergrund, 5000);
 }
 </script>
 </body>
