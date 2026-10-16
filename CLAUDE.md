@@ -46,9 +46,13 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Zoom −/+ im Kopf: CSS `zoom` auf `main` + `#dlg` (Kopf bleibt), Sticky-Abstände
   über `--z`, 70–200 %, je Gerät in `planung_zoom`. „Automatisch verteilen“
   (`autoVerteilen()`): nur leere Tage, engster Tag zuerst, rote Tags tabu, Fairness
-  über 3 Vormonate + Monat (`vorher()`, Dienste rel. zum Max., WE/Feiertage), Folgetage; Einträge `auto:true` (gestrichelt),
+  über 3 Vormonate + Monat als Saldo Ist − Erwartung (`erwartung()`: je Tag teilen
+  sich die Anwesenden den Dienst, Abwesende 0; Vormonate nur Tage mit Plan;
+  `vorherAlle()`), WE/Feiertage ebenso, Folgetage; Einträge `auto:true` (gestrichelt),
   „Vorschlag verwerfen“ entfernt nur diese.
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
+  Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
+  `files`), Einspielen ersetzt gleichnamige Dateien.
   Tooltips sofort über `#tip` (global: `title` wird beim Überfahren zu `data-tip`).
   Besetzung nur Vormittag / Nachmittag (vor/ab 11; `besRegel()` fasst alte 3-Fenster-
   Konfiguration zusammen), keine Dienstart (ZD1…)

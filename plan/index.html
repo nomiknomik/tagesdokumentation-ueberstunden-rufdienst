@@ -559,6 +559,15 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
         <div class="hint" style="margin-top:6px">Bei Teilzeit: max. Dienste × Arbeitsquote, abgerundet. Wochenende = Sa- oder So-Dienst.</div>
       </div>
       <div class="card">
+        <h3><span data-icon="archive"></span>Backup</h3>
+        <div class="hint">Alle Planungsdaten (Team, Einstellungen, Dienstpläne, Wünsche, Termine) als JSON-Datei.</div>
+        <div class="reihe" style="margin-top:10px">
+          <button class="btn out" id="bakDown"><span data-icon="save"></span>Backup herunterladen</button>
+          <label class="btn out" style="cursor:pointer"><span data-icon="upload"></span>Backup einspielen<input type="file" id="bakUp" accept=".json,application/json" hidden></label>
+        </div>
+        <div class="msg" id="bakMsg"></div>
+      </div>
+      <div class="card">
         <h3><span data-icon="key"></span>Zugang</h3>
         <div class="hint" id="zugInfo"></div>
         <div class="reihe" style="margin-top:10px">
@@ -583,7 +592,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.24';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.25';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -622,6 +631,8 @@ const ICONS = {
   refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
   edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  archive:'<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>',
+  save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
   trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>'
 };
 const icon = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]||''}</svg>`;
@@ -825,7 +836,7 @@ async function ladeAlles(){
     const c = await lesen(pfadCfg);
     cfg = Object.assign(clone(CFG_LEER), c.data || {});
     const pf = [-3, -2, -1, 0, 1].map(n => pfadDienst(ymPlus(ym, n)));   // 3 Vormonate fuer die Fairness
-    personen().forEach(p => pf.push(pfadWunsch(p.k, ym), pfadWunsch(p.k, ymPlus(ym, 1))));
+    personen().forEach(p => [-3, -2, -1, 0, 1].forEach(n => pf.push(pfadWunsch(p.k, ymPlus(ym, n)))));   // Vormonate: Abwesenheiten fuer die Fairness
     await Promise.all(pf.map(lesen));
     cacheSchreiben();
     nurLesen = false; $('banner').classList.add('hidden');
@@ -1077,10 +1088,11 @@ function renderPlan(){
   $('autoBtn').classList.toggle('hidden', !darfEinteilen() || nurLesen);
   $('autoWegBtn').classList.toggle('hidden', !Object.values(D.tage || {}).some(x => x.auto) || nurLesen);
   // Zaehler
-  let z = '';
+  let z = ''; const vh = vorherAlle();
   for(const p of diensttauglich()){
     const n2 = diensteIm(p.k, ym), max = maxDienste(p);
-    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${(()=>{ const h = vorher(p.k); return `3 Vormonate: ${h.n} (WE/Ft ${h.we})`; })()}${p.quote && p.quote < 100 ? ' · Teilzeit ' + p.quote + ' %' : ''}</small></div>`
+    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small title="Ist / fair erwartet (Abwesenheit verrechnet) in den 3 Vormonaten">${(()=>{ const h = vh[p.k]; const sd = h.n - h.exp;
+      return `3 Vormonate: ${h.n} / ${zahl1(h.exp)} · WE ${h.we} / ${zahl1(h.expWe)} · <b style="color:${sd > 1 ? 'var(--warning)' : sd < -1 ? 'var(--primary)' : 'inherit'}">${sd >= 0 ? '+' : ''}${zahl1(sd)}</b>`; })()}${p.quote && p.quote < 100 ? ' · Teilzeit ' + p.quote + ' %' : ''}</small></div>`
       + `<div class="zahl">${n2}<small> / ${max}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, max) * 100)}%"></i></div>`;
   }
   const frei = Array.from({length: n}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
@@ -1219,28 +1231,50 @@ function einteilen(s, k, auto){
    (Anteil an max. Diensten, Wochenend-/Feiertagsdienste). Markiert als auto. */
 const dienstAuto = s => { const d = dienstDaten(ymVon(s)); return !!(d && d.tage && d.tage[s] && d.tage[s].auto); };
 const weTag = s => wt(s) >= 6 || !!feiertag(s);
-/* Dienste und WE/Feiertagsdienste der 3 Vormonate */
-function vorher(k){
-  let n = 0, we = 0;
-  for(let i = 1; i <= 3; i++){ const d = dienstDaten(ymPlus(ym, -i));
-    for(const [s, x] of Object.entries((d && d.tage) || {})) if(x.oa === k){ n++; if(weTag(s)) we++; } }
-  return {n, we};
+/* Erwartete Dienste je Person und Monat: an jedem Tag teilen sich die Anwesenden den
+   einen Dienst (Gewicht = Arbeitsquote, bei Teilzeit-Muster 1, da die freien Tage
+   schon fehlen). Wer im Urlaub ist, erwartet an dem Tag nichts - fehlen dann viele,
+   steigt der Anteil der Uebrigen. So wird Abwesenheit fair verrechnet. */
+function erwartung(m, nurBelegte){
+  const r = {}, ps = diensttauglich(); ps.forEach(p => r[p.k] = {exp: 0, expWe: 0});
+  const gew = p => (p.teilzeit && p.teilzeit.length) ? 1 : (p.quote || 100) / 100;
+  for(let i = 1; i <= tageIm(m); i++){
+    const s = ds(+m.slice(0, 4), +m.slice(5, 7), i);
+    if(nurBelegte && !dienstVon(s)) continue;   // Vormonate: nur Tage mit Plan zaehlen
+    const da = ps.filter(p => !abwesend(p, s));
+    const W = da.reduce((a, p) => a + gew(p), 0); if(!W) continue;
+    da.forEach(p => { const a = gew(p) / W; r[p.k].exp += a; if(weTag(s)) r[p.k].expWe += a; });
+  }
+  return r;
 }
+/* 3 Vormonate: tatsaechliche und erwartete Dienste bzw. WE/Feiertagsdienste */
+function vorherAlle(){
+  const r = {}; diensttauglich().forEach(p => r[p.k] = {n: 0, we: 0, exp: 0, expWe: 0});
+  for(let i = 1; i <= 3; i++){
+    const m = ymPlus(ym, -i), d = dienstDaten(m), e = erwartung(m, true);
+    for(const [s, x] of Object.entries((d && d.tage) || {})) if(r[x.oa]){ r[x.oa].n++; if(weTag(s)) r[x.oa].we++; }
+    for(const k in r){ r[k].exp += e[k].exp; r[k].expWe += e[k].expWe; }
+  }
+  return r;
+}
+const zahl1 = x => x.toFixed(1).replace('.', ',');
 function autoVerteilen(){
   const alle = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1));
   let offen = alle.filter(s => !dienstVon(s));
   if(!offen.length) return toast('Alle Tage sind schon besetzt.');
-  if(!confirm(`${offen.length} leere Tage in ${monatName(ym)} automatisch belegen?\n\nBestehende Einteilungen bleiben. Ausgeglichen wird über diesen und die 3 Vormonate. Die Vorschläge sind gestrichelt markiert und lassen sich mit „Vorschlag verwerfen“ wieder entfernen.`)) return;
+  if(!confirm(`${offen.length} leere Tage in ${monatName(ym)} automatisch belegen?\n\nBestehende Einteilungen bleiben. Ausgeglichen wird über diesen und die 3 Vormonate; Abwesenheiten werden fair verrechnet. Die Vorschläge sind gestrichelt markiert und lassen sich mit „Vorschlag verwerfen“ wieder entfernen.`)) return;
   const weZahl = k => alle.filter(s => weTag(s) && dienstVon(s) === k).length;
-  const hist = {}; diensttauglich().forEach(p => hist[p.k] = vorher(p.k));
+  const hist = vorherAlle(), jetzt = erwartung(ym);
   let n = 0; const rest = [];
   while(offen.length){
     let best = null;
     for(const s of offen){
       const kand = diensttauglich().map(p => ({p, ...bewerte(p, s)})).filter(x => !x.tags.some(t => t[0] === 'r'));
       /* Fairness ueber 4 Monate (3 Vormonate + dieser): Dienste relativ zum eigenen Max., WE/Feiertage absolut */
-      kand.forEach(x => { const h = hist[x.p.k];
-        x.wert = x.score + x.n * 3 - (h.n + x.n) / Math.max(1, x.max) * 25 - (weTag(s) ? (h.we + weZahl(x.p.k)) * 12 : 0)
+      /* Saldo ueber 4 Monate: Ist minus Erwartung (Abwesenheit fair verrechnet) */
+      kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k];
+        x.wert = x.score + x.n * 3 - ((h.n + x.n) - (h.exp + e.exp)) * 15
+          - (weTag(s) ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0)
         - ((dienstVon(plus(s, -1)) === x.p.k || dienstVon(plus(s, 1)) === x.p.k) ? 30 : 0) + Math.random(); });
       kand.sort((a, b) => b.wert - a.wert);
       if(!best || kand.length < best.kand.length) best = {s, kand};
@@ -1476,15 +1510,19 @@ const urlaubstage = (p, y) => {   // nur Werktage verbrauchen Urlaub
 };
 /* Wunschdateien eines Jahres: Verzeichnisbaum (1 Abruf, 1 min gemerkt), dann nur vorhandene Dateien */
 let baum = null, baumT = 0;
-async function ladeJahr(y){
-  if(urlGeladen[y]) return;
-  if(!baum || Date.now() - baumT > 60000){
+async function baumHolen(frisch){
+  if(frisch || !baum || Date.now() - baumT > 60000){
     const z = zugang();
     const r = await fetch(`https://api.github.com/repos/${z.repo}/git/trees/HEAD?recursive=1&t=${Date.now()}`, {cache:'no-store',
       headers:{Authorization:'Bearer ' + z.token, Accept:'application/vnd.github+json'}});
     if(!r.ok) throw new Error('GitHub antwortet mit ' + r.status + '.');
     baum = ((await r.json()).tree || []).map(t => t.path); baumT = Date.now();
   }
+  return baum;
+}
+async function ladeJahr(y){
+  if(urlGeladen[y]) return;
+  await baumHolen();
   const re = new RegExp('^plan/wuensche/[^/]+/' + y + '-\\d{2}\\.json$');
   await Promise.all(baum.filter(x => re.test(x) && (!files[x] || !files[x].data)).map(lesen));
   cacheSchreiben();
@@ -1729,6 +1767,34 @@ $('gMax').onchange = ()=> cfgAendern('Grenzen', d => { d.maxDienste = Math.max(1
 $('gWe').onchange = ()=> cfgAendern('Grenzen', d => { d.maxWeFolge = Math.max(1, +$('gWe').value || 2); });
 $('gUa').onchange = ()=> cfgAendern('Urlaubsanspruch', d => { d.urlaubAnspruch = Math.max(0, +$('gUa').value || 0); });
 $('gUp').onchange = ()=> cfgAendern('Urlaub zu verplanen', d => { d.urlaubPlan = Math.max(0, +$('gUp').value || 0); });
+/* Backup: alle Dateien unter plan/ (ueber den Verzeichnisbaum) */
+$('bakDown').onclick = async ()=>{
+  $('bakMsg').className = 'msg'; $('bakMsg').textContent = 'Sammle Dateien …';
+  try{
+    if(Object.keys(queue).length) await flush();
+    const pfade = (await baumHolen(true)).filter(x => /^plan\/.+\.json$/.test(x));
+    const out = {meta: {app: 'Dienstplanung', version: PLAN_VERSION, erstellt: new Date().toISOString(), von: ichK}, files: {}};
+    for(const x of pfade){ delete files[x]; const f = await lesen(x); if(f.data) out.files[x] = f.data; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], {type: 'application/json'}));
+    a.download = `dienstplanung_backup_${heute()}.json`; a.click();
+    $('bakMsg').className = 'msg ok'; $('bakMsg').textContent = Object.keys(out.files).length + ' Dateien gesichert.';
+  }catch(e){ $('bakMsg').className = 'msg err'; $('bakMsg').textContent = e.message; }
+};
+$('bakUp').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  try{
+    const b = JSON.parse(await f.text());
+    if(!b.meta || b.meta.app !== 'Dienstplanung' || !b.files) throw new Error('Keine Dienstplanungs-Sicherung.');
+    const pfade = Object.keys(b.files).filter(x => /^plan\/.+\.json$/.test(x));
+    if(!confirm(`${pfade.length} Dateien aus der Sicherung vom ${String(b.meta.erstellt).slice(0, 10)} einspielen?\n\nGleichnamige Dateien im Repo werden ersetzt, andere bleiben.`)) return;
+    for(const x of pfade) aendern(x, {}, 'Backup eingespielt', d => { Object.keys(d).forEach(k => delete d[k]); Object.assign(d, clone(b.files[x])); });
+    $('bakMsg').className = 'msg'; $('bakMsg').textContent = 'Lade hoch …';
+    await flush();
+    urlGeladen = {}; await ladeAlles(); render();
+    $('bakMsg').className = 'msg ok'; $('bakMsg').textContent = pfade.length + ' Dateien eingespielt.';
+  }catch(err){ $('bakMsg').className = 'msg err'; $('bakMsg').textContent = err.message; }
+};
 $('ichWechsel').onclick = ()=> ichWaehlen();
 $('ichBtn').onclick = ()=> ichWaehlen();
 $('abmelden').onclick = ()=>{
