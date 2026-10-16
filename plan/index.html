@@ -768,7 +768,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.73';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.74';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -953,8 +953,18 @@ async function lesen(pfad){
   files[pfad] = j ? {data: JSON.parse(dekodieren(j.content)), sha: j.sha, etag: j._etag} : {data: null, sha: null};
   return files[pfad];
 }
+/* Offline-Kopie (1.74): nur Monate heute ±13 und angezeigter Monat ±1, ohne Meldungen -
+   localStorage (~5 MB) teilt sich die Domain mit der Tagesdoku. Im Speicher bleibt alles. */
 function cacheSchreiben(){
-  try{ localStorage.setItem(LS_CACHE, JSON.stringify(files)); }catch(e){}
+  const h = heute().slice(0, 7), von = [ymPlus(h, -13), ymPlus(ym, -1)].sort()[0], bis = [ymPlus(h, 13), ymPlus(ym, 1)].sort()[1];
+  const aus = {};
+  for(const [pf, f] of Object.entries(files)){
+    if(pf.startsWith('plan/meldungen/')) continue;
+    const m = pf.match(/(\d{4}-\d{2})\.json$/);
+    if(m && (m[1] < von || m[1] > bis)) continue;
+    aus[pf] = f;
+  }
+  try{ localStorage.setItem(LS_CACHE, JSON.stringify(aus)); }catch(e){}
 }
 
 /* Schreiben: jede Aenderung ist eine Funktion auf den Dateiinhalt. Lokal sofort
@@ -1072,7 +1082,7 @@ async function flush(){
         const data = j ? JSON.parse(dekodieren(j.content)) : clone(q.leer);
         q.fns.forEach(fn => fn(data, true));
         const r = await gh('PUT', pfad, {message: `Planung: ${[...q.was].join(', ')} (${ichK || '?'})`,
-          content: kodieren(JSON.stringify(data, null, 1)), ...(j ? {sha: j.sha} : {})});
+          content: kodieren(JSON.stringify(data)), ...(j ? {sha: j.sha} : {})});
         if(r.konflikt) continue;
         files[pfad] = {data, sha: r.content.sha};
         break;
@@ -2363,7 +2373,7 @@ function meldeDialog(bild, fehler, reiter = 'neu'){
           $('meldSenden').disabled = true; $('meldSenden').textContent = 'Sende …';
           try{
             if(mit) await gh('PUT', MELD_DIR + id + '.jpg', {message: `Meldung ${id} (Bild)`, content: bild.split(',')[1]});
-            const r = await gh('PUT', MELD_DIR + id + '.json', {message: `Meldung ${id}`, content: kodieren(JSON.stringify(daten, null, 1))});
+            const r = await gh('PUT', MELD_DIR + id + '.json', {message: `Meldung ${id}`, content: kodieren(JSON.stringify(daten))});
             files[MELD_DIR + id + '.json'] = {data: daten, sha: r.content && r.content.sha};
             zu(); toast('Danke – Meldung ist beim Admin.'); hilfeBadge();
           }catch(e){ toast(e.message); $('meldSenden').disabled = false; $('meldSenden').textContent = 'Senden'; }
@@ -2392,7 +2402,7 @@ function meldeDialog(bild, fehler, reiter = 'neu'){
               const j = await gh('GET', pf), d = j ? JSON.parse(dekodieren(j.content)) : f.data;
               d.status = d.status === 'erledigt' ? 'offen' : 'erledigt';
               if(d.status === 'erledigt') d.erledigt = {von: ichK || 'Admin', am: Date.now()}; else delete d.erledigt;
-              const r = await gh('PUT', pf, {message: `Meldung ${d.status}`, content: kodieren(JSON.stringify(d, null, 1)), ...(j ? {sha: j.sha} : {})});
+              const r = await gh('PUT', pf, {message: `Meldung ${d.status}`, content: kodieren(JSON.stringify(d)), ...(j ? {sha: j.sha} : {})});
               files[pf] = {data: d, sha: r.content && r.content.sha};
               zeig('liste');
             }catch(e){ toast(e.message); b.disabled = false; }
@@ -2682,7 +2692,7 @@ $('bakDown').onclick = async ()=>{
     const out = {meta: {app: 'Dienstplanung', version: PLAN_VERSION, erstellt: new Date().toISOString(), von: ichK}, files: {}};
     for(const x of pfade){ delete files[x]; const f = await lesen(x); if(f.data) out.files[x] = f.data; }
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], {type: 'application/json'}));
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out)], {type: 'application/json'}));
     a.download = `dienstplanung_backup_${heute()}.json`; a.click();
     $('bakMsg').className = 'msg ok'; $('bakMsg').textContent = Object.keys(out.files).length + ' Dateien gesichert.';
   }catch(e){ $('bakMsg').className = 'msg err'; $('bakMsg').textContent = e.message; }
@@ -2709,7 +2719,7 @@ $('bakUp').onchange = async e => {
     const basis = await api(`/git/commits/${ref.object.sha}`);
     msg(`2/4 ${pfade.length} Dateien übertragen …`);
     const baum2 = await api('/git/trees', {method: 'POST', body: JSON.stringify({base_tree: basis.tree.sha,
-      tree: pfade.map(x => ({path: x, mode: '100644', type: 'blob', content: JSON.stringify(b.files[x], null, 1)}))})});
+      tree: pfade.map(x => ({path: x, mode: '100644', type: 'blob', content: JSON.stringify(b.files[x])}))})});
     msg('3/4 Commit …');
     const c = await api('/git/commits', {method: 'POST', body: JSON.stringify({message: `Planung: Backup eingespielt (${pfade.length} Dateien, ${ichK || '?'})`,
       tree: baum2.sha, parents: [ref.object.sha]})});

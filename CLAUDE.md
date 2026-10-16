@@ -145,6 +145,23 @@ Git-Historie der Commit-Nachrichten, nicht hier.
 - `add_fields.py`, `build_html.py` (veraltet, erzeugt die heutige HTML nicht
   mehr), `make_icons.py` (App-Icon, Pillow).
 
+## Daten & Speicher-Prinzipien (Dienstplanung, Stand 1.74)
+- GitHub-Repo `tagesdoku-team` ist die Datenbank: eine JSON-Datei je Monat (Dienst) bzw. je Person und
+  Monat (Wünsche), klein halten. Hochrechnung 5 Personen: ~0,5 MB/Jahr, ~70 Dateien/Jahr – GitHub-Grenzen
+  (1 GB Repo, 1 MB je Datei über die Contents-API, 5000 Abrufe/h) bleiben weit weg.
+- Ins Repo immer kompakt schreiben (`JSON.stringify(x)` ohne Einrückung), auch Backup-Einspielen.
+- Laden nur, was gebraucht wird (Monatsfenster, `baumHolen()` + ETag); nie „alles laden“.
+- Protokolle begrenzen (Wunsch-`log` 400, Dienst-`log` 2000 Einträge je Datei).
+- Offline-Kopie in localStorage nur heute ±13 Monate + angezeigter Monat ±1, ohne Meldungen
+  (`cacheSchreiben()`): localStorage (~5 MB) teilt sich die Domain mit der Tagesdoku.
+- Eigenes Backend erst bei echten Rechten (heute nur Oberfläche, Team-Token darf alles), vielen
+  gleichzeitigen Nutzern oder Server-Mitteilungen – nicht wegen der Datenmenge.
+- Zukunft (geplant): Assistenten bekommen eine eigene Oberfläche (andere Rechte, Abläufe, Dienstarten),
+  nutzen aber dasselbe Datenmodell im selben Repo, getrennt nach Gruppe (z. B. `plan/` = OA,
+  weitere Gruppe in eigenem Ordner, gemeinsame Personen-/Termin-Daten). Daraus später: Wochenpläne/
+  Anwesenheitslisten über alle Gruppen, Tagesdoku liest Dienste/Urlaub direkt statt Excel-Import.
+  Neue Felder daher gruppenneutral benennen und Daten nie an eine Oberfläche koppeln.
+
 ## Geteilte Logik (in BEIDEN Tools pflegen)
 Dienstart-Labels und -Zeiten (`DIENSTART_OPTIONS` im Desktop-Tool, `DUTY` in
 der PWA), Überstundenrechnung (Ist-Ende − Plan-Ende + Soll-Beginn − Beginn;
