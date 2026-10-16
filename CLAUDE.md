@@ -84,9 +84,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Urlaub = Antrag; Planer genehmigt je Monat im Urlaub-Reiter (`genehmigKnopf()`/`genehmigen()`,
   `ok:{von,am}` am Eintrag, genau der Stand beim Klick). Beantragt = gestrichelt; genehmigten
   Urlaub ändert nur der Planer (`gesperrtFuer()`). Abwesend zählt er schon als Antrag.
-  Einladung (seit 1.33, Einstellungen, nur Planer/Admin): PIN-verschlüsselt wie Tagesdoku mit
-  `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`
-  (Beschreibung `tagesdoku-einladung`, Tagesdoku räumt auf), sonst `#zugang2=`. QR aus `../app/qrcode.js`.
+  Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
+  `body.wochendruck` blendet beim Druck alles außer `#wochendruck` aus).
+  Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
+  `gistsAufraeumen()`): PIN-verschlüsselt wie Tagesdoku mit
+  `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`, sonst `#zugang2=`. QR aus `../app/qrcode.js`.
   Dienste einteilen/tauschen bleibt für alle offen (`darfEinteilen()`, `gruppen.oa.einteilen`).
   Design (1.39, zwischen alt und ruhig): Matrix-Dienst zart in Personenfarbe (`--f`, color-mix),
   ohne Farbstreifen, Kürzel farbig; Tage weiß, WE schlicht. FZA auch im Urlaub-Reiter (Chip + Pinsel). Icon `icon.svg`

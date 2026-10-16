@@ -395,7 +395,28 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
   #druckBtn{display:none}
   .raster{font-size:12px}
 }
+#wochendruck{display:none}
 @media print{
+  body.wochendruck > *:not(#wochendruck){display:none !important}
+  body.wochendruck #wochendruck{display:block}
+  @page{size:A4 landscape;margin:12mm}
+  .wp-seite{page-break-after:always;break-after:page;font-size:11pt;color:#000}
+  .wp-seite:last-child{page-break-after:auto;break-after:auto}
+  .wp-kopf{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+  .wp-kopf b{font-size:16pt} .wp-kopf small{margin-left:auto;color:#555}
+  table.wp{width:100%;border-collapse:collapse;table-layout:fixed}
+  .wp col.wp-n{width:19%} .wp col.wp-we{width:7%}
+  .wp th,.wp td{border:1px solid #999;padding:5px 6px;text-align:center;vertical-align:middle}
+  .wp th{background:#eee;font-size:10pt} .wp th small{display:block;font-weight:400;font-size:8pt}
+  .wp td.wp-name{text-align:left;font-weight:600}
+  .wp td.dienst{font-weight:800;background:#d9d9d9}
+  .wp td.abw{background:repeating-linear-gradient(135deg,#eee 0 4px,#fff 4px 8px);font-style:italic}
+  .wp td.gef{color:#555;font-size:9.5pt}
+  .wp td.da{color:#333}
+  .wp .we{background:#f4f4f4}
+  .wp tr.wp-summe td{font-weight:700;background:#f4f4f4} .wp tr.wp-summe td:first-child{text-align:left;font-weight:600}
+  .wp-fuss{margin-top:6px;font-size:9.5pt}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   header,.seite,.werkzeug,.banner{display:none !important}
   .planwrap{grid-template-columns:1fr} body{background:#fff}
   .zeile.kopf{position:static}
@@ -435,6 +456,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <span class="pill entwurf" id="pubPill">Entwurf</span>
           <span class="hint" id="pubInfo"></span>
           <span style="flex:1"></span>
+          <button class="btn out" id="wochenBtn" title="Je Woche eine Seite A4 quer: wer ist wann da, wer fehlt"><span data-icon="printer"></span>Wochenpläne</button>
           <button class="btn out" id="druckBtn"><span data-icon="printer"></span>Drucken</button>
           <button class="btn out" id="autoBtn" title="Leere Tage automatisch belegen"><span data-icon="activity"></span>Automatisch verteilen</button>
           <button class="btn gh hidden" id="autoWegBtn" title="Automatisch verteilte Dienste entfernen"><span data-icon="x"></span>Vorschlag verwerfen</button>
@@ -620,8 +642,8 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
       </div>
       <div class="card">
         <h3><span data-icon="send"></span>Einladung</h3>
-        <div class="hint">Persönlicher Link und QR-Code: Das Gerät ist danach fest dieser Person zugeordnet (keine „Wer bist du?“-Auswahl).
-          Gültig 24 Stunden, öffnen nur mit PIN – die PIN getrennt mitteilen.</div>
+        <div class="hint">Ein Link bzw. QR-Code pro Person – gilt 72 Stunden für alle ihre Geräte (PC, zu Hause, iPhone).
+          Jedes Gerät ist danach fest dieser Person zugeordnet. Öffnen nur mit PIN – die PIN getrennt mitteilen.</div>
         <div class="reihe" style="margin-top:10px">
           <label class="f">für<select id="einPers"></select></label>
           <label class="f">PIN<input type="text" id="einPin" inputmode="numeric" style="width:110px"></label>
@@ -642,6 +664,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 </main>
 
 <div id="dlg"></div>
+<div id="wochendruck"></div>
 <div id="tip" class="tip hidden"></div>
 
 <script>
@@ -654,7 +677,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.44';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.45';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1143,6 +1166,39 @@ async function monatWechseln(n){
 $('mZur').onclick = ()=> monatWechseln(-1);
 $('mVor').onclick = ()=> monatWechseln(1);
 $('druckBtn').onclick = ()=> window.print();
+/* Wochenplaene drucken: alle Wochen des Monats, je Seite A4 quer, Zeilen = Personen,
+   Spalten = Mo-So, Fuss = sicher anwesend vorm./nachm. */
+function wochenStatus(p, s){
+  const dh = dienstVon(s) === p.k, a = abwesend(p, s), e = eintrag(p.k, s);
+  if(dh) return ['dienst', 'Dienst'];
+  if(a === 'urlaub') return ['abw', urlOk(e) ? 'Urlaub' : 'Urlaub (beantr.)'];
+  if(a) return ['abw', {fb:'Fortbildung', fza:'FZA', frei:'frei', tz:'frei (TZ)'}[a]];
+  if(!werktag(s)) return ['', ''];
+  if(gefaehrdet(p, s)) return ['gef', 'nach Dienst'];
+  return ['da', 'da'];
+}
+function wochenplanHtml(){
+  const erster = ym + '-01', letzter = ym + '-' + pad(tageIm(ym));
+  let h = '';
+  for(let w0 = plus(erster, 1 - wt(erster)); w0 <= letzter; w0 = plus(w0, 7)){
+    const tage = Array.from({length: 7}, (_, i) => plus(w0, i));
+    h += `<section class="wp-seite"><div class="wp-kopf"><b>Wochenplan KW ${kw(tage[3])}</b><span>${kurzDat(tage[0])} – ${kurzDat(tage[6])}${tage[6].slice(0, 4)}</span>`
+      + `<small>Stand ${new Date().toLocaleDateString('de-DE')}${dienstDaten(ymVon(tage[3])) && dienstDaten(ymVon(tage[3])).veroeffentlicht ? '' : ' · Entwurf'}</small></div>`
+      + `<table class="wp"><colgroup><col class="wp-n">${tage.map(s => `<col class="${werktag(s) ? '' : 'wp-we'}">`).join('')}</colgroup>`
+      + `<tr><th></th>${tage.map(s => `<th class="${werktag(s) ? '' : 'we'}">${WT[wt(s)]} ${kurzDat(s)}${feiertag(s) ? `<small>${esc(feiertag(s))}</small>` : ''}</th>`).join('')}</tr>`;
+    for(const p of personen()) h += `<tr><td class="wp-name">${esc(p.name || p.k)}</td>${tage.map(s => { const [c, t] = wochenStatus(p, s); return `<td class="${c} ${werktag(s) ? '' : 'we'}">${t}</td>`; }).join('')}</tr>`;
+    h += `<tr class="wp-summe"><td>sicher anwesend<br><small>vorm. | nachm.</small></td>${tage.map(s => { const b = besetzung(s); return `<td class="${werktag(s) ? '' : 'we'}">${b ? b.w.join(' | ') : ''}</td>`; }).join('')}</tr>`;
+    const tm = [...new Set(tage.flatMap(s => termineAm(s).filter(t => t.art !== 'ferien').map(t => t.name)))];
+    h += `</table>${tm.length ? `<div class="wp-fuss">Termine: ${tm.map(esc).join(' · ')}</div>` : ''}</section>`;
+  }
+  return h;
+}
+$('wochenBtn').onclick = ()=>{
+  $('wochendruck').innerHTML = wochenplanHtml();
+  document.body.classList.add('wochendruck');
+  setTimeout(()=> window.print(), 50);
+};
+window.addEventListener('afterprint', ()=>{ document.body.classList.remove('wochendruck'); $('wochendruck').innerHTML = ''; });
 
 function render(){
   undoKnoepfe();
@@ -2101,7 +2157,19 @@ async function zugangEntschluesseln(code, pin){
 /* Persoenliche Einladung (Planer/Admin): wie in der Tagesdoku PIN-verschluesselt
    {r, t, p: Kuerzel, bis}; mit Gist-Token des Admins als geheimer Gist (Link nur
    #einladung=<id>, die Tagesdoku raeumt Gists > 24 h weg), sonst #zugang2=<code>. */
-const ZUGANG_GUELTIG = 24 * 3600 * 1000, GIST_BESCHR = 'tagesdoku-einladung';
+const ZUGANG_GUELTIG = 72 * 3600 * 1000, GIST_BESCHR = 'planung-einladung';   // eigener Name: die Tagesdoku loescht ihre nach 24 h
+/* Admin-Geraet mit Gist-Token: abgelaufene Planungs-Einladungen loeschen */
+async function gistsAufraeumen(){
+  const g = load('tagesdoku_teilen', {}).gist; if(!g || !navigator.onLine) return;
+  const kopf = {Authorization:'Bearer ' + g, Accept:'application/vnd.github+json'};
+  try{
+    const r = await fetch('https://api.github.com/gists?per_page=100', {cache:'no-store', headers:kopf}); if(!r.ok) return;
+    for(const x of await r.json())
+      if(x.description === GIST_BESCHR && Date.now() - Date.parse(x.created_at) > ZUGANG_GUELTIG)
+        await fetch('https://api.github.com/gists/' + x.id, {method:'DELETE', headers:kopf});
+  }catch(e){}
+}
+setTimeout(gistsAufraeumen, 5000);
 const b64url = u => { let r = ''; for(let i = 0; i < u.length; i += 0x8000) r += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
   return btoa(r).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
 async function zugangKodieren(r, t, pin, extra){
@@ -2142,7 +2210,7 @@ $('einMake').onclick = async ()=>{
       <div class="reihe" style="margin-top:8px"><button class="btn out" id="einCopy">${icon('copy')}Link kopieren</button><button class="btn out" id="einMail">${icon('send')}Per E-Mail</button></div>`;
     $('einCopy').onclick = ()=> navigator.clipboard.writeText(einLink).then(()=> toast('Link kopiert.'), ()=> toast('Kopieren nicht möglich.'));
     $('einMail').onclick = ()=>{
-      const text = `Hallo,\n\nhier dein persönlicher Zugang zur Dienstplanung:\n\n${einLink}\n\n1. Link am PC oder Handy öffnen.\n2. Die PIN eingeben – die bekommst du getrennt von dieser Mail. Der Link gilt 24 Stunden.\n\nDas Gerät ist danach dir zugeordnet. Bitte den Link nicht weiterleiten.`;
+      const text = `Hallo,\n\nhier dein persönlicher Zugang zur Dienstplanung:\n\n${einLink}\n\n1. Link am PC oder Handy öffnen.\n2. Die PIN eingeben – die bekommst du getrennt von dieser Mail.\n\nDer Link gilt 72 Stunden und funktioniert auf allen deinen Geräten (PC Arbeit, zu Hause, iPhone).\n\niPhone: erst in Safari die Seite öffnen, Teilen → „Zum Home-Bildschirm“, dann die App vom Home-Bildschirm starten und dort den Link einfügen + PIN.\nPC: Link in Edge/Chrome öffnen, PIN eingeben, als Lesezeichen speichern oder über das Menü als App installieren.\n\nBitte den Link nicht weiterleiten.`;
       location.href = 'mailto:?subject=' + encodeURIComponent('Zugang Dienstplanung') + '&body=' + encodeURIComponent(text);
     };
   }catch(e){ $('einOut').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; }
