@@ -72,7 +72,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Konfiguration zusammen), keine Dienstart (ZD1…)
   in der Oberfläche – Funktionen statt Abrechnungsart folgen später.
   Reiter Urlaub: durchgehend scrollend (lädt an den Enden je ein Jahr nach,
-  `urlVon`/`urlBis`), Kopf = Monat in Bildschirmmitte; Wunschdateien je Jahr über
+  `urlVon`/`urlBis`), Kopf = Monat in Bildschirmmitte; am Handy (Touch, 1.50): Wischen scrollt, Tippen = 1 Tag,
+  Streichen erst nach 0,4 s Halten (`urlTouch`, Strich = 1 Rückgängig-Schritt), Werkzeug als feste Leiste unten; Wunschdateien je Jahr über
   `git/trees` (`ladeJahr()`); Zähler = Urlaub an Werktagen vs. `cfg.urlaubPlan`
   (25) von `cfg.urlaubAnspruch` (31). Schnellwahl Dienst: 1. Buchstabe Nachname,
   ab 2. auch Initialen (Nachname+Vorname) oder Kürzel. Matrix zeigt Nachbarmonate

@@ -281,7 +281,8 @@ table.tda{border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-s
 
 /* ---------- Urlaub ---------- */
 .ur-monat{font-weight:800;font-size:15px;margin:14px 0 6px 47px;color:var(--primary-dark)}
-.mx-box.ur{min-height:78px;cursor:pointer;user-select:none;touch-action:none}
+.mx-box.ur{min-height:78px;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y pinch-zoom}
+#urlTab.malt .mx-box.ur{touch-action:none}
 .mx-box.ur:hover{border-color:var(--primary)}
 .ur-dat{position:absolute;top:6px;left:9px;right:9px;font-weight:700;font-size:14px;line-height:1.15}
 .ur-monat{display:flex;align-items:center;gap:10px}
@@ -422,7 +423,20 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
   .ur-band i{height:2px}
   .ur-monat{margin-left:30px;flex-wrap:wrap;gap:6px;font-size:14px}
   .ur-gen{font-size:11px;padding:2px 9px}
+  /* Werkzeug (Person, Art) als feste Leiste unten - sonst weit oberhalb des Kalenders */
+  #tab-urlaub .werkzeug{position:fixed;left:0;right:0;bottom:0;z-index:15;margin:0;gap:6px 8px;
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(250,245,236,.97);
+    border-top:1px solid var(--border);box-shadow:0 -4px 14px rgba(0,0,0,.06)}
+  #tab-urlaub .werkzeug label.f{flex:1 1 100%;font-size:13px}
+  #tab-urlaub .werkzeug select{flex:1;min-width:0}
+  #tab-urlaub .werkzeug .hint{flex:1 1 100%;font-size:11px;margin:0}
+  #tab-urlaub .werkzeug .hint:empty,#urlTyp [data-t="termin"]{display:none}
+  #tab-urlaub .werkzeug .hint.desk{display:none}
+  #tab-urlaub .werkzeug span.hint.mobil{display:block}
+  main{padding-bottom:150px}
+  #urlTab.malt .mx-box.ur{outline:1px dashed var(--primary)}
 }
+#tab-urlaub .werkzeug .hint.mobil{display:none}
 #wochendruck{display:none}
 @media print{
   body.wochendruck > *:not(#wochendruck){display:none !important}
@@ -577,7 +591,8 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <label class="f" style="flex-direction:row;align-items:center;gap:8px">Eintragen für <select id="urlSel"></select></label>
           <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button><button data-t="fza">FZA</button><button data-t="termin">Termin</button></span>
           <span class="hint" id="urlTermInfo"></span>
-          <span class="hint">Antippen oder über Tage streichen; nochmal = löschen. Urlaub zählt nur an Werktagen.</span>
+          <span class="hint desk">Antippen oder über Tage streichen; nochmal = löschen. Urlaub zählt nur an Werktagen.</span>
+          <span class="hint mobil">Tippen = ein Tag · lang drücken und streichen = mehrere · nochmal = löschen</span>
         </div>
         <div class="tabelle matrix" id="urlTab"></div>
       </div>
@@ -706,7 +721,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.49';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.50';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1744,7 +1759,7 @@ $('kal').addEventListener('pointerdown', e => {
   e.preventDefault(); strich = {erledigt: new Set()}; pinselTag(s);
 });
 $('kal').addEventListener('pointermove', e => { if(strich){ const s = tagUnter(e); if(s) pinselTag(s); } });
-['pointerup','pointercancel'].forEach(t => window.addEventListener(t, ()=>{ if(strich) schritt = null; strich = null; }));
+['pointerup','pointercancel'].forEach(t => window.addEventListener(t, ()=>{ if(urlTouch && urlTouch.aktiv) return; if(strich) schritt = null; strich = null; }));
 
 /* =================== Termine (Ferien, Kongresse) =================== */
 const TERMIN = {ferien: {name: 'Ferien', farbe: '#5B9BD5'}, kongress: {name: 'Kongress', farbe: '#7A5AA6'}, sonst: {name: 'Termin', farbe: '#8A7F72'}};
@@ -1981,11 +1996,45 @@ $('urlSel').onchange = e => { urlK = e.target.value; renderUrlaub(); };
 $('urlTyp').querySelectorAll('button').forEach(b => b.onclick = ()=>{ urlTyp = b.dataset.t; renderUrlaub(); });
 const urlMalen = s => urlTyp === 'termin' ? terminTag(s) : pinselTag(s, urlK, urlTyp);
 $('urlTab').addEventListener('pointerdown', e => {
+  if(e.pointerType === 'touch') return;   // Touch: eigene Steuerung unten (Scrollen bleibt frei)
   const s = tagUnter(e, '#urlTab .mx-box[data-tag]'); if(!s || nurLesen) return;
   if(urlTyp === 'termin' && !termId) return toast('Erst rechts einen Termin zum Pinseln wählen (✎).');
   e.preventDefault(); strich = {erledigt: new Set(), url: true}; urlMalen(s);
 });
 $('urlTab').addEventListener('pointermove', e => { if(strich && strich.url){ const s = tagUnter(e, '#urlTab .mx-box[data-tag]'); if(s) urlMalen(s); } });
+/* Touch (Handy): Wischen scrollt immer. Kurz antippen = ein Tag; Streichen erst nach
+   langem Druecken (0,4 s ohne Bewegung) - dann ist Scrollen bis zum Loslassen gesperrt.
+   Ein Strich = ein Rueckgaengig-Schritt (schritt bleibt bis touchend offen). */
+let urlTouch = null;
+const urlTagAn = t => { const el = document.elementFromPoint(t.clientX, t.clientY); const b = el && el.closest('#urlTab .mx-box[data-tag]'); return b && b.dataset.tag; };
+const urlStrichStart = s => {
+  if(urlTyp === 'termin' && !termId){ toast('Erst einen Termin zum Pinseln wählen (✎).'); return false; }
+  strich = {erledigt: new Set(), url: true}; urlMalen(s); return true;
+};
+$('urlTab').addEventListener('touchstart', e => {
+  if(e.touches.length > 1){ if(urlTouch) clearTimeout(urlTouch.timer); urlTouch = null; return; }
+  const t = e.touches[0], s = urlTagAn(t); if(!s || nurLesen) return;
+  urlTouch = {x: t.clientX, y: t.clientY, s, t0: Date.now(), aktiv: false};
+  urlTouch.timer = setTimeout(()=>{
+    if(!urlTouch || !urlStrichStart(urlTouch.s)) return;
+    urlTouch.aktiv = true; $('urlTab').classList.add('malt');
+    if(navigator.vibrate) navigator.vibrate(15);
+  }, 400);
+}, {passive: true});
+$('urlTab').addEventListener('touchmove', e => {
+  if(!urlTouch) return;
+  const t = e.touches[0];
+  if(urlTouch.aktiv){ e.preventDefault(); const s = urlTagAn(t); if(s) urlMalen(s); return; }
+  if(Math.hypot(t.clientX - urlTouch.x, t.clientY - urlTouch.y) > 8){ clearTimeout(urlTouch.timer); urlTouch = null; }   // scrollt
+}, {passive: false});
+const urlTouchEnde = e => {
+  if(!urlTouch) return;
+  clearTimeout(urlTouch.timer);
+  if(!urlTouch.aktiv && e.type === 'touchend' && Date.now() - urlTouch.t0 < 400){ e.preventDefault(); urlStrichStart(urlTouch.s); }
+  if(strich) schritt = null; strich = null; urlTouch = null; $('urlTab').classList.remove('malt');
+};
+$('urlTab').addEventListener('touchend', urlTouchEnde);
+$('urlTab').addEventListener('touchcancel', urlTouchEnde);
 /* Urlaub: Monat in Bildschirmmitte in den Kopf; an den Enden ein Jahr nachladen */
 let urlScrollT = 0;
 window.addEventListener('scroll', ()=>{
