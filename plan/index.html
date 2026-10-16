@@ -408,6 +408,20 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
   .cfggrid{grid-template-columns:1fr}
   #druckBtn{display:none}
   .raster{font-size:12px}
+  /* Urlaub am Handy: Kachel als Spalte (Datum, Besetzung, Chips) statt absolut uebereinander */
+  .mx-kopf.ur-kopf,.mx-woche.ur{grid-template-columns:26px repeat(7,minmax(0,1fr));gap:4px}
+  .mx-woche.ur{margin-bottom:4px}
+  .mx-woche.ur .mx-kw{font-size:0} .mx-woche.ur .mx-kw b{font-size:12px}
+  .mx-box.ur{min-height:64px;border-radius:10px;display:flex;flex-direction:column;align-items:center;padding:4px 2px 4px}
+  .ur-dat{position:static;font-size:12px;text-align:center;width:100%;white-space:nowrap}
+  .ur-dat small{display:none}
+  .ur-zahl{position:static;font-size:10.5px;gap:1px;margin-top:1px}
+  .ur-chips{position:static;flex-direction:column;align-items:center;gap:2px;margin-top:3px}
+  .ur-chip{font-size:9.5px;line-height:13px;padding:0 3px;border-radius:4px}
+  .ur-chip.offen{padding:0 2px;border-width:1px}
+  .ur-band i{height:2px}
+  .ur-monat{margin-left:30px;flex-wrap:wrap;gap:6px;font-size:14px}
+  .ur-gen{font-size:11px;padding:2px 9px}
 }
 #wochendruck{display:none}
 @media print{
@@ -692,7 +706,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.48';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.49';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
