@@ -236,12 +236,12 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 /* Kompakt (TDA-Ansicht) */
 .tabelle.kompakt{overflow-x:auto;padding:0}
 .planwrap.breit{grid-template-columns:minmax(0,1fr)} .planwrap.breit > .seite{display:none}
-table.tda{border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:13px;width:100%;background:#fff}
-.tda th,.tda td{border:1px solid #D6D3CE;padding:4px 2px;text-align:center;min-width:34px;white-space:nowrap}
+table.tda{border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:12px;width:100%;background:#fff}
+.tda th,.tda td{border:1px solid #D6D3CE;padding:4px 1px;text-align:center;min-width:30px;white-space:nowrap}
 .tda thead th{background:#C8C8C8;font-weight:400;color:#222}
 .tda thead th.sa{background:#E8E36A} .tda thead th.so{background:#9FD98C}
 .tda td.sa{background:#FFFDA8} .tda td.so{background:#C6F2B5}
-.tda .tda-n{text-align:left;padding:4px 8px;min-width:190px;position:sticky;left:0;background:#F2F0EC;z-index:1}
+.tda .tda-n{text-align:left;padding:4px 8px;min-width:170px;position:sticky;left:0;background:#F2F0EC;z-index:1}
 .tda thead .tda-n{background:#E6E2DA;font-weight:700}
 .tda td.d{font-weight:700}
 .tda td.a{color:#5A5048}
@@ -692,7 +692,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.46';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.47';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1349,7 +1349,7 @@ function renderPlan(){
 /* Kompakt: Monat wie in TDA (Zeilen = Personen, Spalten = Tage, Sa gelb, So/Feiertag gruen),
    Zellen mit TDA-Kuerzeln zum Abtippen. Werktag ohne Dienst/Abwesenheit bleibt leer
    (Funktion Amb… traegt der Planer in TDA ein). */
-const TDA_ABW = {urlaub: 'U*', fb: 'FB', fza: 'FZA', frei: '0', tz: '0'};
+const TDA_ABW = {urlaub: 'U', fb: 'Fo', fza: 'FZA', frei: '0', tz: '0'};
 const tdaDienst = s => { const a = dienstArt(s); return a === 'RBD' ? 'RBD1' : a; };
 const tdaName = p => { const t = (p.name || p.k).trim().split(/\s+/); const n = t.length > 1 ? t.pop() + ', ' + t.join(' ') : t[0];
   return n + (p.pnr ? ` (${p.pnr})` : ''); };
@@ -1358,7 +1358,7 @@ function tdaCode(p, s){
   if(!werktag(s)) return ['', '0'];   // wie TDA: Wochenende/Feiertag ohne Dienst = 0, auch im Urlaub
   const a = abwesend(p, s);
   if(a) return ['a', TDA_ABW[a] || a];
-  return ['', ''];
+  return ['', wt(s) === 1 ? 'Amb2' : 'Amb4'];   // Regeldienst wie in der Tagesdoku: Mo Amb2, sonst Amb4
 }
 function kompaktHtml(){
   const n = tageIm(ym), tage = Array.from({length: n}, (_, i) => ds(+ym.slice(0, 4), +ym.slice(5, 7), i + 1));
@@ -1367,8 +1367,8 @@ function kompaktHtml(){
     + `<tr>${tage.map(s => `<th class="${kl(s)}">${+s.slice(8)}</th>`).join('')}</tr></thead><tbody>`;
   for(const p of personen())
     h += `<tr><td class="tda-n">${esc(tdaName(p))}</td>${tage.map(s => { const [c, t] = tdaCode(p, s);
-      return `<td class="${kl(s)} ${c}" data-tag="${s}"${c === 'a' && t === 'U*' && !urlOk(eintrag(p.k, s)) ? ' title="Urlaub beantragt"' : ''}>${t}</td>`; }).join('')}</tr>`;
-  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · U* Urlaub · FB Fortbildung · FZA Freizeitausgleich · 0 frei · leer = da (Funktion in TDA eintragen). Klick auf einen Tag: Dienst einteilen.</div>`;
+      return `<td class="${kl(s)} ${c}" data-tag="${s}"${c === 'a' && t === 'U' && !urlOk(eintrag(p.k, s)) ? ' title="Urlaub beantragt – noch nicht genehmigt"' : ''}>${t}</td>`; }).join('')}</tr>`;
+  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U Urlaub · Fo Fortbildung · FZA Freizeitausgleich · 0 frei. Klick auf einen Tag: Dienst einteilen.</div>`;
 }
 
 /* Matrix: eine Zeile je Kalenderwoche, Hintergrund = Besetzung (blass) */
