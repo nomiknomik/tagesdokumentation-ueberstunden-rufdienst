@@ -6,11 +6,11 @@
   <rect width="512" height="512" rx="112" fill="url(#g)"/>
   <!-- Pfeilkreis (Tausch / Wiederkehr) -->
   <g fill="none" stroke="#FAF5EC" stroke-width="15" stroke-linecap="round">
-    <path d="M118 330A150 150 0 0 1 340 84"/>
-    <path d="M394 160A150 150 0 0 1 406 286"/>
-    <path d="M134 366A150 150 0 0 0 324 386"/>
+    <path d="M137.9 384.3A170 170 0 0 1 341.0 114.8"/>
+    <path d="M408.8 187.5A170 170 0 0 1 421.0 303.1"/>
+    <path d="M330.5 414.8A170 170 0 0 1 181.5 414.8"/>
   </g>
-  <path d="M347 64l26 52l-49 -8z" fill="#FAF5EC" stroke="#FAF5EC" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M380.9 142.9L362.7 100.0L334.5 138.8Z" fill="#FAF5EC" stroke="#FAF5EC" stroke-width="10" stroke-linejoin="round"/>
   <!-- Kalender -->
   <g filter="url(#s)">
     <path d="M140 196v136a28 28 0 0 0 28 28h176a28 28 0 0 0 28-28V196z" fill="#FAF5EC"/>
