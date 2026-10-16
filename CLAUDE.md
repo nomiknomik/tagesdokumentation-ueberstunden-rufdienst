@@ -169,6 +169,11 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   `gistsAufraeumen()` löscht beim Start Gists älter als 24 h. Laden: API, bei Fehler Rohdatei
   `gist.githubusercontent.com/<owner>/<id>/raw/einladung.txt` (API ohne Anmeldung
   ~60/h je IP, Klinik-WLAN). Fehler im PIN-Fenster anzeigen, nicht per Toast.
+- „Link oder Code einfügen“ (`#zugangEinfuegen`, auch im Startdialog) per `prompt`,
+  weil das Repo-Feld in der Nutzer-Ansicht ausgeblendet ist.
+- Reset (`#resetAlles`, 2 Rückfragen): localStorage der ganzen Domain (auch
+  Dienstplanung), sessionStorage, alle IndexedDBs, Caches, SW, Cookies; danach
+  `setItem` stillgelegt und `resetLaeuft`, damit Verlassen der Seite nichts zurückschreibt.
 - Timer-ID 1 ist frei: `HIST.timer = -1` beim Start (mit 1 löschte
   `clearTimeout` den ersten echten Timer).
   Standard ist die Nutzer-Ansicht: Repo, Token und „Zugang weitergeben“
@@ -178,7 +183,7 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   Repo (≠ `TEAM_REPO`); sonst „Admin-Anmeldung“ mit Gist-Token, geprüft über
   `GET /user` = Besitzer des Team-Repos. Oder per Admin-QR („Admin-Gerät
   hinzufügen“): PIN-verschlüsselt mit `g` (Gist-Token) und `admin:1`, nur als
-  QR (kein Link/Gist), setzt Flag und `tagesdoku_teilen`, eigener Sync unberührt. Admin sieht den Token im Klartext,
+  QR oder kopierter `#zugang2=`-Link (kein Gist; seit 1.68, für PC ohne Kamera), setzt Flag und `tagesdoku_teilen`, eigener Sync unberührt. Admin sieht den Token im Klartext,
   PIN wird in `tagesdoku_teilen` gemerkt. Nur Anzeige – der Token liegt technisch im Browser. „Lokal geändert“
   heißt Prüfsumme ≠ `sync.hash` (Dirty-Flag allein ist nur ein Vorfilter).
   Haben beide Seiten geändert: Drei-Wege-Abgleich je Eintrag gegen die Basis

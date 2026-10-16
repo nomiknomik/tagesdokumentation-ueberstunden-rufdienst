@@ -541,6 +541,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="row"><label>Backup-Passwort</label><input id="sync_pw" type="password" name="password" placeholder="eigenes, auf allen Geräten gleich" autocomplete="current-password"></div>
     <button class="btn outline" id="syncSave" style="font-size:14px;min-height:44px">Verbinden</button>
     <button class="btn outline" id="zugangScannen" style="font-size:14px;min-height:44px;margin-top:8px">QR-Code scannen (Zugang übernehmen)</button>
+    <button class="btn outline" id="zugangEinfuegen" style="font-size:14px;min-height:44px;margin-top:8px">Link oder Code einfügen (ohne Kamera)</button>
     <button class="btn outline" id="zugangTeilen" style="font-size:14px;min-height:44px;margin-top:8px">Zugang per QR-Code weitergeben</button>
     <button class="btn ghost" id="adminAuf" style="font-size:13px;min-height:36px;margin-top:4px">Admin-Anmeldung</button>
     <div id="adminBox" style="display:none">
@@ -571,6 +572,8 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <button class="btn outline" id="importDataBtn" style="margin-top:8px">Backup aus JSON laden</button>
     <input type="file" id="importData" accept=".json,application/json" style="display:none">
     <div class="hint" id="importDataMsg"></div>
+    <button class="btn outline" id="resetAlles" style="margin-top:8px;color:var(--danger,#c62828);border-color:var(--danger,#c62828)">Alles auf diesem Gerät löschen (Reset)</button>
+    <div class="hint">Reset löscht hier Einstellungen, erfasste Tage, Zugangsdaten, Admin-Status, automatische Kopien, App-Cache und Cookies – auch die Anmeldung der Dienstplanung auf diesem Gerät. Das Online-Backup bleibt erhalten.</div>
     <div class="hint">Die Arbeitsdaten liegen lokal auf dem Gerät (localStorage). Zur Startseite hinzufügen, damit iOS sie nicht nach 7 Tagen löscht.</div>
     <div class="hint" id="storageInfo"></div>
   </div>
@@ -582,6 +585,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <h2><span data-icon="cloudCheck"></span>Willkommen</h2>
     <div class="hint" style="margin-top:0">Sollen die Daten zwischen deinen Geräten (Handy, Rechner) abgeglichen werden? Dafür brauchst du die Zugangsdaten zum Online-Backup – oder einen QR-Code von einer Kollegin/einem Kollegen.</div>
     <button class="btn" id="startQr" style="font-size:14px;min-height:44px;margin-top:12px">QR-Code scannen</button>
+    <button class="btn outline" id="startEinfuegen" style="font-size:14px;min-height:44px;margin-top:8px">Link oder Code einfügen (ohne Kamera)</button>
     <button class="btn outline" id="startManuell" style="font-size:14px;min-height:44px;margin-top:8px">Zugangsdaten eingeben</button>
     <button class="btn ghost" id="startOffline" style="margin-top:8px">Offline nutzen</button>
     <div class="hint">Lässt sich später unter Einstellungen → Daten ändern.</div>
@@ -597,7 +601,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <div class="row"><label>Gist-Token (optional)</label><input id="qr_gist" placeholder="github_pat_… mit „Gists: Read and write“" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <div class="row"><label>PIN für den Code</label><input id="qr_pin" placeholder="beliebig, z. B. 4711" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
       <button class="btn" id="qrMake" style="font-size:14px;min-height:44px">QR-Code erzeugen</button>
-      <button class="btn outline" id="qrAdmin" style="font-size:14px;min-height:44px;margin-top:8px">Admin-Gerät hinzufügen (QR-Code)</button>
+      <button class="btn outline" id="qrAdmin" style="font-size:14px;min-height:44px;margin-top:8px">Admin-Gerät hinzufügen (QR-Code oder Link)</button>
       <button class="btn outline" id="qrMail" style="font-size:14px;min-height:44px;margin-top:8px">Link erzeugen und per E-Mail senden</button>
       <div class="row2" style="margin-top:8px">
         <button class="btn outline" id="qrTest" style="font-size:14px;min-height:44px">Verbindung testen</button>
@@ -1931,10 +1935,11 @@ $('qrPinIn').onkeydown = e=>{ if(e.key === 'Enter') $('qrPinOk').click(); };
 $('qrPinCopy').onclick = ()=>{
   navigator.clipboard.writeText(pinGist ? 'einladung=' + pinGist : 'zugang2=' + pinCode).then(()=> toast('Code kopiert.'), ()=> toast('Kopieren nicht möglich.'));
 };
-let qrLib = null, zugangLink = '';
+let qrLib = null, zugangLink = '', qrAdminLink = false;
 /* Link statt QR: per Mail/Nachricht an den PC schicken und dort im Browser oeffnen */
 $('qrLink').onclick = ()=>{
-  if(navigator.share){ navigator.share({title:'Zeiterfassung – Zugang', url: zugangLink}).catch(()=>{}); return; }
+  // Admin-Link nur kopieren (an sich selbst schicken, nicht weiterteilen)
+  if(navigator.share && !qrAdminLink){ navigator.share({title:'Zeiterfassung – Zugang', url: zugangLink}).catch(()=>{}); return; }
   navigator.clipboard.writeText(zugangLink).then(()=> toast('Link kopiert – am PC im Browser öffnen.'), ()=> toast('Kopieren nicht möglich.'));
 };
 const ladeQr = ()=> qrLib ||= new Promise((ok, fail)=>{
@@ -2001,7 +2006,8 @@ async function qrAnzeigen(pin, admin){
   try{
     const qrcode = await ladeQr();
     const qr = qrcode(0, 'M');
-    $('qrLink').style.display = admin ? 'none' : '';
+    qrAdminLink = !!admin;
+    $('qrLink').textContent = admin ? 'Admin-Link kopieren (für PC ohne Kamera)' : 'Link teilen (für PC ohne Kamera)';
     $('qrPinZeige').innerHTML = (admin ? '<b>Admin-Code – nur auf eigenen Geräten scannen, nicht weitergeben.</b><br>' : '') + `PIN: <b>${pin.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</b> – nicht im Code, getrennt mitteilen (mündlich, anderer Kanal). Gültig bis ${new Date(Date.now() + ZUGANG_GUELTIG).toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}.`;
     qr.addData(zugangLink); qr.make();
     $('qrImg').innerHTML = qr.createSvgTag({cellSize:5, margin:2, scalable:true});
@@ -2055,6 +2061,14 @@ $('zugangScannen').onclick = async ()=>{
       ? 'Kamera-Zugriff abgelehnt. In den iPhone-Einstellungen erlauben oder den Code einfügen.'
       : 'Kamera nicht verfügbar (' + err.message + ').';
   }
+};
+/* Ohne Kamera: Link oder Code einfuegen (das Repo-Feld ist in der Nutzer-Ansicht ausgeblendet) */
+$('zugangEinfuegen').onclick = ()=>{
+  const txt = prompt('Zugangs-Link oder Code einfügen (aus Mail/Nachricht kopiert):');
+  if(!txt) return;
+  const z = zugangLesen(txt.trim());
+  if(!z){ toast('Kein Zugangs-Code dieser App erkannt.'); return; }
+  zugangUebernehmen(z);
 };
 $('qrForget').onclick = ()=>{
   localStorage.removeItem(LS_TEILEN); $('qr_token').value = ''; $('qr_pin').value = ''; $('qr_gist').value = '';
@@ -2147,6 +2161,7 @@ document.querySelectorAll('#cfg > .card > h2').forEach(h=>{
 });
 $('startManuell').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('online'); zuDenZugangsdaten(); };
 $('startQr').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('online'); $('zugangScannen').click(); };
+$('startEinfuegen').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('online'); $('zugangEinfuegen').click(); };
 $('startOffline').onclick = ()=>{ $('startBox').style.display = 'none'; modusSetzen('offline'); };
 $('syncModus').onchange = e=>{
   if(e.target.value === 'offline' && syncAktiv()){
@@ -2171,12 +2186,36 @@ addEventListener('online',  ()=>{ syncStatus(); abgleichen(false); });
 addEventListener('offline', syncStatus);
 
 /* Ausloeser: Start, Rueckkehr in die App, Verlassen der App */
+let resetLaeuft = false;
 function autoSichern(){
+  if(resetLaeuft) return;
   lokaleKopie();
   if(localStorage.getItem(LS_DIRTY)) ordnerSichern(false);   // vor lokalGeaendert(), das den Merker loeschen kann
   abgleichen(false);
 }
 document.addEventListener('visibilitychange', ()=> autoSichern());
+/* Reset: alles dieser Website auf diesem Geraet weg (localStorage der ganzen Domain,
+   IndexedDB, Cache, Service Worker, Cookies). Online-Backup bleibt. */
+$('resetAlles').onclick = async ()=>{
+  const offen = syncAktiv() && lokalGeaendert();
+  if(!confirm('Alles auf diesem Gerät löschen?\n\nEinstellungen, erfasste Tage, Zugangsdaten, Admin-Status, automatische Kopien, App-Cache und Cookies werden hier gelöscht. Das Online-Backup bleibt erhalten.'
+    + (offen ? '\n\n⚠️ Es gibt Änderungen, die noch NICHT online gesichert sind – sie gehen verloren.' : '')
+    + '\n\nVorher ggf. „Alle Daten als JSON sichern“.')) return;
+  if(!confirm('Wirklich zurücksetzen? Das lässt sich nicht rückgängig machen.')) return;
+  resetLaeuft = true; clearTimeout(syncTimer);
+  Storage.prototype.setItem = ()=>{};   // keine Nachzuegler (Timer, Verlassen der Seite) mehr speichern
+  try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
+  const warte = (p, ms = 2000)=> Promise.race([p, new Promise(ok => setTimeout(ok, ms))]).catch(()=>{});
+  const dbs = indexedDB.databases ? await warte(indexedDB.databases()) : null;
+  await warte(Promise.all([...new Set([...(dbs || []).map(d => d.name), 'tagesdoku_backup'])].map(n => new Promise(ok =>{
+    const q = indexedDB.deleteDatabase(n); q.onsuccess = q.onerror = q.onblocked = ok; }))));
+  if(window.caches) await warte(caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))));
+  if(navigator.serviceWorker) await warte(navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(x => x.unregister()))));
+  document.cookie.split(';').map(c => c.split('=')[0].trim()).filter(Boolean).forEach(n =>
+    ['', '; path=/', '; path=' + location.pathname.replace(/[^/]*$/, '')].forEach(p => document.cookie = n + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT' + p));
+  alert('Zurückgesetzt. Die App startet neu.');
+  location.replace(location.pathname);
+};
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 
 /* ---------- Dienstplan-Import ---------- */
@@ -3990,7 +4029,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.67';
+const APP_VERSION = '1.68';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
