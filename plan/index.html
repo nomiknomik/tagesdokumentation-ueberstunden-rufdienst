@@ -750,7 +750,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.58';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.59';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1453,6 +1453,9 @@ function tdaCode(p, s){
   if(!werktag(s)) return ['', '0'];   // wie TDA: Wochenende/Feiertag ohne Dienst = 0, auch im Urlaub
   const a = abwesend(p, s);
   if(a) return ['a', TDA_ABW[a] || a];
+  const h = halbWeg(p, s);
+  if(h) return ['h', h === 'vm' ? 'Nachm.' : 'Vorm.'];   // 1.59: halber Tag = anwesende Haelfte
+  if(p.rolle === 'chef') return ['', ''];   // Chef: kein Regeldienst (Amb), ganztags = leer
   return ['', wt(s) === 1 ? 'Amb2' : 'Amb4'];   // Regeldienst wie in der Tagesdoku: Mo Amb2, sonst Amb4
 }
 function kompaktHtml(){
@@ -1464,7 +1467,7 @@ function kompaktHtml(){
     h += `<tr><td class="tda-n">${esc(tdaName(p))}</td>${tage.map(s => { const [c, t] = tdaCode(p, s);
       const e = eintrag(p.k, s), offen = c === 'a' && e && pflicht(e.typ) && !e.ok;
       return `<td class="${kl(s)} ${c} ${offen ? 'offen' : ''}" data-tag="${s}" data-k="${esc(p.k)}"${offen ? ` title="${esc(TYPEN[e.typ].name)} beantragt – noch nicht genehmigt"` : ''}>${t}</td>`; }).join('')}</tr>`;
-  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U Urlaub · Fo Fortbildung · FZA Freizeitausgleich · 0 frei · <u style="text-decoration-style:dashed;color:#B5651D">U</u> = beantragt, noch nicht genehmigt. Klick auf ein Feld: ändern – Dienst hat je Tag nur eine Person.</div>`;
+  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U Urlaub · Fo Fortbildung · FZA Freizeitausgleich · 0 frei · Chef: leer = ganztags, Vorm./Nachm. = nur vormittags/nachmittags da · <u style="text-decoration-style:dashed;color:#B5651D">U</u> = beantragt, noch nicht genehmigt. Klick auf ein Feld: ändern – Dienst hat je Tag nur eine Person.</div>`;
 }
 /* TDA ist nur eine Ansicht auf die echten Daten (1.56): ein Klick aendert Dienst bzw.
    Wunsch-Eintrag, nichts Eigenes. Regeldienst = anwesend (Amb2 Mo / Amb4 Di-Fr), 0 = frei.
@@ -1474,7 +1477,7 @@ const tdaRegel = s => wt(s) === 1 ? 'Amb2' : 'Amb4';
 function tdaSetzen(k, s, code){
   const p = person(k), e = eintrag(k, s), alt = dienstVon(s);
   const wunsch = wert => {   // Eintrag im Wunschkalender setzen (null = loeschen)
-    if((e ? e.typ : null) === (wert ? wert.typ : null)) return;   // schon so (Genehmigung bleibt)
+    if((e ? e.typ : null) === (wert ? wert.typ : null) && (!wert || wert.typ !== 'halb' || e.zeit === wert.zeit)) return;   // schon so (Genehmigung bleibt)
     aendern(pfadWunsch(k, ymVon(s)), {tage:{}}, `${k} ${wert ? TYPEN[wert.typ].name : 'Eintrag gelöscht'}`, d => {
       d.tage ||= {}; if(wert) d.tage[s] = {...wert, von: ichK, am: Date.now()}; else delete d.tage[s];
     });
@@ -1485,12 +1488,15 @@ function tdaSetzen(k, s, code){
   if(!werktag(s)) return;   // WE/Feiertag: ohne Dienst immer 0
   if(TDA_TYP[code]) wunsch({typ: TDA_TYP[code]});   // Antrag wie ueberall - genehmigt wird im Urlaub-Reiter/To-do
   else if(code === '0') wunsch(teilzeitFrei(p, s) ? null : {typ: 'frei'});
-  else if(code === tdaRegel(s)) wunsch(teilzeitFrei(p, s) ? {typ: 'da'} : null);
+  else if(code === tdaRegel(s) || code === 'ganztags') wunsch(teilzeitFrei(p, s) ? {typ: 'da'} : null);
+  else if(code === 'Vorm.' || code === 'Nachm.') wunsch({typ: 'halb', zeit: code === 'Vorm.' ? 'nm' : 'vm'});   // Vorm. = nachmittags weg
 }
 function tdaWahl(k, s){
   if(!darfVeroeffentlichen()) return;
-  const p = person(k), [, akt] = tdaCode(p, s), dienst = tdaDienst(s), alt = dienstVon(s);
-  const codes = werktag(s) ? [dienst, 'U', 'Fo', 'FZA', tdaRegel(s), '0'] : [dienst, '0'];
+  const p = person(k), dienst = tdaDienst(s), alt = dienstVon(s), chef = p.rolle === 'chef';
+  const akt = tdaCode(p, s)[1] || 'ganztags';
+  const codes = chef ? (werktag(s) ? ['U', 'Fo', 'FZA', 'ganztags', 'Vorm.', 'Nachm.', '0'] : ['0'])   // Chef: keine Dienste, kein Amb
+    : werktag(s) ? [dienst, 'U', 'Fo', 'FZA', tdaRegel(s), '0'] : [dienst, '0'];
   dialog(`<h3>${esc(tdaName(p))}</h3><div class="unter">${WTL[wt(s)]}, ${kurzDat(s)}${feiertag(s) ? ' · ' + esc(feiertag(s)) : ''}${alt && alt !== k ? ` · Dienst hat bisher ${esc(alt)}` : ''}</div>
     <div class="tda-wahl" style="grid-template-columns:repeat(${codes.length > 2 ? 3 : 2},1fr)">${codes.map(c => `<button data-c="${c}" class="${c === akt ? 'on' : ''} ${c === dienst ? 'dienst' : ''}">${c}</button>`).join('')}</div>
     <div class="fuss"><button class="btn gh" id="dlgZu">Abbrechen</button></div>`,

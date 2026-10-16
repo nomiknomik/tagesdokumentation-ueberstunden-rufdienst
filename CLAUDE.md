@@ -104,6 +104,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   fällt auf Regeldienst zurück), U/Fo/FZA → Wunsch-Eintrag als Antrag (1.57, nicht genehmigt; in TDA gestrichelt unterstrichen), Regeldienst (Amb2 Mo/Amb4
   Di–Fr, `tdaRegel()`) → anwesend (`da` an Teilzeit-freien Tagen), 0 → `frei`; WE/Feiertag nur Dienst/0.
   Keine eigenen TDA-Codes (die `tda`-Felder aus 1.54/1.55 in Dienstdateien werden ignoriert).
+  Chef (1.59): kein Amb/Dienst – ganztags da = leer, halber Tag = „Vorm.“/„Nachm.“ (anwesende Hälfte, auch
+  bei OA mit `halb`); Wahl U/Fo/FZA/ganztags/Vorm./Nachm./0 (Vorm. = `halb` mit `zeit:'nm'`).
   Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
   `body.wochendruck` blendet beim Druck alles außer `#wochendruck` aus).
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
