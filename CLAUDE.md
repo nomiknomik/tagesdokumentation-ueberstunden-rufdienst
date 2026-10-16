@@ -104,7 +104,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   immer von der gewählten Person (`istAdmin()` nur ohne gewählte Person) – der Admin sieht genau ihre
   Ansicht, die Personenwahl bleibt sein Rückweg. Wünsche/Urlaub öffnen seit 1.65 immer mit der eigenen Person (`fuerK`/`urlK` = `ichK` beim Reiterwechsel; Doppelklick im Plan setzt danach); seit 1.66 sind dort alle Personen wählbar, fremde ohne `darfFuer()` nur ansehen (`#meinLesen`, Pinsel aus, rechte Spalte gesperrt). Kopf-Knopf `#ichBtn` seit 1.64 nur auf dem Admin-Gerät; „Angemeldet als“ für alle in der Karte Zugang. Ohne gewählte Person darf jedes Gerät einmal wählen.
   1.62: „Admin-Anmeldung“ in der Karte Zugang (Gist-Token, `GET /user` = Besitzer `TEAM_REPO`, setzt
-  `tagesdoku_admin`); Nicht-Verwalter sehen in den Einstellungen nur die Karte `.frei` (Zugang).
+  `tagesdoku_admin`) und „Repo und Token direkt“ im Erstlogin seit 1.71 nur über `…/plan/#admin` (`ADMIN_TUER`) –
+  Notausgang: neuen GitHub-Token erzeugen; Nicht-Verwalter sehen in den Einstellungen nur die Karte `.frei` (Zugang).
   Halber Tag weg (1.58, Typ `halb`, `zeit` 'vm'|'nm', `uhr` = freier Text): nicht `abw`, zählt nur im
   eigenen Besetzungsfenster (`halbWeg()` in `besetzung()`/`urlBesetzung()`); Pinsel „½ Tag“ im Urlaub-Reiter
   und im Wunsch-Dialog nur beim Chef (`rolle` 'chef'), Anzeige bei allen (halb gefüllter Chip). Keine Freigabe.

@@ -768,7 +768,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.70';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.71';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1337,7 +1337,7 @@ function render(){
   $('ichBtn').classList.toggle('hidden', !adminGeraet() && !!p);   // 1.64: Kopf-Knopf nur Admin (Personenwahl), sonst in Einstellungen → Zugang
   $('ichBtn').title = adminGeraet() ? 'Angemeldet als – Klick: Person wechseln (Admin)' : 'Angemeldet als';
   $('ichWechsel').classList.toggle('hidden', !!ich() && !adminGeraet());   // Person wechseln nur Admin
-  $('adminLogin').classList.toggle('hidden', adminGeraet());
+  $('adminLogin').classList.toggle('hidden', adminGeraet() || !ADMIN_TUER);
   todoBadge(); hilfeBadge();
   if(tab === 'plan') renderPlan();
   if(tab === 'meine') renderMeine();
@@ -1351,6 +1351,9 @@ const darfEinteilen = () => cfg.gruppen.oa.einteilen !== 'planer' || !!(ich() &&
    1.63 immer von der gewaehlten Person – der Admin sieht genau, was sie sieht; die Personenwahl
    bleibt sein Rueckweg. Volle Rechte nur, solange noch keine Person gewaehlt ist. */
 const adminGeraet = () => localStorage.getItem('tagesdoku_admin') === '1';
+/* Admin-Zugaenge (Admin-Anmeldung, Repo+Token direkt) nur ueber die Adresse …/plan/#admin (1.71) -
+   nie dauerhaft sichtbar; Notausgang z. B. mit neu erzeugtem GitHub-Token */
+const ADMIN_TUER = /(^#|[&#])admin\b/.test(location.hash);
 const istAdmin = () => adminGeraet() && !ich();
 /* Rechte nur in der Oberflaeche: der Team-Token darf technisch alles im Repo.
    Planer/Admin verwalten (Team, Einstellungen, alle Personen, Urlaub genehmigen),
@@ -2832,16 +2835,16 @@ function anmelden(vorgabe){
       Ist die Tagesdoku auf diesem Gerät schon mit dem Team verbunden, passiert das automatisch.</div>
     <label class="f">Einladungs-Link oder Code<input type="text" id="aCode" value="${esc(vorgabe || '')}"></label>
     <label class="f" style="margin-top:10px">PIN<input type="password" id="aPin" inputmode="numeric"></label>
-    <details style="margin-top:12px"><summary class="hint">Admin: Repo und Token direkt</summary>
+    ${ADMIN_TUER ? '' : '<!--'}<details style="margin-top:12px" open><summary class="hint">Admin: Repo und Token direkt</summary>
       <div class="reihe" style="margin-top:8px"><label class="f">Repo<input type="text" id="aRepo" value="${TEAM_REPO}"></label>
-      <label class="f" style="flex:1">Token<input type="password" id="aTok"></label></div></details>
+      <label class="f" style="flex:1">Token<input type="password" id="aTok"></label></div></details>${ADMIN_TUER ? '' : '-->'}
     <div class="msg" id="aMsg"></div>
     <div class="fuss"><button class="btn" id="aOk">${icon('key')}Verbinden</button></div>`, el => {
     $('aOk').onclick = async ()=>{
       $('aMsg').className = 'msg'; $('aMsg').textContent = 'Prüfe …';
       try{
         let z;
-        if($('aTok').value.trim()) z = {r: $('aRepo').value.trim(), t: $('aTok').value.trim()};
+        if($('aTok') && $('aTok').value.trim()) z = {r: $('aRepo').value.trim(), t: $('aTok').value.trim()};
         else{
           const txt = $('aCode').value.trim();
           const mg = txt.match(/einladung=([0-9a-f]{20,40})/), m2 = txt.match(/zugang2=([\w-]+)/);
