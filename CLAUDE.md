@@ -123,6 +123,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Keine eigenen TDA-Codes (die `tda`-Felder aus 1.54/1.55 in Dienstdateien werden ignoriert).
   Chef (1.59): kein Amb/Dienst – ganztags da = leer, halber Tag = „Vorm.“/„Nachm.“ (anwesende Hälfte, auch
   bei OA mit `halb`); Wahl U/Fo/FZA/ganztags/Vorm./Nachm./0 (Vorm. = `halb` mit `zeit:'nm'`).
+  Woche (1.85, vierte Plan-Ansicht, alle, auch Handy, `wocheHtml()`): Sprechstunde/OP-Planung, nur Mo–Fr, je Tag
+  die Anwesenden (nach Nachname, Zusatz „ab 11“ = Dienst, „n. D.“ = nach Dienst, vorm./nachm. bei `halb`), Zahl
+  vorm.|nachm. wie `urlBesetzung()`, „weg:“ + Termine; ab aktueller Woche (sonst Monatsbeginn) bis Ende Folgemonat,
+  „Weitere Wochen“ lädt je einen Monat (`wocheMehr`, `wocheLaden()`); ≤ 760 px je Tag eine Zeile. Reine Ansicht.
   Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
   `body.wochendruck` blendet beim Druck alles außer `#wochendruck` aus).
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes

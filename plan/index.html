@@ -198,7 +198,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .legende div{display:flex;gap:6px;align-items:center}
 
 /* ---------- Matrix (1 Zeile = 1 Woche) ---------- */
-.tabelle.matrix{background:transparent;border:0;box-shadow:none;overflow:visible}
+.tabelle.matrix,.tabelle.woche{background:transparent;border:0;box-shadow:none;overflow:visible}
 .tabelle.matrix.dimm .mx-box:not(.mark):not(.aus){opacity:.38}
 .mx-kopf,.mx-woche{display:grid;grid-template-columns:40px repeat(7,minmax(0,1fr));gap:7px}
 .mx-kopf{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;text-align:center}
@@ -262,6 +262,34 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 /* Kompakt (TDA-Ansicht) */
 .tabelle.kompakt{overflow-x:auto;padding:0}
 .planwrap.breit{grid-template-columns:minmax(0,1fr)} .planwrap.breit > .seite{display:none}
+/* Wochenansicht (1.85): Mo–Fr, Anwesende je Tag; schmal = je Tag eine Zeile */
+.wo-kw{font-size:12px;font-weight:800;color:var(--text2);margin:16px 2px 6px;display:flex;gap:8px;align-items:baseline}
+.wo-kw:first-child{margin-top:0} .wo-kw small{font-weight:600;color:var(--muted)}
+.wo-woche{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.wo-tag{position:relative;border:1px solid var(--border);border-radius:12px;background:#fff;padding:7px 7px 8px;min-height:96px;overflow:hidden}
+.wo-tag.heute{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.wo-tag.ft{background:#F9EFEC} .wo-tag.vorbei{opacity:.55}
+.wo-dat{font-size:12.5px;font-weight:800;display:flex;gap:6px;align-items:baseline;padding-right:44px;flex-wrap:wrap}
+.wo-dat small{font-weight:600;color:var(--muted);font-size:11px}
+.wo-tag .ur-zahl{top:7px;right:8px}
+.wo-ft{font-size:11.5px;color:var(--danger);font-weight:700;margin-top:6px}
+.wo-liste{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.wo-p{display:flex;align-items:center;gap:5px;font-size:12.5px;line-height:1.2;min-width:0}
+.wo-p .pk{flex:none;width:20px;height:20px;border-radius:6px;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.wo-p .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.wo-p small{flex:none;font-size:10.5px;font-weight:700;color:var(--warning);background:var(--warning-soft);border-radius:6px;padding:1px 5px}
+.wo-p.teil .nm{color:var(--text2)}
+.wo-weg{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.3}
+.wo-tm{font-size:10.5px;font-weight:700;margin-top:2px}
+.wo-mehr{display:flex;justify-content:center;margin:14px 0 4px}
+@media (max-width:760px){
+  .wo-woche{grid-template-columns:1fr;gap:5px}
+  .wo-tag{min-height:0;display:grid;grid-template-columns:58px minmax(0,1fr);column-gap:8px;padding:7px 8px}
+  .wo-dat{flex-direction:column;gap:0;padding-right:0;grid-row:span 3}
+  .wo-tag .ur-zahl{position:static;grid-column:1;margin-top:4px}
+  .wo-liste{flex-direction:row;flex-wrap:wrap;gap:4px 10px;margin-top:0;grid-column:2;grid-row:1 / span 2}
+  .wo-ft,.wo-weg{grid-column:2;margin-top:4px}
+}
 table.tda{border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:12px;width:100%;background:#fff}
 .tda th,.tda td{border:1px solid #D6D3CE;padding:4px 1px;text-align:center;min-width:30px;white-space:nowrap}
 .tda thead th{background:#C8C8C8;font-weight:400;color:#222}
@@ -541,7 +569,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
     <div class="planwrap">
       <div>
         <div class="werkzeug">
-          <span class="seg" id="ansichtSeg"><button data-a="liste">Liste</button><button data-a="matrix">Matrix</button><button data-a="kompakt" title="Monat wie in TDA – zum Übertragen">TDA</button></span>
+          <span class="seg" id="ansichtSeg"><button data-a="liste">Liste</button><button data-a="matrix">Matrix</button><button data-a="kompakt" title="Monat wie in TDA – zum Übertragen">TDA</button><button data-a="woche" title="Mo–Fr: wer ist da (Sprechstunde, OP-Planung)">Woche</button></span>
           <span class="pill entwurf" id="pubPill">Entwurf</span>
           <span class="hint" id="pubInfo"></span>
           <span style="flex:1"></span>
@@ -771,7 +799,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.84';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.85';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1312,7 +1340,7 @@ document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = ()=>{
   render();
 });
 async function monatWechseln(n){
-  ym = ymPlus(ym, n); merken('planung_monat', ym);
+  ym = ymPlus(ym, n); wocheMehr = 1; merken('planung_monat', ym);
   if(tab === 'urlaub'){ urlScrollZiel = ym; renderUrlaub(); return; }
   render();
   try{ await ladeAlles(); }catch(e){ toast(e.message); }
@@ -1465,12 +1493,14 @@ function renderPlan(){
       + `<div class="dzelle ${darfEinteilen() ? '' : 'gesperrt'}" data-tag="${s}">${dzelle}</div>`
       + `<div>${bz}</div><div>${ab}</div><div>${wu}</div><div style="flex-direction:column;align-items:flex-start">${hw}</div></div>`;
   }
-  const matrix = ansicht === 'matrix' && innerWidth > 760, kompakt = ansicht === 'kompakt' && darfVeroeffentlichen();   // TDA nur Planer/Admin
+  const matrix = ansicht === 'matrix' && innerWidth > 760, kompakt = ansicht === 'kompakt' && darfVeroeffentlichen(),   // TDA nur Planer/Admin
+    woche = ansicht === 'woche';
   $('ansichtSeg').querySelector('[data-a="kompakt"]').style.display = darfVeroeffentlichen() ? '' : 'none';
-  $('ansichtSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === (kompakt ? 'kompakt' : matrix ? 'matrix' : 'liste')));
-  const tab_ = $('planTab'); tab_.innerHTML = kompakt ? kompaktHtml() : matrix ? matrixHtml(info) : h; tab_.classList.toggle('dimm', !!markK && !kompakt);
-  tab_.classList.toggle('matrix', matrix); tab_.classList.toggle('kompakt', kompakt);
-  document.querySelector('#tab-plan .planwrap').classList.toggle('breit', kompakt);   // Kompakt: volle Breite, ohne Seitenleiste
+  $('ansichtSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === (woche ? 'woche' : kompakt ? 'kompakt' : matrix ? 'matrix' : 'liste')));
+  const tab_ = $('planTab'); tab_.innerHTML = woche ? wocheHtml() : kompakt ? kompaktHtml() : matrix ? matrixHtml(info) : h; tab_.classList.toggle('dimm', !!markK && !kompakt && !woche);
+  tab_.classList.toggle('matrix', matrix); tab_.classList.toggle('kompakt', kompakt); tab_.classList.toggle('woche', woche);
+  document.querySelector('#tab-plan .planwrap').classList.toggle('breit', kompakt || woche);
+  if(woche) $('woMehr').onclick = async ()=>{ wocheMehr++; await wocheLaden(ymPlus(ym, wocheMehr)); renderPlan(); };   // Kompakt: volle Breite, ohne Seitenleiste
   tab_.querySelectorAll('[data-nachbar]').forEach(el => el.onclick = ()=> monatWechseln(+el.dataset.nachbar));
   if(kompakt) tab_.querySelectorAll('td[data-tag]').forEach(el => el.onclick = ()=>{ if(!nurLesen) tdaWahl(el.dataset.k, el.dataset.tag); });
   tab_.querySelectorAll('.dzelle').forEach(el => el.onclick = e => {
@@ -1569,6 +1599,51 @@ function tdaWahl(k, s){
     el.querySelectorAll('[data-c]').forEach(b => b.onclick = ()=>{ zu(); if(b.dataset.c !== akt) tdaSetzen(k, s, b.dataset.c); });
     dialogTaste = e => { const b = [...el.querySelectorAll('[data-c]')].find(x => x.dataset.c.toLowerCase().startsWith(e.key.toLowerCase())); if(b && e.key.length === 1){ e.preventDefault(); b.click(); } };
   }, true);
+}
+
+/* Wochenansicht (1.85, Sprechstunde/OP-Planung): nur Mo-Fr, je Tag die Anwesenden.
+   Ab der aktuellen Woche (sonst ab Monatsbeginn) bis Ende Folgemonat, unten nachladbar. */
+let wocheMehr = 1;
+async function wocheLaden(m){
+  const pf = [pfadDienst(m), ...personen().map(p => pfadWunsch(p.k, m))].filter(x => !files[x]);
+  if(!pf.length) return;
+  let da = null;
+  try{ da = new Set(await baumHolen()); }catch(e){ return; }   // offline: ohne Daten anzeigen
+  await Promise.all(pf.map(x => da.has(x) ? lesen(x).catch(()=>{}) : (files[x] = {data: null, sha: null})));
+}
+function wocheTagHtml(s){
+  const ft = feiertag(s), dh = dienstVon(s), hz = heute();
+  const kopf = `<div class="wo-dat">${WT[wt(s)]} ${+s.slice(8)}.${+s.slice(5, 7)}.</div>`;
+  const tm = termineAm(s);
+  const tmTxt = tm.length ? `<div class="wo-tm">${tm.map(t => `<span style="color:${TERMIN[t.art].farbe}">${esc(t.name)}</span>`).join(' · ')}</div>` : '';
+  if(ft) return `<div class="wo-tag ft ${s < hz ? 'vorbei' : ''}">${terminBand(s)}${kopf}<div class="wo-ft">${esc(ft)}</div></div>`;
+  const ub = urlBesetzung(s), da = [], weg = [];
+  for(const p of [...personen()].sort((a, b) => nachn(a).localeCompare(nachn(b), 'de'))){
+    const a = abwesend(p, s);
+    if(a){ if(a !== 'tz' && a !== 'frei') weg.push(`${p.k} (${{urlaub: 'U', fb: 'Fo', fza: 'FZA'}[a] || a})`); else weg.push(p.k); continue; }
+    const h = halbWeg(p, s);
+    const zusatz = p.k === dh ? ['ab 11', 'Dienst ab 11 Uhr'] : gefaehrdet(p, s) ? ['n. D.', 'nach Dienst – fehlt evtl.']
+      : h ? [h === 'vm' ? 'nachm.' : 'vorm.', halbTitel(p, s)] : null;
+    da.push(`<div class="wo-p ${zusatz ? 'teil' : ''}" title="${esc((p.name || p.k) + (zusatz ? ': ' + zusatz[1] : ''))}">${pk(p)}<span class="nm">${esc(nachn(p))}</span>${zusatz ? `<small>${zusatz[0]}</small>` : ''}</div>`);
+  }
+  const hw = hinweise(s);
+  return `<div class="wo-tag ${s === hz ? 'heute' : ''} ${s < hz ? 'vorbei' : ''}" title="${esc(hw.map(x => '⚠ ' + x.text).join('\n'))}">${terminBand(s)}${kopf}`
+    + (ub ? `<span class="ur-zahl" title="anwesend vormittags | nachmittags">${ub.w.map((n, i) => `<b class="${ub.st[i]}">${n}</b>`).join('<i>|</i>')}</span>` : '')
+    + `<div class="wo-liste">${da.join('') || '<span class="hint">niemand</span>'}</div>`
+    + (weg.length ? `<div class="wo-weg">weg: ${esc(weg.join(', '))}</div>` : '') + tmTxt + '</div>';
+}
+function wocheHtml(){
+  const hz = heute(), erster = ym + '-01';
+  let von = ym === hz.slice(0, 7) ? hz : erster;
+  von = plus(von, 1 - wt(von));
+  const bisM = ymPlus(ym, wocheMehr), bis = ds(+bisM.slice(0, 4), +bisM.slice(5, 7), tageIm(bisM));
+  let h = '';
+  for(let w0 = von; w0 <= bis; w0 = plus(w0, 7)){
+    const fr = plus(w0, 4);
+    h += `<div class="wo-kw">KW ${kw(w0)}<small>${+w0.slice(8)}.${+w0.slice(5, 7)}. – ${+fr.slice(8)}.${+fr.slice(5, 7)}.${fr.slice(0, 4)}</small></div>`
+      + `<div class="wo-woche">${[0, 1, 2, 3, 4].map(i => wocheTagHtml(plus(w0, i))).join('')}</div>`;
+  }
+  return h + `<div class="wo-mehr"><button class="btn" id="woMehr">Weitere Wochen (${monatName(ymPlus(ym, wocheMehr + 1))})</button></div>`;
 }
 
 /* Matrix: eine Zeile je Kalenderwoche, Hintergrund = Besetzung (blass) */
