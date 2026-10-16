@@ -84,7 +84,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`
   (Beschreibung `tagesdoku-einladung`, Tagesdoku räumt auf), sonst `#zugang2=`. QR aus `../app/qrcode.js`.
   Dienste einteilen/tauschen bleibt für alle offen (`darfEinteilen()`, `gruppen.oa.einteilen`).
-  Design ruhig (1.33): Matrix-Dienst neutral, Personenfarbe nur als Punkt (`--f`). Icon `icon.svg`
+  Design (1.39, zwischen alt und ruhig): Matrix-Dienst zart in Personenfarbe (`--f`, color-mix) mit
+  Farbstreifen links, Kürzel farbig; Tage weiß, WE schlicht. FZA auch im Urlaub-Reiter (Chip + Pinsel). Icon `icon.svg`
   (+ PNG 180/192/512, `manifest.webmanifest`) – PNGs aus dem SVG per Playwright rendern.
   Termine (`cfg.termine` = `[{id, art: ferien|kongress|sonst, name, tage[]}]`, alt:
   `von/bis`) tageweise pinselbar; BW-Schulferien fest in `BW_FERIEN` (aus schulferien.org-

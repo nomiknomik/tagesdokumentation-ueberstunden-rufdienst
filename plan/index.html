@@ -219,17 +219,18 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 
 /* Ruhige Matrix (Design D, 1.33): Personenfarbe nur als Punkt vor dem Namen, Tage weiss,
    Kuerzel grau, Zahlen nur bei Problemen farbig */
-.mx-box.ok,.mx-box.kn{background:#fff}
+.mx-box.ok{background:#fff}
+.mx-box.kn{background:#FFFBF4}
 .mx-box.rot{background:#FFF7F4}
 .mx-zahl b.ok{color:var(--muted)}
-.mx-dienst{background:#FBF8F3;border-color:transparent;color:var(--text)}
-.mx-dienst .nn{font-weight:600;padding-left:0}
-.mx-dienst::before{content:'';width:9px;height:9px;border-radius:9px;background:var(--f);flex:0 0 auto;margin-left:4px}
-.mx-dienst.leer::before{display:none}
-.mx-dienst.auto{border-color:rgba(43,36,32,.28)}
-.mx-mini{background:#E9E3DA;color:var(--text2);opacity:1}
-.mx-mini.offen,.mx-mini.gef{background:#fff;border-style:dashed;border-color:#B8AD9F}
-.prow .pk{filter:saturate(.5)}
+.mx-dienst{background:color-mix(in srgb,var(--f) 12%,#fff);border-color:color-mix(in srgb,var(--f) 30%,#fff);
+  color:color-mix(in srgb,var(--f) 80%,#000);box-shadow:inset 4px 0 0 var(--f)}
+.mx-dienst .nn{font-weight:700}
+.mx-dienst.leer{box-shadow:none}
+.mx-dienst.auto{border-color:color-mix(in srgb,var(--f) 55%,#fff)}
+.mx-mini{background:var(--f);color:#fff;opacity:.75}
+.mx-mini.offen,.mx-mini.gef{background:#fff;color:var(--f);border-style:dashed;border-color:var(--f);opacity:1}
+.prow .pk{filter:saturate(.75)}
 
 /* Nachbarmonate in der Matrix */
 .mx-box.nachbar{opacity:.42;filter:saturate(.35);cursor:pointer;background:#fff}
@@ -286,6 +287,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 .ur-chips{position:absolute;left:6px;right:6px;bottom:5px;display:flex;flex-wrap:wrap;gap:3px}
 .ur-chip{font-size:11px;font-weight:600;letter-spacing:.03em;line-height:16px;border-radius:6px;padding:1px 6px;color:#fff;background:var(--f);opacity:.85}
 .ur-chip.offen{background:#fff;color:var(--f);border:1.5px dashed var(--f);padding:0 5px;opacity:1}
+.ur-chip.fza{background:color-mix(in srgb,var(--f) 16%,#fff);color:var(--f);opacity:1}
 .ur-chip.fb{background:#fff;color:var(--f);border:1px solid var(--f)}
 .ur-chip.tz{background:transparent;color:var(--muted);border:1px dashed var(--muted);opacity:1}
 .ur-chip.meins{opacity:1;box-shadow:0 0 0 1.5px #fff,0 0 0 3px var(--f)}
@@ -521,7 +523,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
       <div>
         <div class="werkzeug">
           <label class="f" style="flex-direction:row;align-items:center;gap:8px">Eintragen für <select id="urlSel"></select></label>
-          <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button><button data-t="termin">Termin</button></span>
+          <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button><button data-t="fza">FZA</button><button data-t="termin">Termin</button></span>
           <span class="hint" id="urlTermInfo"></span>
           <span class="hint">Antippen oder über Tage streichen; nochmal = löschen. Urlaub zählt nur an Werktagen.</span>
         </div>
@@ -650,7 +652,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.38';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.39';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1281,9 +1283,9 @@ function matrixHtml(info){
         : `<div class="mx-dienst leer">${x.partner ? `<span class="vorschlag" data-vorschlag="${x.s}|${x.partner}" title="wie ${x.w === 7 ? 'Freitag' : 'Sonntag'} übernehmen">${esc(x.partner)} wie ${x.w === 7 ? 'Fr' : 'So'}?</span>` : darfEinteilen() ? '+ einteilen' : '–'}</div>`;
       const abw = x.abw.filter(([p, a]) => a).map(([p, a, g]) => a
         ? (a === 'urlaub' && !urlOk(eintrag(p.k, x.s))
-          ? `<span class="mx-mini offen" title="${esc((p.name || p.k) + ': Urlaub (beantragt)')}">${esc(p.k)}</span>`
-          : `<span class="mx-mini" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a])}">${esc(p.k)}</span>`)
-        : `<span class="mx-mini gef" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('');
+          ? `<span class="mx-mini offen" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': Urlaub (beantragt)')}">${esc(p.k)}</span>`
+          : `<span class="mx-mini" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + ABW_NAME[a])}">${esc(p.k)}</span>`)
+        : `<span class="mx-mini gef" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': nach Dienst, fehlt evtl.')}">${esc(p.k)}</span>`).join('');
       const wu = x.wu.map(([p, e]) => `<span class="mx-wu ${e.typ} ${e.stufe === 'hart' ? 'hart' : ''}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + ' ' + (e.stufe || ''))}">${icon(TYPEN[e.typ].icon)}${esc(p.k)}</span>`).join('');
       /* Hinweise als kleine Symbole neben dem Datum, Text per Maus-Tooltip */
       const hw = (x.hwRot || x.hwGrau.length || x.kongr.length) ? `<div class="mx-hwi">`
@@ -1729,7 +1731,7 @@ function urlTagHtml(s){
   let chips = '';
   for(const p of personen()){
     const e = eintrag(p.k, s);
-    if(e && (e.typ === 'urlaub' || e.typ === 'fb'))
+    if(e && (e.typ === 'urlaub' || e.typ === 'fb' || e.typ === 'fza'))
       chips += `<span class="ur-chip ${e.typ} ${e.typ === 'urlaub' && !e.ok ? 'offen' : ''} ${p.k === urlK ? 'meins' : ''}" style="--f:${farbe(p)}" title="${esc((p.name || p.k) + ': ' + TYPEN[e.typ].name + (e.typ === 'urlaub' ? (e.ok ? ' (genehmigt)' : ' (beantragt)') : ''))}">${esc(p.k)}</span>`;
     else if(!we && !ft && teilzeitFrei(p, s) && !(e && e.typ === 'da') && p.k === urlK)
       chips += `<span class="ur-chip tz" title="Teilzeit frei">${esc(p.k)}</span>`;
