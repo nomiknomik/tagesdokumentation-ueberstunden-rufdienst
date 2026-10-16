@@ -64,6 +64,8 @@ nav.tabs .ic{width:16px;height:16px}
 .hknopf{position:relative;border:1px solid var(--border);background:var(--card);border-radius:999px;width:38px;height:38px;display:grid;place-items:center;cursor:pointer;color:var(--text2);padding:0}
 .hknopf:hover{border-color:var(--primary);color:var(--primary)}
 .hknopf .badge{position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font:700 11px/18px system-ui,sans-serif;font-style:normal;padding:0 5px;text-align:center}
+.proto-filter{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.proto-filter select{min-width:0;font-size:13px}
 .proto-z{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border)}
 .proto-z small{color:var(--muted);white-space:nowrap;font-size:11.5px;padding-top:1px}
 .proto-z .was{line-height:1.35} .proto-z .tg{color:var(--text2)}
@@ -753,7 +755,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.66';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.67';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1342,7 +1344,7 @@ const istAdmin = () => adminGeraet() && !ich();
    alle anderen tragen nur fuer sich selbst ein. Ist niemand Planer, duerfen alle. */
 const darfVerwalten = () => !cfg.personen.some(p => p.planer) || !!(ich() && ich().planer) || istAdmin();
 const darfVeroeffentlichen = () => !!(ich() && ich().planer) || istAdmin();   // Signieren: nur Planer/Admin
-const darfFuer = k => k === ichK || darfVerwalten();
+const darfFuer = k => true;   // 1.67: jede:r traegt fuer alle ein (kleines Team, alles im Protokoll); Genehmigtes bleibt beim Planer
 /* Freigabepflichtig (Antrag -> Planer genehmigt, ok:{von,am}): Urlaub, Fortbildung, FZA */
 const FREIGABE = ['urlaub', 'fb', 'fza'], pflicht = t => FREIGABE.includes(t);
 const urlOk = e => !!(e && pflicht(e.typ) && e.ok);
@@ -1647,6 +1649,7 @@ function einteilen(s, k, auto){
     }
     if(k) d.tage[s] = {oa: k, von: ichK, am: Date.now(), ...(auto ? {auto: true} : {})}; else delete d.tage[s];
     d.log.push({am: Date.now(), von: ichK, tag: s, alt: jetzt, neu: k, ...(auto ? {auto: true} : {})});
+    if(d.log.length > 2000) d.log = d.log.slice(-2000);
   });
 }
 /* Dienst bequem loeschen (1.60): Maus ueber dem Tag + Entf/Ruecktaste (Desktop),
@@ -2161,12 +2164,12 @@ function protokollEintraege(){
     const w = pfad.match(/^plan\/wuensche\/([^/]+)\//), d = /^plan\/dienst\//.test(pfad);
     if(!w && !d) continue;
     const log = f.data.log || [];
-    log.forEach(x => { if(x.tag) r.push({...x, k: w ? w[1] : x.tdaK || '', dienst: d}); else r.push({...x, dienst: d, meta: true}); });
+    log.forEach(x => { if(x.tag) r.push({...x, k: w ? w[1] : x.tdaK || '', dienst: d, betr: w ? [w[1]] : [x.alt, x.neu, x.tdaK].filter(Boolean)}); else r.push({...x, dienst: d, meta: true}); });
     if(w){   // vor Einfuehrung des Protokolls: nur Eintragszeit am Eintrag
       const erst = log.length ? Math.min(...log.map(x => x.am)) : Infinity;
       for(const [s, e] of Object.entries(f.data.tage || {})){
-        if(e.am && e.am < erst) r.push({am: e.am, von: e.von || w[1], k: w[1], tag: s, alt: '?', neu: wCode(e).replace('✓', '')});
-        if(e.ok && e.ok.am < erst) r.push({am: e.ok.am, von: e.ok.von, k: w[1], tag: s, alt: e.typ, neu: e.typ + '✓'});
+        if(e.am && e.am < erst) r.push({am: e.am, von: e.von || w[1], k: w[1], tag: s, alt: '?', neu: wCode(e).replace('✓', ''), betr: [w[1]]});
+        if(e.ok && e.ok.am < erst) r.push({am: e.ok.am, von: e.ok.von, k: w[1], tag: s, alt: e.typ, neu: e.typ + '✓', betr: [w[1]]});
       }
     }
   }
@@ -2191,13 +2194,40 @@ function protokollText(x){
   if(x.neu + '✓' === x.alt) return codeName(x.neu) + ': Genehmigung zurückgenommen';
   return `${codeName(x.alt)} → ${codeName(x.neu)}`;
 }
-let protoFilter = '';
+/* Filter (1.67): Monat = betroffener Tag, geaendert von, betroffene Person, Art */
+let protoF = {m: '', von: '', k: '', art: ''};
+const PROTO_ART = {dienst: 'Dienst', urlaub: 'Urlaub', fb: 'Fortbildung', fza: 'FZA', anw: 'frei/anwesend/½ Tag', wunsch: 'Dienstwunsch/No-Go', ok: 'Genehmigung'};
+function protoArt(x){
+  if(x.dienst || x.meta) return 'dienst';
+  const a = String(x.alt || '').replace(/[✓!]|-.*/g, ''), n = String(x.neu || '').replace(/[✓!]|-.*/g, '');
+  if(a && a === n && String(x.alt).includes('✓') !== String(x.neu).includes('✓')) return 'ok';
+  const t = n || a;
+  return t === 'urlaub' || t === 'fb' || t === 'fza' ? t : t === 'wunsch' || t === 'nogo' ? 'wunsch' : 'anw';
+}
+const protoPasst = x => (!protoF.m || (x.tage || []).some(t => t && t.startsWith(protoF.m)))
+  && (!protoF.von || x.von === protoF.von) && (!protoF.k || (x.betr || []).includes(protoF.k)) && (!protoF.art || protoArt(x) === protoF.art);
+function protoFilterHtml(){
+  const m0 = heute().slice(0, 7), monate = Array.from({length: 25}, (_, i) => ymPlus(m0, 12 - i));
+  const sel = (f, opts, leer) => `<select id="protoF_${f}" title="${leer}">${[['', leer], ...opts].map(([v, t]) => `<option value="${esc(v)}" ${protoF[f] === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
+  const pers = personen().map(p => [p.k, p.name || p.k]);
+  return `<div class="proto-filter">${sel('m', monate.map(m => [m, monatName(m)]), 'alle Monate')}${sel('von', pers, 'geändert von: alle')}${sel('k', pers, 'betroffen: alle')}${sel('art', Object.entries(PROTO_ART), 'alle Arten')}</div>`;
+}
+/* Protokoll-Umfang (1.67): Wunschdateien von Vorjahr bis naechstem Jahr, Dienstdateien
+   12 Monate zurueck bis 12 vor. Einmal je Sitzung, danach ETag (304 zaehlt nicht ins Limit). */
+async function protoLaden(){
+  const y = +heute().slice(0, 4), m0 = heute().slice(0, 7);
+  await Promise.all([y - 1, y, y + 1].map(ladeJahr));
+  const von = ymPlus(m0, -12), bis = ymPlus(m0, 12);
+  const b = await baumHolen();
+  await Promise.all(b.filter(x => { const m = x.match(/^plan\/dienst\/(\d{4}-\d{2})\.json$/); return m && m[1] >= von && m[1] <= bis && !(files[x] && files[x].data); }).map(lesen));
+  cacheSchreiben();
+}
 async function protokollDialog(reiter){
   const verw = darfVerwalten();
   reiter ||= verw && offeneAntraege().length ? 'todo' : 'log';
   dialog(`<h3>${verw ? 'Offene Anträge & Protokoll' : 'Protokoll'}</h3><div class="unter" id="protoUnter">Lade …</div><div id="protoInhalt"></div><div class="reihe" style="margin-top:12px;justify-content:flex-end"><button class="btn out" id="protoZu">Schließen</button></div>`,
     d => d.querySelector('#protoZu').onclick = zu);
-  try{ if(zugang() && !nurLesen) await todoLaden(); }catch(e){ toast(e.message); }
+  try{ if(zugang() && !nurLesen) await protoLaden(); }catch(e){ toast(e.message); }
   zeigeProtokoll(reiter);
 }
 function zeigeProtokoll(reiter){
@@ -2205,7 +2235,7 @@ function zeigeProtokoll(reiter){
   const verw = darfVerwalten(), offen = offeneAntraege();
   const knopf = (r, txt) => `<button data-r="${r}" class="${reiter === r ? 'on' : ''}">${txt}</button>`;
   $('protoUnter').innerHTML = (verw ? `<span class="seg" id="protoReiter">${knopf('todo', `Offen (${offen.length})`)}${knopf('log', 'Protokoll')}</span>` : '')
-    + (reiter === 'log' ? ` <select id="protoWer" style="margin-left:6px"><option value="">alle</option>${personen().map(p => `<option value="${esc(p.k)}" ${protoFilter === p.k ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('')}</select>` : '');
+    + (reiter === 'log' ? protoFilterHtml() : '');
   if(reiter === 'todo'){
     const je = {}; offen.forEach(x => (je[x.m] ||= []).push(x));
     box.innerHTML = Object.keys(je).length ? Object.entries(je).map(([m, l]) => `<div class="todo-m"><h4><span>${monatName(m)}</span>
@@ -2213,16 +2243,17 @@ function zeigeProtokoll(reiter){
         + l.map(x => `<div class="z">${pk(person(x.k))}<span>${esc(person(x.k).name || x.k)}: ${TYPEN[x.typ].name} <b>${spannen(x.tage)}</b> <span class="hint">(${x.tage.filter(werktag).length} Werktage)</span></span></div>`).join('') + '</div>').join('')
       : '<div class="hint" style="padding:10px 0">Keine offenen Anträge (Urlaub, Fortbildung, FZA – aktuelles und nächstes Jahr). ✓</div>';
   }else{
-    const g = protokollEintraege().filter(x => !protoFilter || x.k === protoFilter || x.von === protoFilter).slice(0, 200);
+    const alle = protokollEintraege().filter(protoPasst), g = alle.slice(0, 300);
     const zeit = am => new Date(am).toLocaleString('de-DE', {day: 'numeric', month: 'numeric', year: '2-digit', hour: '2-digit', minute: '2-digit'});
     box.innerHTML = (g.length ? g.map(x => `<div class="proto-z ${x.alt === '?' ? 'alt' : ''}"><small>${zeit(x.am)}</small><div class="was"><b>${esc(x.von || '?')}</b>${x.k && x.k !== x.von ? ' für <b>' + esc(x.k) + '</b>' : ''}: ${protokollText(x)}${x.tage[0] ? ` <span class="tg">· ${spannen(x.tage.filter(Boolean))}</span>` : ''}</div></div>`).join('')
-      : '<div class="hint" style="padding:10px 0">Noch keine Einträge.</div>')
-      + `<div class="hint" style="margin-top:8px">Erfasst: Dienste, Wünsche, Urlaub, Genehmigungen (geladene Monate, aktuelles + nächstes Jahr). Wunsch-/Urlaubsänderungen vor v1.51 nur als Eintragszeit, Löschungen davon nicht.</div>`
+      : '<div class="hint" style="padding:10px 0">Keine Einträge für diese Filter.</div>')
+      + (alle.length > g.length ? `<div class="hint" style="margin-top:6px">${alle.length - g.length} ältere Einträge ausgeblendet – Filter enger setzen.</div>` : '')
+      + `<div class="hint" style="margin-top:8px">Erfasst: Dienste, Wünsche, Urlaub/FB/FZA, Genehmigungen – betroffene Tage 12 Monate zurück bis 12 Monate voraus. Wunsch-/Urlaubsänderungen vor v1.51 nur als Eintragszeit, Löschungen davon nicht.</div>`
       + (adminGeraet() ? `<div class="hint"><a href="https://github.com/${TEAM_REPO}/commits/main/plan" target="_blank" rel="noopener">Vollständige Historie auf GitHub</a></div>` : '');
   }
   icons(box);
   const pr = $('protoReiter'); if(pr) pr.querySelectorAll('button').forEach(b => b.onclick = ()=> zeigeProtokoll(b.dataset.r));
-  const pw = $('protoWer'); if(pw) pw.onchange = ()=>{ protoFilter = pw.value; zeigeProtokoll('log'); };
+  ['m', 'von', 'k', 'art'].forEach(f => { const el = $('protoF_' + f); if(el) el.onchange = ()=>{ protoF[f] = el.value; zeigeProtokoll('log'); }; });
   box.querySelectorAll('[data-gen]').forEach(b => b.onclick = ()=>{ genehmigen(b.dataset.gen); zeigeProtokoll('todo'); });
   box.querySelectorAll('[data-zeig]').forEach(b => b.onclick = ()=>{ zu(); ym = b.dataset.zeig; merken('planung_monat', ym); document.querySelector('nav.tabs [data-tab="urlaub"]').click(); });
 }

@@ -88,9 +88,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `mitLog()` in `aendern()` (Codes `wCode()`: Typ + ✓ genehmigt + ! hart); Rückgängig setzt `log`
   nie zurück. Kopf-Knopf `#protoBtn`: Dialog „Offen“ (beantragt: Urlaub/FB/FZA, nur `darfVerwalten()`,
   Zähler-Badge, `todoLaden()` = aktuelles + nächstes Jahr) und „Protokoll“ (Striche ≤ 2 min
-  zusammengefasst; vor 1.51 nur Eintragszeit `am` am Eintrag).
+  zusammengefasst; vor 1.51 nur Eintragszeit `am` am Eintrag). Seit 1.67 lädt `protoLaden()` Wunschdateien
+  Vorjahr–Folgejahr + Dienstdateien ±12 Monate; Filter `protoF` (Monat des betroffenen Tags, geändert von,
+  betroffen = `betr`, Art `protoArt()`), max. 300 Zeilen. Dienst-`log` auf 2000 Einträge begrenzt.
   Rechte (seit 1.31, nur Oberfläche – der Team-Token darf technisch alles): `darfVerwalten()`
-  = Planer/Admin/niemand ist Planer; sonst nur eigene Einträge (`darfFuer()`), Einstellungen
+  = Planer/Admin/niemand ist Planer; Einträge darf seit 1.67 jede:r für alle (`darfFuer()` = true, Genehmigtes nur Planer), Einstellungen
   ausgeblendet (`cfgSperren()`, Karte `.frei` ausgenommen). Person wechseln (Kopf `#ichBtn`, `#ichWechsel`)
   seit 1.61 nur auf dem Admin-Gerät (`adminGeraet()`), auch nicht der Planer. Seit 1.63 kommen die Rechte
   immer von der gewählten Person (`istAdmin()` nur ohne gewählte Person) – der Admin sieht genau ihre
