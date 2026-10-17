@@ -103,6 +103,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Tag gilt, sonst Quote (`gew(p, s)` – vorher galt jedes Muster rückwirkend = Vollzeit-Erwartung). WE-Ziel ganzzahlig:
   `weGanz` = Anteil gerundet, ±1 erst bei Bilanz ≥ 1 WE (`ziele()`); Vormonats-Soll bleibt anteilig (gerundet fehlten in
   Summe WE). Thermometer ohne Mengen-Wunsch: nur „zu viel“ zählt (wer mehr will, trägt es ein). Details: Ist/Soll je Monat.
+  2.07 (Wunsch): Pflicht nur in ganzen Zahlen – Soll je Monat = Anteil gerundet (Dienste und WE, 5,4 → 5, 5,6 → 6),
+  Bilanz = Ist − gerundetes Soll (`vorherAlle()`, Vormonats-Soll ganzzahlig, keine Normierung mehr). Für die Verteilung
+  relativ: Überhang/Rest des Teams nach Quote verteilt (`relN`/`relW`), ±1 erst ab 1 ganzen (`ziele()`: `ganz`/`weGanz`).
+  Thermometer gegen die ganzzahlige Pflicht (absolut).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',

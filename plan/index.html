@@ -836,7 +836,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.06';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.07';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1646,16 +1646,16 @@ function renderPlan(){
 function detailHtml(p, z, zf){
   const h = z.h, e = z.e, li = a => a.map(x => `<li>${x}</li>`).join('');
   /* 2.06: Vormonate je Monat (Ist/Soll), keine Summen */
-  const vm = (f, fe) => h.mon.length ? h.mon.map(x => `${MON[+x.m.slice(5, 7) - 1].slice(0, 3)} ${x[f]}/${zahl1(x[fe])}`).join(' · ') : 'keine Pläne';
+  const vm = (f, fe) => h.mon.length ? h.mon.map(x => `${MON[+x.m.slice(5, 7) - 1].slice(0, 3)} ${x[f]}/${x[fe]}`).join(' · ') : 'keine Pläne';
   const sal = x => (x > 0 ? '+' : '') + zahl1(x);
   const zeilen = [
     `Anwesend ${e.da} von ${e.tage} Tagen · Quote ${p.quote || 100} % · max. ${maxDienste(p)}`,
     `<b>Dienste</b> diesen Monat: Anteil ${zahl1(e.expN !== undefined ? e.expN : e.exp)}${e.expN !== undefined ? ` → Wunsch ${zahl1(e.exp)}` : ''}`
-      + `${z.rN ? ` ${z.rN > 0 ? '+' : '−'} Ausgleich ${zahl1(Math.abs(z.rN))}` : ''} = <b>Ziel ${zahl1(z.ziel)}</b>, Ist ${diensteIm(p.k, ym)}`,
-    `Vormonate Ist/Soll: ${vm('n', 'exp')} → Bilanz ${sal(h.n - h.exp)}${zf ? `, mit diesem Monat ${sal(zf.d)}` : ''}`,
+      + `, ganz ${z.ganz}${z.rN ? ` ${z.rN > 0 ? '+' : '−'} Ausgleich 1` : ''} = <b>Ziel ${z.ziel}</b>, Ist ${diensteIm(p.k, ym)}`,
+    `Vormonate Ist/Soll: ${vm('n', 'exp')} → Bilanz ${sal(h.n - h.exp)} (zum Team ${sal(-h.relN)})${zf ? `, mit diesem Monat ${sal(zf.d)}` : ''}`,
     `<b>WE</b> diesen Monat: Anteil ${zahl1(e.expWeBN !== undefined ? e.expWeBN : e.expWeB)}${e.expWeBN !== undefined ? ` → Wunsch ${zahl1(e.expWeB)}` : ''}, ganz ${z.weGanz}`
       + `${z.rW ? ` ${z.rW > 0 ? '+' : '−'} Ausgleich 1` : ''} = <b>Ziel ${z.zielWe}</b>, Ist ${weImMonat(p.k, ym).size}`,
-    `Vormonate Ist/Soll: ${vm('weB', 'expWeB')} → Bilanz ${sal(h.weB - h.expWeB)}${zf ? `, mit diesem Monat ${sal(zf.dw)}` : ''}`,
+    `Vormonate Ist/Soll: ${vm('weB', 'expWeB')} → Bilanz ${sal(h.weB - h.expWeB)} (zum Team ${sal(-h.relW)})${zf ? `, mit diesem Monat ${sal(zf.dw)}` : ''}`,
   ];
   const dienste = [], gesperrt = {};
   for(let i = 1; i <= tageIm(ym); i++){
@@ -2024,21 +2024,28 @@ function vorherAlle(){
       r[k].exp += e[k].exp; r[k].expWe += e[k].expWe; r[k].expWeB += e[k].expWeB; r[k].weB += wb;
       if(belegt) r[k].mon.unshift({m, n, exp: e[k].exp, weB: wb, expWeB: e[k].expWeB}); }   // je Monat fuer die Details
   }
-  /* 2.00: Rueckstand nur relativ (Summe 0) - getrennte Fr/So und Leute ausserhalb der Liste verschieben sonst alle Ziele */
-  const sum = f => Object.values(r).reduce((a, x) => a + x[f], 0), fW = sum('expWeB') ? sum('weB') / sum('expWeB') : 1, fN = sum('exp') ? sum('n') / sum('exp') : 1;
-  for(const k in r){ r[k].expWeB *= fW; r[k].exp *= fN; r[k].mon.forEach(x => { x.exp *= fN; x.expWeB *= fW; }); }   // Soll anteilig: gerundet fehlten in Summe WE
+  /* 2.07: Soll je Monat in ganzen Diensten/WE (Anteil gerundet: 5,4 → 5, 5,6 → 6; 50 % = 1 WE) - nur die Abweichung
+     davon zaehlt. exp/expWeB = Summe dieser Soll-Werte. */
+  for(const k in r){ r[k].mon.forEach(x => { x.exp = Math.round(x.exp); x.expWeB = Math.round(x.expWeB); });
+    r[k].exp = r[k].mon.reduce((a, x) => a + x.exp, 0); r[k].expWeB = r[k].mon.reduce((a, x) => a + x.expWeB, 0); }
+  /* Fuer die Verteilung relativ zum Team (rel*): gerundete Soll-Werte ergeben in Summe selten genau die vergebenen
+     Dienste - den Ueberhang (bzw. Rest) tragen alle nach Arbeitsquote, sonst gaelten alle zugleich als „zu viel“ */
+  const ks = Object.keys(r), q = k => (person(k).quote || 100) / 100, Q = ks.reduce((a, k) => a + q(k), 0) || 1;
+  for(const [f, ist, rel] of [['exp', 'n', 'relN'], ['expWeB', 'weB', 'relW']]){
+    const ueber = ks.reduce((a, k) => a + r[k][ist] - r[k][f], 0);
+    ks.forEach(k => r[k][rel] = r[k][f] - r[k][ist] + ueber * q(k) / Q);   // > 0: Rueckstand, < 0: hatte mehr als sein Teil
+  }
   return r;
 }
 const zahl1 = x => x.toFixed(1).replace('.', ',');
-/* Ziel je Person (1.96, als Funktion seit 2.04 - auch fuer Thermometer und Details): Anteil in diesem Monat
-   (Quote, Abwesenheit, gewuenschte Menge) + Rueckstand aus den Vormonaten (Dienste max. ±1).
-   2.06: WE nur ganze Zahlen - Anteil gerundet (50 % = 1, 80 % = meist 2); ausgeglichen wird erst, wenn die Bilanz
-   der 6 Vormonate um ein ganzes WE oder mehr abweicht (dann ±1) */
+/* Ziel je Person (1.96, als Funktion seit 2.04 - auch fuer Thermometer und Details). 2.07: nur ganze Zahlen - Anteil
+   in diesem Monat (Quote, Abwesenheit, gewuenschte Menge) gerundet (`ganz`/`weGanz` = Pflicht); ±1 erst, wenn die
+   Bilanz der 6 Vormonate (relativ zum Team) um einen ganzen Dienst bzw. ein ganzes WE oder mehr abweicht */
 function ziele(){
-  const hist = vorherAlle(), jetzt = erwartung(ym), klemm = x => Math.max(-1, Math.min(1, x)), r = {};
-  diensttauglich().forEach(p => { const h = hist[p.k], e = jetzt[p.k], rN = klemm(h.exp - h.n), sW = h.expWeB - h.weB;
-    const rW = sW >= 1 ? 1 : sW <= -1 ? -1 : 0, weGanz = Math.round(e.expWeB);
-    r[p.k] = {h, e, rN, rW, weGanz, ziel: e.exp + rN, zielWe: Math.max(0, weGanz + rW)}; });
+  const hist = vorherAlle(), jetzt = erwartung(ym), r = {}, eins = x => x >= 1 ? 1 : x <= -1 ? -1 : 0;
+  diensttauglich().forEach(p => { const h = hist[p.k], e = jetzt[p.k], rN = eins(h.relN), rW = eins(h.relW);
+    const ganz = Math.round(e.exp), weGanz = Math.round(e.expWeB);
+    r[p.k] = {h, e, rN, rW, ganz, weGanz, ziel: Math.max(0, ganz + rN), zielWe: Math.max(0, weGanz + rW)}; });
   return r;
 }
 /* Zufriedenheit (2.04, Thermometer unter „Dienste im Monat“): 100 = Ziel getroffen, Wuensche und Regeln eingehalten.
@@ -2051,7 +2058,7 @@ function zufriedenheit(p, z){
   /* 2.05: Saldo ueber die Vormonate + diesen Monat (Ist − Soll): ±1 ist Streuung, ab 2 (z. B. zwei Monate je 1 zu viel)
      Abweichung; mit Wunsch nach mehr ist schon das Unterschreiten ein leichter Verstoss. 2.06: 6 Monate; WE dieses
      Monats gegen das ganzzahlige Ziel; ohne Mengen-Wunsch ist zu wenig kein Nachteil (wer mehr will, traegt es ein) */
-  const d = n - z.e.exp - (z.h.exp - z.h.n), dw = we - z.weGanz - (z.h.expWeB - z.h.weB), mehrD = z.e.expN !== undefined, mehrW = z.e.expWeBN !== undefined;
+  const d = n - z.ganz - (z.h.exp - z.h.n), dw = we - z.weGanz - (z.h.expWeB - z.h.weB), mehrD = z.e.expN !== undefined, mehrW = z.e.expWeBN !== undefined;   // 2.07: gegen die ganzzahlige Pflicht
   const saldo = (x, was, w, pkt) => {
     if(w && x < -0.3) ab(`gewünschte Menge: ${zahl1(-x)} ${was} zu wenig (Bilanz ${VORMONATE + 1} Monate)`, 10 + Math.max(0, -x - 1) * pkt);
     else if(x > 1.2 && !w) ab(`${zahl1(x)} ${was} zu viel (Bilanz ${VORMONATE + 1} Monate)`, (x - 1) * pkt); };
