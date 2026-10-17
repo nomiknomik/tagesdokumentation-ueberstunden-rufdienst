@@ -818,7 +818,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.93';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.94';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1317,8 +1317,8 @@ function bewerte(p, s){
   }
   const n = diensteIm(p.k, ymVon(s)) - (dienstVon(s) === p.k ? 1 : 0), max = maxDienste(p);
   if(n >= max){ tags.push(['r', `max. ${max} erreicht`]); score -= 50; }
-  if(dienstVon(plus(s, -1)) === p.k) { tags.push(['o', 'Dienst am Vortag']); score -= 15; }
-  if(dienstVon(plus(s, 1)) === p.k) { tags.push(['o', 'Dienst am Folgetag']); score -= 15; }
+  if(dienstVon(plus(s, -1)) === p.k) { tags.push(['r', 'Dienst am Vortag']); score -= 100; }   // 1.94: zwei Dienste in Folge verboten
+  if(dienstVon(plus(s, 1)) === p.k) { tags.push(['r', 'Dienst am Folgetag']); score -= 100; }
   const blk = weBlock(s);
   if(blk && !a){
     /* angrenzend an Urlaub: tabu, an Fortbildung ungern (Fr-Dienst: ab Do, Sa/So-Dienst: ab Fr) */
@@ -1930,22 +1930,29 @@ function autoVerteilen(){
   const weZahl = k => alle.filter(s => weTag(s) && dienstVon(s) === k).length;
   const hist = vorherAlle(), jetzt = erwartung(ym);
   let n = 0; const rest = [];
+  const kandFuer = s => {
+    const kand = diensttauglich().map(p => ({p, ...bewerte(p, s)})).filter(x => !x.tags.some(t => t[0] === 'r'));
+    /* Saldo ueber 4 Monate (3 Vormonate + dieser): Ist minus Erwartung (Abwesenheit fair verrechnet), WE/Feiertage extra */
+    kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k];
+      x.wert = x.score + x.n * 3 - ((h.n + x.n) - (h.exp + e.exp)) * 15
+        - (weTag(s) ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0) + Math.random(); });
+    return kand.sort((a, b) => b.wert - a.wert);
+  };
+  /* Reihenfolge (1.94): 1. Tage, fuer die nur eine Person in Frage kommt, 2. Fr+So als Paar (eine Person),
+     3. Samstage, 4. Feiertage, 5. Rest - innerhalb jeweils der engste Tag zuerst */
+  const stufe = s => wt(s) === 5 || wt(s) === 7 ? 0 : wt(s) === 6 ? 1 : feiertag(s) ? 2 : 3;
   while(offen.length){
-    let best = null;
-    for(const s of offen){
-      const kand = diensttauglich().map(p => ({p, ...bewerte(p, s)})).filter(x => !x.tags.some(t => t[0] === 'r'));
-      /* Fairness ueber 4 Monate (3 Vormonate + dieser): Dienste relativ zum eigenen Max., WE/Feiertage absolut */
-      /* Saldo ueber 4 Monate: Ist minus Erwartung (Abwesenheit fair verrechnet) */
-      kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k];
-        x.wert = x.score + x.n * 3 - ((h.n + x.n) - (h.exp + e.exp)) * 15
-          - (weTag(s) ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0)
-        - ((dienstVon(plus(s, -1)) === x.p.k || dienstVon(plus(s, 1)) === x.p.k) ? 30 : 0) + Math.random(); });
-      kand.sort((a, b) => b.wert - a.wert);
-      const rang = kand.length + (wt(s) === 6 ? 2 : 0);   // 1.93: Sa nach Fr/So - erst das Fr+So-Paar, dann ein:e andere:r fuer Sa
-      if(!best || rang < best.rang) best = {s, kand, rang};
-    }
+    const liste = offen.map(s => ({s, kand: kandFuer(s)}));
+    const best = liste.find(x => x.kand.length <= 1)
+      || liste.sort((a, b) => stufe(a.s) - stufe(b.s) || a.kand.length - b.kand.length)[0];
     offen = offen.filter(x => x !== best.s);
     if(!best.kand.length){ rest.push(best.s); continue; }
+    const w = wt(best.s), paar = w === 5 ? plus(best.s, 2) : w === 7 ? plus(best.s, -2) : '';
+    if(paar && offen.includes(paar)){   // Fr+So: dieselbe Person, die fuer beide Tage am besten passt
+      const pk = kandFuer(paar), beide = best.kand.map(x => ({x, y: pk.find(y => y.p.k === x.p.k)})).filter(z => z.y)
+        .sort((a, b) => (b.x.wert + b.y.wert) - (a.x.wert + a.y.wert))[0];
+      if(beide){ einteilen(best.s, beide.x.p.k, true); einteilen(paar, beide.x.p.k, true); offen = offen.filter(x => x !== paar); n += 2; continue; }
+    }
     einteilen(best.s, best.kand[0].p.k, true); n++;
   }
   toast(`${n} Tage verteilt` + (rest.length ? ` – ${rest.length} ohne passende Person: ${rest.map(kurzDat).join(', ')}` : '.'));
