@@ -68,8 +68,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   bester Summe) → Sa → Feiertage → Rest; Dienst am Vor-/Folgetag = 'r', zwei Dienste in Folge verboten); Ziel 1–2 WE je Monat (`weImMonat()`, 3. WE −40);
   Seit 1.96 plant `autoVerteilen()` komplett im Speicher (`SIM` – `dienstVon()`/`diensteIm()` lesen ihn zuerst), Ziel je Person
   = `erwartung(ym).exp` + Rückstand Vormonate (±1), über dem Ziel stark abgewertet; danach `verbessern()`: Pakete
-  (Fr+So zusammen) verschieben/tauschen, solange Σ(Ist−Ziel)² + 2·Σ(WE−ZielWE)² sinkt, keine rote Regel (auch Nachbartage)
-  und Bewertung ≤ 25 schlechter; erst dann `einteilen()`. Seitenleiste zeigt „fair ≈ x · WE ≈ y“.
+  (Fr+So zusammen) verschieben/tauschen, keine rote Regel (auch Nachbartage); seit 1.97 angenommen, wenn
+  25·ΔJ + ΔKosten < 0 (J = Σ(Ist−Ziel)² + 2·Σ(WE−ZielWE)², Kosten = −(score+n·3) + 30 je weichem Verstoß über alle
+  Dienste der beteiligten Personen im Monat – WE-Serie, weiches No-Go usw.); erst dann `einteilen()`. Keine Fair-Anzeige (Wunsch).
   WE-Fairness (1.95) je Block: Erwartung `expWeB` = je Samstag 2 Einsätze nach Arbeitsquote (auch bei Teilzeit-Muster),
   Saldo über 3 Vormonate + Monat × 25 in `autoVerteilen()` – Rückstand wird nachgeholt; Tages-WE-Fairness nur noch Feiertage Mo–Do;
   WE angrenzend an Urlaub tabu ('r', Nachbar-Arbeitstag über `werktagNeben()`), an Fortbildung −25.

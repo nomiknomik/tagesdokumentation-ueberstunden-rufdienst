@@ -818,7 +818,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.96';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.97';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1588,10 +1588,9 @@ function renderPlan(){
   $('autoWegBtn').classList.toggle('hidden', !Object.values(D.tage || {}).some(x => x.auto) || nurLesen);
   // Zaehler
   let z = '';
-  const erw = erwartung(ym);   // 1.96: fairer Anteil in diesem Monat (Quote, Abwesenheit)
   for(const p of diensttauglich()){
     const n2 = diensteIm(p.k, ym), max = maxDienste(p);
-    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${[p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : '', erw[p.k] ? 'fair ≈ ' + zahl1(erw[p.k].exp) + ' · WE ≈ ' + zahl1(erw[p.k].expWeB) : ''].filter(Boolean).join(' · ')}</small></div>`
+    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : ''}</small></div>`
       + `<div class="zahl">${n2}<small> / ${max}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, max) * 100)}%"></i></div>`;
   }
   const frei = Array.from({length: n}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
@@ -1946,7 +1945,7 @@ function autoVerteilen(){
     const kandFuer = s => {
       const kand = ps.map(p => ({p, ...bewerte(p, s)})).filter(x => !rot(x));
       kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k], nach = x.n + 1 - ziel[x.p.k];
-        x.wert = x.score + x.n * 3 - nach * 20 - Math.max(0, nach - 0.5) * 60   // ueber dem Monatsziel: stark abwerten
+        x.wert = x.score + x.n * 3 - nach * 15 - Math.max(0, nach - 0.5) * 30   // ueber dem Monatsziel: abwerten (Feinschliff in verbessern())
           - (weTag(s) && wt(s) < 5 ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0)
           - (wt(s) >= 5 && !weImMonat(x.p.k, ym).has(weBlock(s)[1]) ? (weImMonat(x.p.k, ym).size + 1 - zielWe[x.p.k]) * 25 : 0)
           + Math.random(); });
@@ -1989,13 +1988,19 @@ function verbessern(tage, ps, ziel, zielWe){
   }
   const J = () => ps.reduce((a, p) => { const n = diensteIm(p.k, ym) - ziel[p.k], w = weImMonat(p.k, ym).size - zielWe[p.k];
     return a + n * n + 2 * w * w; }, 0);
-  const guete = (pk) => pk.reduce((a, s) => a + bewerte(person(SIM[s]), s).score, 0);
+  /* 1.97: Guete = weiche Verstoesse (No-Go weich, Regeln, WE-Serie, 3. WE, WE an Fortbildung, Folgetag knapp …)
+     aller Dienste der beteiligten Personen im Monat (Serien/WE-Zahl wirken ueber den einzelnen Tag hinaus) */
+  const alleTage = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0, 4), +ym.slice(5, 7), i + 1));
+  const kosten = ks => alleTage.reduce((a, d) => { const k = dienstVon(d);
+    if(!ks.includes(k)) return a;
+    const b = bewerte(person(k), d); return a - (b.score + b.n * 3) + b.tags.filter(t => t[0] === 'o').length * 30; }, 0);   // ohne Anzahl-Term (Fairness misst J)
   const ok = pk => pk.every(s => [-1, 0, 1].every(i => { const d = plus(s, i), k = dienstVon(d);
     return !k || !person(k) || !bewerte(person(k), d).tags.some(t => t[0] === 'r'); }));
-  const versuch = (aend) => {   // aend: [[tag, neu], ...]; behalten, wenn besser
-    const alt = aend.map(([s]) => [s, SIM[s]]), vorJ = J(), vorG = guete(aend.map(x => x[0]));
+  const versuch = (aend) => {   // aend: [[tag, neu], ...]; behalten, wenn Fairness + Guete zusammen besser
+    const alt = aend.map(([s]) => [s, SIM[s]]), ks = [...new Set([...alt.map(x => x[1]), ...aend.map(x => x[1])])];
+    const vorJ = J(), vorK = kosten(ks);
     aend.forEach(([s, k]) => SIM[s] = k);
-    if(ok(aend.map(x => x[0])) && J() < vorJ - 0.01 && guete(aend.map(x => x[0])) >= vorG - 25) return true;
+    if(ok(aend.map(x => x[0]))){ const d = (J() - vorJ) * 25 + (kosten(ks) - vorK); if(d < -0.5) return true; }
     alt.forEach(([s, k]) => SIM[s] = k); return false;
   };
   for(let runde = 0; runde < 30; runde++){
