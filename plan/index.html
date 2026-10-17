@@ -208,6 +208,10 @@ body.weit .hd,body.weit main{max-width:1760px}
 .balken{height:4px;border-radius:4px;background:var(--line);margin:2px 6px 6px 40px;overflow:hidden}
 .balken i{display:block;height:100%;background:var(--primary)}
 .balken i.voll{background:var(--danger)}
+.thermo{height:4px;border-radius:4px;background:var(--line);margin:-3px 6px 7px 40px;overflow:hidden;cursor:help}
+.thermo i{display:block;height:100%} .thermo i.gut{background:var(--success)} .thermo i.mittel{background:var(--warning)} .thermo i.schlecht{background:var(--danger)}
+.detail{margin:0 6px 10px 40px;padding:8px 10px;border:1px dashed var(--border);border-radius:10px;font-size:11.5px;color:var(--text2)}
+.detail ul{margin:3px 0 7px;padding-left:16px} .detail li{margin:2px 0} .detail .tag{font-size:10px;padding:0 5px}
 .legende{display:grid;gap:6px;font-size:12px;color:var(--text2)}
 .legende div{display:flex;gap:6px;align-items:center}
 
@@ -615,7 +619,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <h3><span data-icon="info"></span>Legende</h3>
           <div class="legende">
             <div><span class="ampel"><span class="ok">2<small>vorm.</small></span></span>Besetzung: sicher anwesend vormittags / nachmittags</div>
-            <div><span class="chip gef"><span data-icon="moon"></span>XY</span>nach Dienst – fehlt evtl. (nur Liste)</div>
+            <div id="legGef"><span class="chip gef"><span data-icon="moon"></span>XY</span>nach Dienst – fehlt evtl. (nur Liste)</div>
             <div><span class="chip t-wunsch"><span data-icon="heart"></span>hart</span><span class="chip t-wunsch weich"><span data-icon="heart"></span>weich</span>Dienstwunsch</div>
             <div><span class="chip t-nogo"><span data-icon="ban"></span>hart</span><span class="chip t-nogo weich"><span data-icon="ban"></span>weich</span>No-Go</div>
             <div><span class="tausch"></span>&nbsp;nach Signatur getauscht</div>
@@ -832,7 +836,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.03';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.04';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1611,18 +1615,24 @@ function renderPlan(){
   $('unpubBtn').classList.toggle('hidden', !pub || !darfVeroeffentlichen() || nurLesen);
   $('autoBtn').classList.toggle('hidden', !darfEinteilen() || nurLesen);
   $('autoWegBtn').classList.toggle('hidden', !Object.values(D.tage || {}).some(x => x.auto) || nurLesen);
+  $('legGef').classList.toggle('hidden', matrix || kompakt || woche);   // 2.04: „nach Dienst“-Chip gibt es nur in der Liste
   // Zaehler
   let z = '';
-  const erw = diensttauglich().some(p => mengeVon(p, ym)) ? erwartung(ym) : {};
+  const ZL = diensttauglich().length ? ziele() : {}, geplant = Object.keys((D && D.tage) || {}).length > 0;
   for(const p of diensttauglich()){
-    const n2 = diensteIm(p.k, ym), max = maxDienste(p);
+    const n2 = diensteIm(p.k, ym), max = maxDienste(p), erw = ZL[p.k].e;
     /* 2.01: mit gewuenschter Dienstmenge n / Wunsch (anteilig nach Abwesenheit) statt n / max */
-    const w = erw[p.k] && erw[p.k].wunsch && mengeWunsch(p, ym, 'dienste', erw[p.k]) !== null ? Math.round(erw[p.k].exp) : 0;
+    const w = erw.expN !== undefined ? Math.round(erw.exp) : 0;
+    /* 2.04: Thermometer Zufriedenheit unter dem Balken (erst, wenn der Monat Dienste hat) */
+    const zf = geplant ? zufriedenheit(p, ZL[p.k]) : null;
+    const zfTip = zf && `Zufriedenheit ${zf.wert} %` + (zf.t.length ? '\n' + zf.t.map(([x, n]) => `−${n}  ${x}`).join('\n') : '\nZiel getroffen, Wünsche und Regeln eingehalten');
     z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : ''}</small></div>`
-      + `<div class="zahl"${w ? ` data-tip="gewünscht (anteilig nach Abwesenheit), max. ${max}"` : ''}>${n2}<small> / ${w || max}${w ? ' ♡' : ''}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, w || max) * 100)}%"></i></div>`;
+      + `<div class="zahl"${w ? ` data-tip="gewünscht (anteilig nach Abwesenheit), max. ${max}"` : ''}>${n2}<small> / ${w || max}${w ? ' ♡' : ''}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, w || max) * 100)}%"></i></div>`
+      + (zf ? `<div class="thermo" data-tip="${esc(zfTip)}"><i class="${zf.wert >= 80 ? 'gut' : zf.wert >= 50 ? 'mittel' : 'schlecht'}" style="width:${Math.max(4, zf.wert)}%"></i></div>` : '');
+    if(markK === p.k && adminGeraet()) z += detailHtml(p, ZL[p.k], zf);
   }
   const frei = Array.from({length: n}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
-  z += `<div class="hint" style="margin-top:8px">${frei ? frei + ' Tag' + (frei > 1 ? 'e' : '') + ' noch ohne Dienst' : 'Alle Tage besetzt ✓'}</div>`;
+  z += `<div class="hint" style="margin-top:8px">${frei ? frei + ' Tag' + (frei > 1 ? 'e' : '') + ' noch ohne Dienst' : 'Alle Tage besetzt ✓'}${geplant ? '<br>Oberer Balken: Dienste · unterer: Zufriedenheit (Ziel, Wünsche, Regeln) – Maus darauf zeigt die Gründe.' : ''}</div>`;
   $('zaehler').innerHTML = z;
   $('zaehler').querySelectorAll('.prow').forEach(el => {
     el.onclick = ()=>{ markK = markK === el.dataset.k ? '' : el.dataset.k; renderPlan(); };
@@ -1630,6 +1640,29 @@ function renderPlan(){
     el.title = 'Klick: Tage hervorheben · Doppelklick: Wunschkalender öffnen'; });
 }
 
+/* Details zur Verteilung (2.04, nur Admin-Geraet, Person per Klick gewaehlt): Herleitung des Ziels,
+   Thermometer-Abzuege, eigene Dienste mit Tags, gesperrte Tage nach Grund */
+function detailHtml(p, z, zf){
+  const h = z.h, e = z.e, li = a => a.map(x => `<li>${x}</li>`).join('');
+  const zeilen = [
+    `Anwesend ${e.da} von ${e.tage} Tagen · Quote ${p.quote || 100} % · max. ${maxDienste(p)}`,
+    `Dienste: Monatsanteil ${zahl1(e.expN !== undefined ? e.expN : e.exp)}${e.expN !== undefined ? ` → Wunsch ${zahl1(e.exp)}` : ''}`
+      + ` ${z.rN >= 0 ? '+' : '−'} Rückstand ${zahl1(Math.abs(z.rN))} (Vormonate ${h.n} von ${zahl1(h.exp)}) = <b>Ziel ${zahl1(z.ziel)}</b>, Ist ${diensteIm(p.k, ym)}`,
+    `WE: Monatsanteil ${zahl1(e.expWeBN !== undefined ? e.expWeBN : e.expWeB)}${e.expWeBN !== undefined ? ` → Wunsch ${zahl1(e.expWeB)}` : ''}`
+      + ` ${z.rW >= 0 ? '+' : '−'} Rückstand ${zahl1(Math.abs(z.rW))} (Vormonate ${h.weB} von ${zahl1(h.expWeB)}) = <b>Ziel ${zahl1(z.zielWe)}</b>, Ist ${weImMonat(p.k, ym).size}`,
+  ];
+  const dienste = [], gesperrt = {};
+  for(let i = 1; i <= tageIm(ym); i++){
+    const s = ds(+ym.slice(0, 4), +ym.slice(5, 7), i), b = bewerte(p, s);
+    if(dienstVon(s) === p.k) dienste.push(`${WT[wt(s)]} ${kurzDat(s)}${dienstAuto(s) ? ' (auto)' : ''}: Wert ${b.score}${b.tags.length ? ' – ' + b.tags.map(t => `<span class="tag ${t[0]}">${esc(t[1])}</span>`).join(' ') : ''}`);
+    else b.tags.filter(t => t[0] === 'r').forEach(t => { const g = t[1].replace(/\d+/g, 'n'); (gesperrt[g] ||= []).push(kurzDat(s)); });
+  }
+  return `<div class="detail"><b>Details ${esc(p.name || p.k)}</b> <small>(nur Admin)</small><ul>${li(zeilen)}</ul>`
+    + `<b>Thermometer ${zf ? zf.wert + ' %' : '–'}</b><ul>${zf && zf.t.length ? li(zf.t.map(([x, n]) => `−${n} ${esc(x)}`)) : '<li>keine Abzüge</li>'}</ul>`
+    + `<b>Dienste</b><ul>${dienste.length ? li(dienste) : '<li>keine</li>'}</ul>`
+    + `<b>Gesperrt (rot) an anderen Tagen</b><ul>${Object.keys(gesperrt).length ? li(Object.entries(gesperrt).map(([g, t]) => `${esc(g)}: ${t.join(' ')}`)) : '<li>nie</li>'}</ul>`
+    + `<div class="hint">Automatik: Ziel wie oben; Reihenfolge Tage mit 1 Kandidat → Fr+So → Sa → Feiertage → Rest, danach Nachbesserung (Fairness ±1 fast gratis, weiche Verstöße nach Wert).</div></div>`;
+}
 /* Kompakt: Monat wie in TDA (Zeilen = Personen, Spalten = Tage, Sa gelb, So/Feiertag gruen),
    Zellen mit TDA-Kuerzeln zum Abtippen. Werktag ohne Dienst/Abwesenheit bleibt leer
    (Funktion Amb… traegt der Planer in TDA ein). */
@@ -1987,17 +2020,44 @@ function vorherAlle(){
   return r;
 }
 const zahl1 = x => x.toFixed(1).replace('.', ',');
+/* Ziel je Person (1.96, als Funktion seit 2.04 - auch fuer Thermometer und Details): Anteil in diesem Monat
+   (Quote, Abwesenheit, gewuenschte Menge) + Rueckstand aus den Vormonaten (Dienste max. ±1, WE max. ±0,5) */
+function ziele(){
+  const hist = vorherAlle(), jetzt = erwartung(ym), klemm = x => Math.max(-1, Math.min(1, x)), r = {};
+  diensttauglich().forEach(p => { const h = hist[p.k], e = jetzt[p.k], rN = klemm(h.exp - h.n), rW = klemm(h.expWeB - h.weB) / 2;
+    r[p.k] = {h, e, rN, rW, ziel: e.exp + rN, zielWe: e.expWeB + rW}; });
+  return r;
+}
+/* Zufriedenheit (2.04, Thermometer unter „Dienste im Monat“): 100 = Ziel getroffen, Wuensche und Regeln eingehalten.
+   Abzuege: Abweichung vom Ziel (Dienste/WE, beide Richtungen; mit Wunsch nach mehr zaehlt nur zu wenig), weiche/harte
+   Verstoesse der eigenen Dienste, nicht erfuellte Dienstwuensche, max. ueberschritten. Team-Themen (Besetzung) nicht. */
+const TEAM_TAGS = /^Folgetag/;
+function zufriedenheit(p, z){
+  const t = [], ab = (txt, pkt) => { if(pkt >= 0.5) t.push([txt, Math.round(pkt)]); };
+  const n = diensteIm(p.k, ym), we = weImMonat(p.k, ym).size, max = maxDienste(p);
+  const d = n - z.ziel, dw = we - z.zielWe, mehrD = z.e.expN !== undefined, mehrW = z.e.expWeBN !== undefined;
+  if(n > max) ab(`max. ${max} Dienste überschritten`, 40);
+  if(d < -0.5) ab(`${zahl1(-d)} Dienste unter dem Ziel (${zahl1(z.ziel)})`, (-d - 0.5) * 20);
+  if(d > 0.5 && !mehrD) ab(`${zahl1(d)} Dienste über dem Ziel (${zahl1(z.ziel)})`, (d - 0.5) * 20);
+  if(dw < -0.5) ab(`${zahl1(-dw)} WE unter dem Ziel (${zahl1(z.zielWe)})`, (-dw - 0.5) * 15);
+  if(dw > 0.5 && !mehrW) ab(`${zahl1(dw)} WE über dem Ziel (${zahl1(z.zielWe)})`, (dw - 0.5) * 15);
+  for(let i = 1; i <= tageIm(ym); i++){
+    const s = ds(+ym.slice(0, 4), +ym.slice(5, 7), i), e = eintrag(p.k, s);
+    if(dienstVon(s) === p.k) for(const [f, txt] of bewerte(p, s).tags){
+      if(f === 'g' || TEAM_TAGS.test(txt) || txt === 'Dienst am Vortag' || /^max\./.test(txt)) continue;   // Folge-Dienste nur einmal zaehlen
+      ab(`${kurzDat(s)} ${txt}`, f === 'r' ? 40 : /No-Go/.test(txt) ? 15 : 10);
+    }
+    else if(e && e.typ === 'wunsch') ab(`${kurzDat(s)} Dienstwunsch nicht erfüllt`, e.stufe === 'hart' ? 20 : 8);
+  }
+  return {wert: Math.max(0, 100 - t.reduce((a, x) => a + x[1], 0)), t, n, we, d, dw};
+}
 function autoVerteilen(){
   const alle = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1));
   const frei0 = alle.filter(s => !dienstVon(s));
   if(!frei0.length) return toast('Alle Tage sind schon besetzt.');
   if(!confirm(`${frei0.length} leere Tage in ${monatName(ym)} automatisch belegen?\n\nBestehende Einteilungen bleiben. Ausgeglichen wird nach Arbeitsquote in diesem Monat (Rückstand aus den 3 Vormonaten fließt mit ein); Abwesenheiten werden fair verrechnet. Die Vorschläge sind gestrichelt markiert und lassen sich mit „Vorschlag verwerfen“ wieder entfernen.`)) return;
-  const ps = diensttauglich(), hist = vorherAlle(), jetzt = erwartung(ym);
-  const klemm = x => Math.max(-1, Math.min(1, x));
-  /* 1.96: Ziel je Person = Anteil in diesem Monat (Quote, Abwesenheit) + Rueckstand aus den Vormonaten (max. ±1) */
-  const ziel = {}, zielWe = {};
-  ps.forEach(p => { const h = hist[p.k], e = jetzt[p.k];
-    ziel[p.k] = e.exp + klemm(h.exp - h.n); zielWe[p.k] = e.expWeB + klemm(h.expWeB - h.weB) / 2; });   // 2.00: WE-Rueckstand max. ±0,5 je Monat (WE sind grob, nachholen nach Moeglichkeit)
+  const ps = diensttauglich(), Z = ziele(), hist = {}, jetzt = {}, ziel = {}, zielWe = {};
+  ps.forEach(p => { hist[p.k] = Z[p.k].h; jetzt[p.k] = Z[p.k].e; ziel[p.k] = Z[p.k].ziel; zielWe[p.k] = Z[p.k].zielWe; });
   const weZahl = k => alle.filter(s => weTag(s) && wt(s) < 5 && dienstVon(s) === k).length;   // Feiertage unter der Woche
   const rot = x => x.tags.some(t => t[0] === 'r');
   SIM = {};

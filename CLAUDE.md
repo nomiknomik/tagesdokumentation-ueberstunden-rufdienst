@@ -70,7 +70,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   = `erwartung(ym).exp` + Rückstand Vormonate (±1), über dem Ziel stark abgewertet; danach `verbessern()`: Pakete
   (Fr+So zusammen) verschieben/tauschen, keine rote Regel (auch Nachbartage); seit 1.97 angenommen, wenn
   25·ΔJ + ΔKosten < 0 (J = Σ(Ist−Ziel)² + 2·Σ(WE−ZielWE)², Kosten = −(score+n·3) + 30 je weichem Verstoß über alle
-  Dienste der beteiligten Personen im Monat – WE-Serie, weiches No-Go usw.); erst dann `einteilen()`. Keine Fair-Anzeige (Wunsch).
+  Dienste der beteiligten Personen im Monat – WE-Serie, weiches No-Go usw.); erst dann `einteilen()`. Fair-Anzeige seit 2.04 nur als Thermometer (s. u.).
   WE-Fairness (1.95) je Block: Erwartung `expWeB` = je Samstag 2 Einsätze nach Arbeitsquote (auch bei Teilzeit-Muster),
   Saldo über 3 Vormonate + Monat × 25 in `autoVerteilen()` – Rückstand wird nachgeholt; Tages-WE-Fairness nur noch Feiertage Mo–Do;
   WE angrenzend an Urlaub tabu ('r', Nachbar-Arbeitstag über `werktagNeben()`), an Fortbildung −25.
@@ -92,6 +92,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Datum/Uhrzeit per Tastatur (`zeitFeld()`, nur `pointer:fine`, MutationObserver auf alle `input[type=date|time]`):
   Textfeld TT.MM.JJJJ / hh:mm, `.value` bleibt ISO (eigene Property), Auto-Weiter, ←/→, ↑/↓, Jahr 2-stellig = 20xx,
   h/g/m (Jahr: h), j = jetzt; 'change' erst bei Blur/Enter. ½-Tag-Uhrzeit = `type=time` (`halbTitel()`: vorm. „bis“, nachm. „ab“).
+  2.04 Thermometer „Zufriedenheit“ unter jedem Balken in „Dienste im Monat“ (`zufriedenheit()`, nur wenn der Monat Dienste
+  hat): 100 − Abzüge (Ziel aus `ziele()` ±0,5 frei, je weiterer Dienst 20 / WE 15, mit Mengen-Wunsch nur nach unten;
+  eigener weicher Verstoß 10, No-Go 15, rot 40, Dienstwunsch nicht erfüllt 8/20, max. überschritten 40; „Folgetag…“ =
+  Team-Thema, zählt nicht). Gründe im Tooltip. Admin-Gerät: Klick auf Person → `detailHtml()` (Herleitung Ziel,
+  Abzüge, Dienste mit Tags, gesperrte Tage). Legende „nach Dienst“ nur in der Liste (`#legGef`).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
