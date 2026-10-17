@@ -836,7 +836,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.07';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.08';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1646,7 +1646,8 @@ function renderPlan(){
 function detailHtml(p, z, zf){
   const h = z.h, e = z.e, li = a => a.map(x => `<li>${x}</li>`).join('');
   /* 2.06: Vormonate je Monat (Ist/Soll), keine Summen */
-  const vm = (f, fe) => h.mon.length ? h.mon.map(x => `${MON[+x.m.slice(5, 7) - 1].slice(0, 3)} ${x[f]}/${x[fe]}`).join(' · ') : 'keine Pläne';
+  const vm = (f, fe) => h.mon.length ? h.mon.map(x => { const z = f === 'n' ? x.zu : x.zuW;
+    return `${MON[+x.m.slice(5, 7) - 1].slice(0, 3)} ${x[f]}/${x[fe] - (z || 0)}${z ? ` <span title="Urlaubsmonat: ${z} mehr abgeschlossen">(U +${z})</span>` : x.u ? ' (U)' : ''}`; }).join(' · ') : 'keine Pläne';
   const sal = x => (x > 0 ? '+' : '') + zahl1(x);
   const zeilen = [
     `Anwesend ${e.da} von ${e.tage} Tagen · Quote ${p.quote || 100} % · max. ${maxDienste(p)}`,
@@ -2026,7 +2027,18 @@ function vorherAlle(){
   }
   /* 2.07: Soll je Monat in ganzen Diensten/WE (Anteil gerundet: 5,4 → 5, 5,6 → 6; 50 % = 1 WE) - nur die Abweichung
      davon zaehlt. exp/expWeB = Summe dieser Soll-Werte. */
-  for(const k in r){ r[k].mon.forEach(x => { x.exp = Math.round(x.exp); x.expWeB = Math.round(x.expWeB); });
+  /* 2.08 (intern so entschieden): wer in einem Monat mit Urlaub/Fortbildung/FZA mehr hatte als sein Soll, dem wird das
+     in diesem Monat abgeschlossen - nicht spaeter ausgeglichen. Extreme Belastung (2 oder mehr ueber Soll) schon:
+     ausgeglichen wird der Teil ueber 1. */
+  const URL_TYP = ['urlaub', 'fb', 'fza'], ab = x => x >= 2 ? x - 1 : 0;
+  for(const k in r){
+    const p = person(k);
+    r[k].mon.forEach(x => { x.exp = Math.round(x.exp); x.expWeB = Math.round(x.expWeB);
+      const y = +x.m.slice(0, 4), mo = +x.m.slice(5, 7);
+      x.u = Array.from({length: tageIm(x.m)}, (_, i) => ds(y, mo, i + 1)).some(s => URL_TYP.includes(abwesend(p, s)));
+      if(x.u){ const dN = x.n - x.exp, dW = x.weB - x.expWeB;
+        if(dN > 0){ x.zu = dN - ab(dN); x.exp += x.zu; }   // zu: abgeschlossenes Mehr (fuer die Details)
+        if(dW > 0){ x.zuW = dW - ab(dW); x.expWeB += x.zuW; } } });
     r[k].exp = r[k].mon.reduce((a, x) => a + x.exp, 0); r[k].expWeB = r[k].mon.reduce((a, x) => a + x.expWeB, 0); }
   /* Fuer die Verteilung relativ zum Team (rel*): gerundete Soll-Werte ergeben in Summe selten genau die vergebenen
      Dienste - den Ueberhang (bzw. Rest) tragen alle nach Arbeitsquote, sonst gaelten alle zugleich als „zu viel“ */
@@ -2069,7 +2081,7 @@ function zufriedenheit(p, z){
     const s = ds(+ym.slice(0, 4), +ym.slice(5, 7), i), e = eintrag(p.k, s);
     if(dienstVon(s) === p.k) for(const [f, txt] of bewerte(p, s).tags){
       if(f === 'g' || TEAM_TAGS.test(txt) || txt === 'Dienst am Vortag' || /^max\./.test(txt)) continue;   // Folge-Dienste nur einmal zaehlen
-      ab(`${kurzDat(s)} ${txt}`, f === 'r' ? 40 : /No-Go/.test(txt) ? 15 : 10);
+      ab(`${kurzDat(s)} ${txt}`, f === 'r' ? 40 : /No-Go/.test(txt) ? 15 : /jeden 2\. Tag/.test(txt) ? 7 : 10);   // 2.08: 3× jeden 2. Tag 30 % weniger
     }
     else if(e && e.typ === 'wunsch') ab(`${kurzDat(s)} Dienstwunsch nicht erfüllt`, e.stufe === 'hart' ? 20 : 8);
   }

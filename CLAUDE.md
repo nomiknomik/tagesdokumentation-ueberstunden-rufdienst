@@ -107,6 +107,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Bilanz = Ist − gerundetes Soll (`vorherAlle()`, Vormonats-Soll ganzzahlig, keine Normierung mehr). Für die Verteilung
   relativ: Überhang/Rest des Teams nach Quote verteilt (`relN`/`relW`), ±1 erst ab 1 ganzen (`ziele()`: `ganz`/`weGanz`).
   Thermometer gegen die ganzzahlige Pflicht (absolut).
+  2.08 (intern entschieden): Monat mit Urlaub/FB/FZA (`URL_TYP`) – Mehr über Soll wird dort abgeschlossen (`zu`/`zuW`,
+  Details „(U +n)“), nur extreme Belastung (≥ 2 über Soll) wird ab dem 2. ausgeglichen. Thermometer: 3× jeden 2. Tag −7.
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
