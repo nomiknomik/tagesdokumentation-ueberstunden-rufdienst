@@ -140,6 +140,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Kein stiller Rückfall mehr: scheitert der Solver, nennt `confirm()` den Grund, Heuristik nur nach Ja. Geplant: Heuristik
   (Heatmap, Schichten, Schütteln, `kandFuer`-Anläufe) entfernen, sobald der Solver sich bewährt hat (Wunsch).
   Regeln/Formeln ändern: Skill `.claude/skills/dienstplan-regel` (Bausteine für `mipModell()`, Abnahme `scripts/pruefen.mjs <backup>`).
+  2.21: Mengen-Wunsch anteilig an `tageIm(m)` (`mengeWunsch()`; teilweise geplanter Vormonat galt sonst mit vollem Wunsch als
+  Soll → Scheindefizit und Soll 0 für die anderen). Wunsch = Untergrenze des Ziels (`ziele()`: Bilanz hebt an, senkt nicht
+  darunter). Thermometer-Tooltip nennt die Monate der Bilanz („Nov −2, Jan +1“, `herkunft()`).
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
