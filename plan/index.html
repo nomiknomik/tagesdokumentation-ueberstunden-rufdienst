@@ -837,7 +837,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.16';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.17';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2153,7 +2153,8 @@ function autoVerteilen(){
     const AV = window.AV_TEST || {};   // nur fuer Tests: {heat, laeufe, zeit}
     for(let lauf = 0; lauf < (AV.laeufe ?? 3); lauf++, rausch = 25){
     SIM = {};
-    if(lauf === 0 && AV.heat !== false) heatVorbelegen(frei0, ps, ziel, stufe);   // 2.16: sichere Zellen zuerst
+    /* 2.16: 1. Anlauf sichere Zellen (>= 60 %) zuerst, 2. Anlauf ganz per Heatmap (immer die sicherste), 3. wie bisher */
+    if(AV.heat !== false && lauf < 2) heatVorbelegen(frei0, ps, ziel, stufe, lauf === 0 ? (AV.heatMin ?? 0.6) : 0);
     let offen = frei0.filter(s => !SIM[s]); const rest = [];
     while(offen.length){
       const liste = offen.map(s => ({s, kand: kandFuer(s)}));
@@ -2169,7 +2170,9 @@ function autoVerteilen(){
       }
       SIM[best.s] = best.kand[0].p.k;
     }
+    if(AV.protokoll) AV.protokoll.push({art: 'verteilt', lauf, plan: {...SIM}});
     const wert = verbessern(frei0.filter(s => SIM[s]), ps, ziel, zielWe, mehrW) + rest.length * 1000;
+    if(AV.protokoll) AV.protokoll.push({art: 'nachgebessert', lauf, wert, plan: {...SIM}});
     if(!bester || wert < bester.wert) bester = {wert, plan: {...SIM}, rest};
     }
     /* 2.15: Schuetteln - vom besten Plan aus einige Tage (Fr+So zusammen) zufaellig neu vergeben (nur ohne rote Regel)
@@ -2191,7 +2194,7 @@ function autoVerteilen(){
         tage.forEach(t => SIM[t] = q ? q.k : alt);
       }
       const wert = verbessern(belegt, ps, ziel, zielWe, mehrW) + bester.rest.length * 1000;
-      if(wert < bester.wert - 0.5) bester = {...bester, wert, plan: {...SIM}};
+      if(wert < bester.wert - 0.5){ bester = {...bester, wert, plan: {...SIM}}; if(AV.protokoll) AV.protokoll.push({art: 'geschuettelt', wert, zeit: Date.now() - t0, plan: {...SIM}}); }
     }
     SIM = bester.plan; const rest = bester.rest;
     const hinw = frei0.filter(s => SIM[s]).map(s => [s, bewerte(person(SIM[s]), s).tags.filter(t => t[0] === 'o').map(t => t[1])]).filter(x => x[1].length);
@@ -2204,9 +2207,9 @@ function autoVerteilen(){
 /* Heatmap-Vorbelegung (2.16, Idee aus dem Team): freie Tage als Pakete (Fr+So zusammen), je Person und Paket eine
    Eignung aus bewerte() (rot = unmoeglich). Daraus Wahrscheinlichkeiten: jedes Paket wird genau einmal vergeben, jede
    Person bekommt ungefaehr ihren noch offenen Bedarf (abwechselnd Zeilen/Spalten normieren). Wer wenig moegliche Tage
-   hat, bekommt dort hohe Werte. Die sicherste Zelle (>= 60 %, bei Gleichstand WE > Feiertag > Rest) wird festgelegt,
+   hat, bekommt dort hohe Werte. Erst WE, dann Feiertage, dann Rest: jeweils die sicherste Zelle (>= Schwelle) festlegen,
    dann neu gerechnet - bis keine sichere mehr bleibt. Den Rest verteilt der normale Ablauf. */
-function heatVorbelegen(frei, ps, ziel, stufe){
+function heatVorbelegen(frei, ps, ziel, stufe, MIN = 0.6){
   for(let runde = 0; runde < frei.length; runde++){
     const offen = frei.filter(s => !SIM[s]), pakete = [], drin = new Set();
     for(const s of offen){ if(drin.has(s)) continue;
@@ -2223,9 +2226,11 @@ function heatVorbelegen(frei, ps, ziel, stufe){
     }
     P = P.map(z => { const t = z.reduce((a, x) => a + x, 0); return t ? z.map(x => x / t) : z; });
     let best = null;
-    P.forEach((z, i) => z.forEach((x, j) => { if(x < 0.6) return;
+    P.forEach((z, i) => z.forEach((x, j) => { if(x < MIN) return;
       const st = stufe(pakete[i][0]);
       if(!best || st < best.st || (st === best.st && x > best.x)) best = {i, j, x, st}; }));
+    const prot = (window.AV_TEST || {}).protokoll;   // nur Tests/Erklaergrafik
+    if(prot) prot.push({art: 'heat', pakete, P, best: best && {i: best.i, k: ps[best.j].k, x: best.x}, plan: {...SIM}});
     if(!best) return;
     pakete[best.i].forEach(s => SIM[s] = ps[best.j].k);
   }
