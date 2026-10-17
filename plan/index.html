@@ -836,7 +836,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.09';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.10';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1305,7 +1305,9 @@ function hinweise(s){
 /* Wochenende (1.93) = Fr+Sa+So; ueblich: Fr+So eine Person, Sa eine andere. Ziel 1-2 Wochenenden je Monat. */
 const weBlock = s => { const w = wt(s); if(w < 5) return null; const sa = plus(s, 6 - w); return [plus(sa, -1), sa, plus(sa, 1)]; };
 const weImMonat = (k, m) => { const n = new Set();
-  for(let i = 1; i <= tageIm(m); i++){ const s = ds(+m.slice(0, 4), +m.slice(5, 7), i); if(wt(s) >= 5 && dienstVon(s) === k) n.add(weBlock(s)[1]); }
+  for(let i = 1; i <= tageIm(m); i++){ const s = ds(+m.slice(0, 4), +m.slice(5, 7), i);
+    if(wt(s) === 5 && dienstVon(plus(s, 2)) !== k) continue;   // 2.10: einzelner Freitag ohne den Sonntag = normaler Arbeitstag
+    if(wt(s) >= 5 && dienstVon(s) === k) n.add(weBlock(s)[1]); }
   return n; };
 /* naechster Arbeitstag vor/nach dem Wochenende (Feiertage ueberspringen) */
 const werktagNeben = (s, r) => { for(let i = 0; i < 5; i++){ s = plus(s, r); if(werktag(s)) return s; } return s; };
@@ -1965,10 +1967,12 @@ $('planTab').addEventListener('touchcancel', dWischEnde);
    (Anteil an max. Diensten, Wochenend-/Feiertagsdienste). Markiert als auto. */
 const dienstAuto = s => { const d = dienstDaten(ymVon(s)); return !!(d && d.tage && d.tage[s] && d.tage[s].auto); };
 const weTag = s => wt(s) >= 6 || !!feiertag(s);
-/* 2.09: Feiertag Mo–Do zaehlt als halbes WE (egal ob am WE), Freitag gehoert immer zum WE-Block */
+/* 2.09: Feiertag Mo–Do zaehlt als halbes WE (egal ob am WE). 2.10: ein einzelner Freitag (ohne den Sonntag) ist kein
+   WE - ist er Feiertag, zaehlt er ebenfalls halb */
 const ftWT = s => wt(s) < 5 && !!feiertag(s);
 const weLast = (k, m) => { let n = weImMonat(k, m).size;
-  for(let i = 1; i <= tageIm(m); i++){ const s = ds(+m.slice(0, 4), +m.slice(5, 7), i); if(ftWT(s) && dienstVon(s) === k) n += 0.5; }
+  for(let i = 1; i <= tageIm(m); i++){ const s = ds(+m.slice(0, 4), +m.slice(5, 7), i);
+    if(dienstVon(s) === k && (ftWT(s) || (wt(s) === 5 && feiertag(s) && dienstVon(plus(s, 2)) !== k))) n += 0.5; }
   return n; };
 /* Erwartete Dienste je Person und Monat: an jedem Tag teilen sich die Anwesenden den
    einen Dienst (Gewicht = Arbeitsquote, bei Teilzeit-Muster 1, da die freien Tage

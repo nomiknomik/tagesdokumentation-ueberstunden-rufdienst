@@ -110,7 +110,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   2.08 (intern entschieden): Monat mit Urlaub/FB/FZA (`URL_TYP`) – Mehr über Soll wird dort abgeschlossen (`zu`/`zuW`,
   Details „(U +n)“), nur extreme Belastung (≥ 2 über Soll) wird ab dem 2. ausgeglichen. Thermometer: 3× jeden 2. Tag −7.
   2.09: Feiertag Mo–Do = ½ WE (`ftWT()`, `weLast()` statt `weImMonat().size` für Fairness/Thermometer/Details; Erwartung
-  `expFt`), Fr-Feiertag bleibt Teil des WE-Blocks; Soll `weRund()`: Blöcke ganz, Feiertage in halben. „3. WE“ zählt nur Blöcke.
+  `expFt`); Soll `weRund()`: Blöcke ganz, Feiertage in halben. „3. WE“ zählt nur Blöcke.
+  2.10: einzelner Freitag ohne den Sonntag zählt nicht als WE (`weImMonat()`), als Feiertag ½ (`weLast()`).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
