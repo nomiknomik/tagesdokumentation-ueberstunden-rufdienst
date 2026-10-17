@@ -66,6 +66,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Wochenende (1.93, `weBlock()` = Fr+Sa+So): Fr+So eine Person (Bonus „passt zu Fr/So“ +35), Sa eine andere
   (seit 1.94 Reihenfolge in `autoVerteilen()`: Tage mit nur 1 Kandidat → Fr+So als Paar (`kandFuer()`, gleiche Person mit
   bester Summe) → Sa → Feiertage → Rest; Dienst am Vor-/Folgetag = 'r', zwei Dienste in Folge verboten); Ziel 1–2 WE je Monat (`weImMonat()`, 3. WE −40);
+  WE-Fairness (1.95) je Block: Erwartung `expWeB` = je Samstag 2 Einsätze nach Arbeitsquote (auch bei Teilzeit-Muster),
+  Saldo über 3 Vormonate + Monat × 25 in `autoVerteilen()` – Rückstand wird nachgeholt; Tages-WE-Fairness nur noch Feiertage Mo–Do;
   WE angrenzend an Urlaub tabu ('r', Nachbar-Arbeitstag über `werktagNeben()`), an Fortbildung −25.
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.

@@ -818,7 +818,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.94';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.95';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1900,24 +1900,27 @@ const weTag = s => wt(s) >= 6 || !!feiertag(s);
    schon fehlen). Wer im Urlaub ist, erwartet an dem Tag nichts - fehlen dann viele,
    steigt der Anteil der Uebrigen. So wird Abwesenheit fair verrechnet. */
 function erwartung(m, nurBelegte){
-  const r = {}, ps = diensttauglich(); ps.forEach(p => r[p.k] = {exp: 0, expWe: 0});
+  const r = {}, ps = diensttauglich(); ps.forEach(p => r[p.k] = {exp: 0, expWe: 0, expWeB: 0});
   const gew = p => (p.teilzeit && p.teilzeit.length) ? 1 : (p.quote || 100) / 100;
+  const quote = p => (p.quote || 100) / 100;   // Wochenenden: Teilzeit-Muster gilt dort nie -> immer nach Arbeitsquote
   for(let i = 1; i <= tageIm(m); i++){
     const s = ds(+m.slice(0, 4), +m.slice(5, 7), i);
     if(nurBelegte && !dienstVon(s)) continue;   // Vormonate: nur Tage mit Plan zaehlen
     const da = ps.filter(p => !abwesend(p, s));
     const W = da.reduce((a, p) => a + gew(p), 0); if(!W) continue;
-    da.forEach(p => { const a = gew(p) / W; r[p.k].exp += a; if(weTag(s)) r[p.k].expWe += a; });
+    da.forEach(p => { const a = gew(p) / W; r[p.k].exp += a; if(weTag(s) && wt(s) < 5) r[p.k].expWe += a; });   // expWe: nur Feiertage Mo-Do (Fr gehoert zum WE-Block)
+    /* 1.95: Wochenenden als Block (Fr+So + Sa = 2 Einsaetze je WE), je Samstag nach Arbeitsquote geteilt */
+    if(wt(s) === 6){ const Q = da.reduce((a, p) => a + quote(p), 0); if(Q) da.forEach(p => r[p.k].expWeB += 2 * quote(p) / Q); }
   }
   return r;
 }
 /* 3 Vormonate: tatsaechliche und erwartete Dienste bzw. WE/Feiertagsdienste */
 function vorherAlle(){
-  const r = {}; diensttauglich().forEach(p => r[p.k] = {n: 0, we: 0, exp: 0, expWe: 0});
+  const r = {}; diensttauglich().forEach(p => r[p.k] = {n: 0, we: 0, weB: 0, exp: 0, expWe: 0, expWeB: 0});
   for(let i = 1; i <= 3; i++){
     const m = ymPlus(ym, -i), d = dienstDaten(m), e = erwartung(m, true);
-    for(const [s, x] of Object.entries((d && d.tage) || {})) if(r[x.oa]){ r[x.oa].n++; if(weTag(s)) r[x.oa].we++; }
-    for(const k in r){ r[k].exp += e[k].exp; r[k].expWe += e[k].expWe; }
+    for(const [s, x] of Object.entries((d && d.tage) || {})) if(r[x.oa]){ r[x.oa].n++; if(weTag(s) && wt(s) < 5) r[x.oa].we++; }
+    for(const k in r){ r[k].exp += e[k].exp; r[k].expWe += e[k].expWe; r[k].expWeB += e[k].expWeB; r[k].weB += weImMonat(k, m).size; }
   }
   return r;
 }
@@ -1927,7 +1930,7 @@ function autoVerteilen(){
   let offen = alle.filter(s => !dienstVon(s));
   if(!offen.length) return toast('Alle Tage sind schon besetzt.');
   if(!confirm(`${offen.length} leere Tage in ${monatName(ym)} automatisch belegen?\n\nBestehende Einteilungen bleiben. Ausgeglichen wird über diesen und die 3 Vormonate; Abwesenheiten werden fair verrechnet. Die Vorschläge sind gestrichelt markiert und lassen sich mit „Vorschlag verwerfen“ wieder entfernen.`)) return;
-  const weZahl = k => alle.filter(s => weTag(s) && dienstVon(s) === k).length;
+  const weZahl = k => alle.filter(s => weTag(s) && wt(s) < 5 && dienstVon(s) === k).length;   // Feiertage unter der Woche
   const hist = vorherAlle(), jetzt = erwartung(ym);
   let n = 0; const rest = [];
   const kandFuer = s => {
@@ -1935,7 +1938,10 @@ function autoVerteilen(){
     /* Saldo ueber 4 Monate (3 Vormonate + dieser): Ist minus Erwartung (Abwesenheit fair verrechnet), WE/Feiertage extra */
     kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k];
       x.wert = x.score + x.n * 3 - ((h.n + x.n) - (h.exp + e.exp)) * 15
-        - (weTag(s) ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0) + Math.random(); });
+        - (weTag(s) && wt(s) < 5 ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0)
+        /* 1.95: Wochenenden nach Arbeitsquote - wer im Rueckstand ist (auch aus den Vormonaten), holt nach */
+        - (wt(s) >= 5 && !weImMonat(x.p.k, ym).has(weBlock(s)[1]) ? ((h.weB + weImMonat(x.p.k, ym).size) - (h.expWeB + e.expWeB)) * 25 : 0)
+        + Math.random(); });
     return kand.sort((a, b) => b.wert - a.wert);
   };
   /* Reihenfolge (1.94): 1. Tage, fuer die nur eine Person in Frage kommt, 2. Fr+So als Paar (eine Person),
