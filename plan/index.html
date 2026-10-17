@@ -786,8 +786,9 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <label class="f">max. Wochenenden in Folge<input type="number" id="gWe" min="1" style="width:90px"></label>
           <label class="f">Urlaubsanspruch / Jahr<input type="number" id="gUa" min="0" style="width:90px"></label>
           <label class="f">davon zu verplanen<input type="number" id="gUp" min="0" style="width:90px"></label>
+          <label class="f">Automatisch verteilen<select id="gVerf"><option value="mip">Solver (exakt)</option><option value="heuristik">Heuristik (alt)</option></select></label>
         </div>
-        <div class="hint" style="margin-top:6px">Bei Teilzeit: max. Dienste × Arbeitsquote, abgerundet. Wochenende = Sa- oder So-Dienst.</div>
+        <div class="hint" style="margin-top:6px">Bei Teilzeit: max. Dienste × Arbeitsquote, abgerundet. Wochenende = Sa- oder So-Dienst. Solver = rechnerisch bester Plan; Heuristik = altes Verfahren (Vergleich).</div>
       </div>
       <div class="card">
         <h3><span data-icon="archive"></span>Backup</h3>
@@ -837,7 +838,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.19';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.20';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2134,16 +2135,19 @@ async function autoVerteilen(){
   const rot = x => x.tags.some(t => t[0] === 'r');
   const mehrW = Object.fromEntries(ps.map(p => [p.k, {d: Z[p.k].e.expN !== undefined, w: Z[p.k].e.expWeBN !== undefined}]));
   const AV = window.AV_TEST || {};   // nur fuer Tests: {mip, heat, laeufe, zeit}
+  /* 2.20: Verfahren in den Einstellungen (Grenzen, nur Verwalter): Solver (Standard) oder alte Heuristik.
+     Scheitert der Solver, kein stiller Rueckfall - Grund nennen, Heuristik nur nach Rueckfrage. */
+  let mip = null;
+  if(AV.mip ?? (cfg.verfahren || 'mip') === 'mip'){
+    toast('Berechne den besten Plan …'); await new Promise(r => setTimeout(r, 50));
+    let grund = '';
+    try{ mip = await mipVerteilen(frei0, ps, ziel, zielWe, mehrW); if(!mip) grund = 'Solver fand keine Lösung.'; }
+    catch(e){ grund = e.message || String(e); console.warn('MIP', e); }
+    SIM = null;
+    if(!mip && !confirm(`Solver nicht verfügbar: ${grund}\n\nStattdessen mit der alten Heuristik verteilen?`)) return;
+  }
   SIM = {};
   try{
-    /* 2.19: zuerst exakt (ganzzahliges Modell, HiGHS) - gleiche Zielfunktion wie verbessern(), dazu die Folgetag-Regel
-       in beide Richtungen. Klappt das nicht (Solver nicht ladbar, keine Loesung), wie bisher heuristisch. */
-    let mip = null;
-    if(AV.mip !== false){
-      toast('Berechne den besten Plan …'); await new Promise(r => setTimeout(r, 50));
-      try{ mip = await mipVerteilen(frei0, ps, ziel, zielWe, mehrW); }catch(e){ console.warn('MIP', e); }
-      SIM = {};
-    }
     const kandFuer = s => {
       const kand = ps.map(p => ({p, ...bewerte(p, s)})).filter(x => !rot(x));
       kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k], nach = x.n + 1 - ziel[x.p.k];
@@ -3518,7 +3522,7 @@ function renderCfg(){
   // Feiertage
   const y = +ym.slice(0,4);
   $('ftListe').innerHTML = `<b>BW ${y}:</b> ` + Object.entries(feiertageBW(y)).sort().map(([s, n]) => `${kurzDat(s)} ${esc(n)}`).join(' · ');
-  $('gMax').value = cfg.maxDienste; $('gWe').value = cfg.maxWeFolge; $('gUa').value = cfg.urlaubAnspruch; $('gUp').value = cfg.urlaubPlan;
+  $('gMax').value = cfg.maxDienste; $('gVerf').value = cfg.verfahren || 'mip'; $('gWe').value = cfg.maxWeFolge; $('gUa').value = cfg.urlaubAnspruch; $('gUp').value = cfg.urlaubPlan;
   // Zugang
   const z = zugang();
   $('zugInfo').innerHTML = (ich() ? `Angemeldet als <b>${esc(ich().name || ich().k)}</b> (${esc(ich().k)})<br>` : '') + (z ? `Repo <b>${esc(z.repo)}</b> · Token aus ${esc(z.quelle || 'Einladung')}` : 'Kein Zugang.');
@@ -3544,6 +3548,7 @@ $('hwAdd').onclick = ()=>{
   $('hwName').value = '';
 };
 $('gMax').onchange = ()=> cfgAendern('Grenzen', d => { d.maxDienste = Math.max(1, +$('gMax').value || 13); });
+$('gVerf').onchange = ()=> cfgAendern('Rechenverfahren', d => { d.verfahren = $('gVerf').value; });
 $('gWe').onchange = ()=> cfgAendern('Grenzen', d => { d.maxWeFolge = Math.max(1, +$('gWe').value || 2); });
 $('gUa').onchange = ()=> cfgAendern('Urlaubsanspruch', d => { d.urlaubAnspruch = Math.max(0, +$('gUa').value || 0); });
 $('gUp').onchange = ()=> cfgAendern('Urlaub zu verplanen', d => { d.urlaubPlan = Math.max(0, +$('gUp').value || 0); });
