@@ -99,6 +99,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   eigener weicher Verstoß 10, No-Go 15, rot 40, Dienstwunsch nicht erfüllt 8/20, max. überschritten 40; „Folgetag…“ =
   Team-Thema, zählt nicht). Gründe im Tooltip. Admin-Gerät: Klick auf Person → `detailHtml()` (Herleitung Ziel,
   Abzüge, Dienste mit Tags, gesperrte Tage). Legende „nach Dienst“ nur in der Liste (`#legGef`).
+  2.06: Bilanz über 6 Vormonate (`VORMONATE`, `ladeAlles()` lädt −6…+1); Teilzeit-Gewicht 1 nur, solange ein Muster am
+  Tag gilt, sonst Quote (`gew(p, s)` – vorher galt jedes Muster rückwirkend = Vollzeit-Erwartung). WE-Ziel ganzzahlig:
+  `weGanz` = Anteil gerundet, ±1 erst bei Bilanz ≥ 1 WE (`ziele()`); Vormonats-Soll bleibt anteilig (gerundet fehlten in
+  Summe WE). Thermometer ohne Mengen-Wunsch: nur „zu viel“ zählt (wer mehr will, trägt es ein). Details: Ist/Soll je Monat.
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
