@@ -836,7 +836,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.11';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.12';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1353,7 +1353,8 @@ function bewerte(p, s){
   /* 1.98: drei Dienste jeden 2. Tag (z. B. Fr-So-Di) - ungern */
   const d2 = i => dienstVon(plus(s, i)) === p.k;
   if((d2(-2) && d2(-4)) || (d2(-2) && d2(2)) || (d2(2) && d2(4))){ tags.push(['o', '3× jeden 2. Tag']); score -= 10; }
-  const blk = weBlock(s);
+  /* 2.12: Freitag, dessen Sonntag schon jemand anderes hat, ist ein normaler Arbeitstag - keine WE-Regeln */
+  const so = wt(s) === 5 ? dienstVon(plus(s, 2)) : '', blk = so && so !== p.k ? null : weBlock(s);
   if(blk && !a){
     /* angrenzend an Urlaub: tabu, an Fortbildung ungern (Fr-Dienst: ab Do, Sa/So-Dienst: ab Fr) */
     const nb = [werktagNeben(wt(s) === 5 ? blk[0] : blk[1], -1), werktagNeben(blk[2], 1)].map(x => abwesend(p, x));
