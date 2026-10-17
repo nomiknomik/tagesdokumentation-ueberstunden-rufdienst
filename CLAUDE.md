@@ -114,6 +114,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   2.10: einzelner Freitag ohne den Sonntag zählt nicht als WE (`weImMonat()`), als Feiertag ½ (`weLast()`).
   2.12: auch `bewerte()` – Freitag, dessen Sonntag jemand anderes hat, bekommt keine WE-Regeln (3. WE, WE am Urlaub …).
   2.13: „Dienste im Monat“ zeigt je Person die WE-Zahl (`weLast()`, Feiertag „,5“).
+  2.14: Maus über dem Tag + Buchstabe = Schnellwahl ohne Klick (`planHover`, `mausXY` → `waehlen()` + `dialogTaste`).
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).

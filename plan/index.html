@@ -627,6 +627,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
             <div><span class="chip t-urlaub offen" style="padding:2px 8px">Urlaub</span>beantragt, noch nicht genehmigt</div>
             <div><span class="mx-mini halb vm" style="--f:#8E3B6B;min-width:26px">CH</span>½ Tag weg – links gefüllt = vormittags, rechts = nachmittags</div>
             <div><span class="chip" style="padding:2px 8px">Entf</span>Dienst löschen: Maus über den Tag + Entf, am Handy nach links wischen</div>
+            <div><span class="chip" style="padding:2px 8px">A–Z</span>Dienst eintragen: Maus über den Tag + Anfangsbuchstabe des Nachnamens</div>
           </div>
         </div>
       </aside>
@@ -836,7 +837,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.13';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.14';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1927,10 +1928,22 @@ const dienstWeg = s => {
   einteilen(s, ''); toast(`Dienst ${k} am ${kurzDat(s)} entfernt – rückgängig mit ↶`);
 };
 $('planTab').addEventListener('mouseover', e => { const z = e.target.closest('.dzelle[data-tag]'); planHover = z ? z.dataset.tag : ''; });
+let mausXY = null;   // 2.14: fuer die Schnellwahl per Tastatur (Auswahl erscheint an der Maus)
+$('planTab').addEventListener('mousemove', e => { mausXY = {x: e.clientX, y: e.clientY}; }, {passive: true});
 $('planTab').addEventListener('mouseleave', ()=>{ planHover = ''; });
 document.addEventListener('keydown', e => {
-  if(tab !== 'plan' || !planHover || $('dlg').innerHTML || (e.key !== 'Delete' && e.key !== 'Backspace')) return;
+  if(tab !== 'plan' || !planHover || $('dlg').innerHTML) return;
   if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
+  /* 2.14: Maus ueber dem Tag + Buchstabe = Schnellwahl ohne Klick (eindeutig -> sofort eingetragen, sonst Auswahl
+     mit den Treffern an der Maus, weitere Buchstaben grenzen ein) */
+  if(/^\p{L}$/u.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && darfEinteilen() && !nurLesen){
+    e.preventDefault();
+    if(mausXY) klickXY = {...mausXY, t: Date.now()};
+    waehlen(planHover);
+    if(dialogTaste) dialogTaste(e);
+    return;
+  }
+  if(e.key !== 'Delete' && e.key !== 'Backspace') return;
   if(!dienstVon(planHover)) return;
   e.preventDefault(); dienstWeg(planHover);
 });
