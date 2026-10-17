@@ -87,13 +87,15 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   2.01 Gewünschte Dienstmenge (Wünsche, Karte `#mengeKarte`, nicht Chef): `p.menge = [{ab, dienste, we}]` gilt ab Monat
   (`mengeVon()`), Zahl = bei voller Anwesenheit (anteilig, Teilzeit-frei zählt als da), `+n` = über normal.
   `mengeWunsch()` wirkt nur, wenn über normal (sonst still ignoriert – in der Oberfläche nicht erwähnen, Wunsch);
-  `erwartung()` setzt den Wunsch, die übrigen teilen sich den Rest; Vormonate: zwischen normal und Wunsch = ausgeglichen
-  (`exp`/`expN` in `vorherAlle()`). „3. WE“-Grenze = `weGrenze()`. Zähler im Plan: n / Wunsch ♡ statt n / max.
+  `erwartung()` setzt den Wunsch (`expN`/`expWeBN` = normal), die übrigen teilen sich den Rest; Vormonate: Wunsch = Soll,
+  mehr bis zum Wunsch ausgeglichen, weniger = Rückstand (seit 2.05, Einkommen). `verbessern()`: Unterschreiten des
+  Wunsches kostet wie ein leichter Verstoß (`unter()`). „3. WE“-Grenze = `weGrenze()`. Zähler im Plan: n / Wunsch ♡ statt n / max.
   Datum/Uhrzeit per Tastatur (`zeitFeld()`, nur `pointer:fine`, MutationObserver auf alle `input[type=date|time]`):
   Textfeld TT.MM.JJJJ / hh:mm, `.value` bleibt ISO (eigene Property), Auto-Weiter, ←/→, ↑/↓, Jahr 2-stellig = 20xx,
   h/g/m (Jahr: h), j = jetzt; 'change' erst bei Blur/Enter. ½-Tag-Uhrzeit = `type=time` (`halbTitel()`: vorm. „bis“, nachm. „ab“).
   2.04 Thermometer „Zufriedenheit“ unter jedem Balken in „Dienste im Monat“ (`zufriedenheit()`, nur wenn der Monat Dienste
-  hat): 100 − Abzüge (Ziel aus `ziele()` ±0,5 frei, je weiterer Dienst 20 / WE 15, mit Mengen-Wunsch nur nach unten;
+  hat): 100 − Abzüge (seit 2.05 Saldo 3 Vormonate + Monat: ±1 Streuung frei, darüber je Dienst 20 / WE 15; mit
+  Mengen-Wunsch zählt nur zu wenig, schon ab 0,3 als leichter Verstoß 10;
   eigener weicher Verstoß 10, No-Go 15, rot 40, Dienstwunsch nicht erfüllt 8/20, max. überschritten 40; „Folgetag…“ =
   Team-Thema, zählt nicht). Gründe im Tooltip. Admin-Gerät: Klick auf Person → `detailHtml()` (Herleitung Ziel,
   Abzüge, Dienste mit Tags, gesperrte Tage). Legende „nach Dienst“ nur in der Liste (`#legGef`).

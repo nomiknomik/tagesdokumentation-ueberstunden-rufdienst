@@ -836,7 +836,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.04';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.05';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1647,9 +1647,9 @@ function detailHtml(p, z, zf){
   const zeilen = [
     `Anwesend ${e.da} von ${e.tage} Tagen · Quote ${p.quote || 100} % · max. ${maxDienste(p)}`,
     `Dienste: Monatsanteil ${zahl1(e.expN !== undefined ? e.expN : e.exp)}${e.expN !== undefined ? ` → Wunsch ${zahl1(e.exp)}` : ''}`
-      + ` ${z.rN >= 0 ? '+' : '−'} Rückstand ${zahl1(Math.abs(z.rN))} (Vormonate ${h.n} von ${zahl1(h.exp)}) = <b>Ziel ${zahl1(z.ziel)}</b>, Ist ${diensteIm(p.k, ym)}`,
+      + ` ${z.rN >= 0 ? '+' : '−'} Rückstand ${zahl1(Math.abs(z.rN))} (Vormonate ${h.n} von ${zahl1(h.exp)}) = <b>Ziel ${zahl1(z.ziel)}</b>, Ist ${diensteIm(p.k, ym)} · Saldo 3 Monate ${zf ? (zf.d > 0 ? '+' : '') + zahl1(zf.d) : '–'}`,
     `WE: Monatsanteil ${zahl1(e.expWeBN !== undefined ? e.expWeBN : e.expWeB)}${e.expWeBN !== undefined ? ` → Wunsch ${zahl1(e.expWeB)}` : ''}`
-      + ` ${z.rW >= 0 ? '+' : '−'} Rückstand ${zahl1(Math.abs(z.rW))} (Vormonate ${h.weB} von ${zahl1(h.expWeB)}) = <b>Ziel ${zahl1(z.zielWe)}</b>, Ist ${weImMonat(p.k, ym).size}`,
+      + ` ${z.rW >= 0 ? '+' : '−'} Rückstand ${zahl1(Math.abs(z.rW))} (Vormonate ${h.weB} von ${zahl1(h.expWeB)}) = <b>Ziel ${zahl1(z.zielWe)}</b>, Ist ${weImMonat(p.k, ym).size} · Saldo 3 Monate ${zf ? (zf.dw > 0 ? '+' : '') + zahl1(zf.dw) : '–'}`,
   ];
   const dienste = [], gesperrt = {};
   for(let i = 1; i <= tageIm(ym); i++){
@@ -2008,11 +2008,9 @@ function vorherAlle(){
   for(let i = 1; i <= 3; i++){
     const m = ymPlus(ym, -i), d = dienstDaten(m), e = erwartung(m, true);
     for(const [s, x] of Object.entries((d && d.tage) || {})) if(r[x.oa]){ r[x.oa].n++; if(weTag(s) && wt(s) < 5) r[x.oa].we++; }
-    /* 2.01: mit gewuenschter Dienstmenge gilt als ausgeglichen, wer zwischen normal und Wunsch lag (kein Rueckstand aus
-       einem nicht ganz erfuellten Wunsch) */
-    const zw = (ist, x, f) => x[f + 'N'] === undefined ? x[f] : Math.max(x[f + 'N'], Math.min(x[f], ist));
-    for(const k in r){ const wb = weImMonat(k, m).size;
-      r[k].exp += zw(diensteIm(k, m), e[k], 'exp'); r[k].expWe += e[k].expWe; r[k].expWeB += zw(wb, e[k], 'expWeB'); r[k].weB += wb; }
+    /* gewuenschte Dienstmenge zaehlt als Erwartung: mehr bis zum Wunsch ist ausgeglichen, weniger (2.05) Rueckstand -
+       ein nicht erfuellter Wunsch kostet Einkommen und wird nachgeholt */
+    for(const k in r){ r[k].exp += e[k].exp; r[k].expWe += e[k].expWe; r[k].expWeB += e[k].expWeB; r[k].weB += weImMonat(k, m).size; }
   }
   /* 2.00: Rueckstand nur relativ (Summe 0) - getrennte Fr/So und Leute ausserhalb der Liste verschieben sonst alle Ziele */
   const sum = f => Object.values(r).reduce((a, x) => a + x[f], 0), fW = sum('expWeB') ? sum('weB') / sum('expWeB') : 1, fN = sum('exp') ? sum('n') / sum('exp') : 1;
@@ -2035,12 +2033,15 @@ const TEAM_TAGS = /^Folgetag/;
 function zufriedenheit(p, z){
   const t = [], ab = (txt, pkt) => { if(pkt >= 0.5) t.push([txt, Math.round(pkt)]); };
   const n = diensteIm(p.k, ym), we = weImMonat(p.k, ym).size, max = maxDienste(p);
-  const d = n - z.ziel, dw = we - z.zielWe, mehrD = z.e.expN !== undefined, mehrW = z.e.expWeBN !== undefined;
+  /* 2.05: Saldo ueber 3 Vormonate + diesen Monat (Ist − Soll): ±1 ist Streuung, ab 2 (z. B. zwei Monate je 1 zu viel)
+     Abweichung; mit Wunsch nach mehr ist schon das Unterschreiten ein leichter Verstoss */
+  const d = n - z.e.exp - (z.h.exp - z.h.n), dw = we - z.e.expWeB - (z.h.expWeB - z.h.weB), mehrD = z.e.expN !== undefined, mehrW = z.e.expWeBN !== undefined;
+  const saldo = (x, was, w, pkt) => {
+    if(w && x < -0.3) ab(`gewünschte Menge: ${zahl1(-x)} ${was} zu wenig (3 Monate)`, 10 + Math.max(0, -x - 1) * pkt);
+    else if(Math.abs(x) > 1.2 && !(w && x > 0)) ab(`${zahl1(Math.abs(x))} ${was} ${x > 0 ? 'zu viel' : 'zu wenig'} (3 Monate)`, (Math.abs(x) - 1) * pkt); };
   if(n > max) ab(`max. ${max} Dienste überschritten`, 40);
-  if(d < -0.5) ab(`${zahl1(-d)} Dienste unter dem Ziel (${zahl1(z.ziel)})`, (-d - 0.5) * 20);
-  if(d > 0.5 && !mehrD) ab(`${zahl1(d)} Dienste über dem Ziel (${zahl1(z.ziel)})`, (d - 0.5) * 20);
-  if(dw < -0.5) ab(`${zahl1(-dw)} WE unter dem Ziel (${zahl1(z.zielWe)})`, (-dw - 0.5) * 15);
-  if(dw > 0.5 && !mehrW) ab(`${zahl1(dw)} WE über dem Ziel (${zahl1(z.zielWe)})`, (dw - 0.5) * 15);
+  saldo(d, 'Dienste', mehrD, 20);
+  saldo(dw, 'WE', mehrW, 15);
   for(let i = 1; i <= tageIm(ym); i++){
     const s = ds(+ym.slice(0, 4), +ym.slice(5, 7), i), e = eintrag(p.k, s);
     if(dienstVon(s) === p.k) for(const [f, txt] of bewerte(p, s).tags){
@@ -2089,7 +2090,7 @@ function autoVerteilen(){
       }
       SIM[best.s] = best.kand[0].p.k;
     }
-    verbessern(frei0.filter(s => SIM[s]), ps, ziel, zielWe);
+    verbessern(frei0.filter(s => SIM[s]), ps, ziel, zielWe, Object.fromEntries(ps.map(p => [p.k, {d: Z[p.k].e.expN !== undefined, w: Z[p.k].e.expWeBN !== undefined}])));
     const hinw = frei0.filter(s => SIM[s]).map(s => [s, bewerte(person(SIM[s]), s).tags.filter(t => t[0] === 'o').map(t => t[1])]).filter(x => x[1].length);
     const plan = SIM; SIM = null;
     let n = 0; Object.entries(plan).forEach(([s, k]) => { if(k){ einteilen(s, k, true); n++; } });
@@ -2100,7 +2101,7 @@ function autoVerteilen(){
 /* Nachbesserung (1.96): verteilte Tage (Fr+So als ein Paket) zwischen Personen verschieben oder tauschen,
    solange die Abweichung vom Ziel (Dienste und Wochenenden je Person) kleiner wird, keine rote Regel
    verletzt ist und die Wunsch-/Regel-Bewertung kaum schlechter wird. */
-function verbessern(tage, ps, ziel, zielWe){
+function verbessern(tage, ps, ziel, zielWe, mehr = {}){
   const pakete = [], drin = new Set();
   for(const s of tage){
     if(drin.has(s)) continue;
@@ -2112,7 +2113,10 @@ function verbessern(tage, ps, ziel, zielWe){
      als die meisten weichen Verstoesse). Dienste und Wochenenden getrennt, gleich gewichtet: der Rest wird ueber das
      Ziel (Rueckstand Vormonate) nachgeholt - nie auf Kosten eines No-Go/einer Regel. Kalibriert an Handplaenen. */
   const band = d => Math.max(0, Math.abs(d) - 1) ** 2 * 100 + d * d * 5;
-  const J = () => ps.reduce((a, p) => a + band(diensteIm(p.k, ym) - ziel[p.k]) + band(weImMonat(p.k, ym).size - zielWe[p.k]), 0);
+  /* 2.05: wer mehr Dienste/WE wuenscht, dem kostet jedes Fehlen wie ein leichter Verstoss (Einkommen) */
+  const unter = (d, w) => w ? Math.max(0, -d - 0.3) * 30 : 0;
+  const J = () => ps.reduce((a, p) => { const d = diensteIm(p.k, ym) - ziel[p.k], dw = weImMonat(p.k, ym).size - zielWe[p.k], m = mehr[p.k] || {};
+    return a + band(d) + band(dw) + unter(d, m.d) + unter(dw, m.w); }, 0);
   /* 1.97: Guete = weiche Verstoesse (No-Go weich, Regeln, WE-Serie, 3. WE, WE an Fortbildung, Folgetag knapp …)
      aller Dienste der beteiligten Personen im Monat (Serien/WE-Zahl wirken ueber den einzelnen Tag hinaus) */
   const alleTage = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0, 4), +ym.slice(5, 7), i + 1));
