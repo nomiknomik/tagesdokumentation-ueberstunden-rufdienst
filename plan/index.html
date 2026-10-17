@@ -818,7 +818,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.98';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.99';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1976,9 +1976,11 @@ function autoVerteilen(){
       SIM[best.s] = best.kand[0].p.k;
     }
     verbessern(frei0.filter(s => SIM[s]), ps, ziel, zielWe);
+    const hinw = frei0.filter(s => SIM[s]).map(s => [s, bewerte(person(SIM[s]), s).tags.filter(t => t[0] === 'o').map(t => t[1])]).filter(x => x[1].length);
     const plan = SIM; SIM = null;
     let n = 0; Object.entries(plan).forEach(([s, k]) => { if(k){ einteilen(s, k, true); n++; } });
-    toast(`${n} Tage verteilt` + (rest.length ? ` – ${rest.length} ohne passende Person: ${rest.map(kurzDat).join(', ')}` : '.'));
+    toast(`${n} Tage verteilt` + (rest.length ? ` – ${rest.length} ohne passende Person: ${rest.map(kurzDat).join(', ')}` : '.')
+      + (hinw.length ? ` Nicht ganz vermeidbar: ${hinw.map(([s, t]) => `${kurzDat(s)} ${plan[s]} (${t.join(', ')})`).join('; ')}` : ''));
   }finally{ SIM = null; }
 }
 /* Nachbesserung (1.96): verteilte Tage (Fr+So als ein Paket) zwischen Personen verschieben oder tauschen,
@@ -1992,31 +1994,41 @@ function verbessern(tage, ps, ziel, zielWe){
     if(so && tage.includes(so) && SIM[so] === SIM[s]){ pakete.push([s, so]); drin.add(so); } else pakete.push([s]);
     drin.add(s);
   }
-  const J = () => ps.reduce((a, p) => { const n = diensteIm(p.k, ym) - ziel[p.k], w = weImMonat(p.k, ym).size - zielWe[p.k];
-    return a + n * n + 2 * w * w; }, 0);
+  /* 1.99: Fairness mit Toleranzband - bis ±0,5 um das Ziel fast gratis, darueber steil (eine Person 2 ueber/unter
+     dem Ziel ist teurer als jeder einzelne weiche Verstoss, 1 Dienst Abweichung billiger) */
+  const band = d => Math.max(0, Math.abs(d) - 0.5) ** 2 * 60 + d * d * 5;
+  const J = () => ps.reduce((a, p) => a + band(diensteIm(p.k, ym) - ziel[p.k]) + 2 * band(weImMonat(p.k, ym).size - zielWe[p.k]), 0);
   /* 1.97: Guete = weiche Verstoesse (No-Go weich, Regeln, WE-Serie, 3. WE, WE an Fortbildung, Folgetag knapp …)
      aller Dienste der beteiligten Personen im Monat (Serien/WE-Zahl wirken ueber den einzelnen Tag hinaus) */
   const alleTage = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0, 4), +ym.slice(5, 7), i + 1));
   const kosten = ks => alleTage.reduce((a, d) => { const k = dienstVon(d);
     if(!ks.includes(k)) return a;
-    const b = bewerte(person(k), d); return a - (b.score + b.n * 3) + b.tags.filter(t => t[0] === 'o').length * 45; }, 0);   // ohne Anzahl-Term (Fairness misst J)
+    const b = bewerte(person(k), d); return a - (b.score + b.n * 3) * 3; }, 0);   // 1.99: Schwere je Verstoss aus bewerte() (No-Go weich 90, kein Sa 60 …), ohne Anzahl-Term (Fairness misst J)
   const ok = pk => pk.every(s => [-1, 0, 1].every(i => { const d = plus(s, i), k = dienstVon(d);
     return !k || !person(k) || !bewerte(person(k), d).tags.some(t => t[0] === 'r'); }));
   const versuch = (aend) => {   // aend: [[tag, neu], ...]; behalten, wenn Fairness + Guete zusammen besser
     const alt = aend.map(([s]) => [s, SIM[s]]), ks = [...new Set([...alt.map(x => x[1]), ...aend.map(x => x[1])])];
     const vorJ = J(), vorK = kosten(ks);
     aend.forEach(([s, k]) => SIM[s] = k);
-    if(ok(aend.map(x => x[0]))){ const d = (J() - vorJ) * 25 + (kosten(ks) - vorK); if(d < -0.5) return true; }
+    if(ok(aend.map(x => x[0]))){ const d = (J() - vorJ) + (kosten(ks) - vorK); if(d < -0.5) return true; }
     alt.forEach(([s, k]) => SIM[s] = k); return false;
   };
   for(let runde = 0; runde < 30; runde++){
     let besser = false;
     for(const pk of pakete) for(const q of ps)   // verschieben
       if(q.k !== SIM[pk[0]] && versuch(pk.map(s => [s, q.k]))) besser = true;
-    for(let i = 0; i < pakete.length; i++) for(let j = i + 1; j < pakete.length; j++){   // tauschen (gleiche Paketgroesse)
+    for(let i = 0; i < pakete.length; i++) for(let j = i + 1; j < pakete.length; j++){   // tauschen (1.99: auch Sa gegen Fr+So)
       const a = pakete[i], b = pakete[j], ka = SIM[a[0]], kb = SIM[b[0]];
-      if(ka === kb || a.length !== b.length) continue;
+      if(ka === kb) continue;
       if(versuch([...a.map(s => [s, kb]), ...b.map(s => [s, ka])])) besser = true;
+    }
+    /* Ringtausch (1.99) fuer Tage mit weichem Verstoss: p gibt den Tag an r ab und bekommt dafuer ein anderes
+       Paket von q (z. B. Sa raus, dafuer ein freies Fr+So-Wochenende) - einzelne Schritte waeren schlechter */
+    for(const u of pakete){
+      const p = SIM[u[0]];
+      if(!u.some(s => bewerte(person(p), s).tags.some(t => t[0] === 'o'))) continue;
+      for(const v of pakete){ const q = SIM[v[0]]; if(v === u || q === p) continue;
+        for(const r of ps) if(r.k !== p && versuch([...v.map(s => [s, p]), ...u.map(s => [s, r.k])])){ besser = true; break; } }
     }
     if(!besser) break;
   }

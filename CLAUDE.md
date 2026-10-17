@@ -76,7 +76,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   WE angrenzend an Urlaub tabu ('r', Nachbar-Arbeitstag über `werktagNeben()`), an Fortbildung −25.
   1.98: „3. WE im Monat“ zählt auch, wenn das WE schon eingeteilt ist (andere Blöcke ≥ 2); Dienst Mo–Do vor einem
   Abwesenheitstag (geht bis 7:30, wirkt wie Fr) = 'o' „vor Abwesenheit“ −25; drei Dienste jeden 2. Tag = 'o' −10;
-  weicher Verstoß kostet in `verbessern()` 45.
+  1.99 `verbessern()`: Fairness mit Toleranzband (`band()`: bis ±0,5 fast gratis, darüber ×60), Kosten je Verstoß =
+  3 × Abzug aus `bewerte()` (No-Go weich 90, kein Sa 60, 3. WE 120 …); Tausch auch Sa ↔ Fr+So; Ringtausch für Tage
+  mit Verstoß (p gibt Tag an r, bekommt Paket von q). Toast nennt verbleibende weiche Verstöße („Nicht ganz vermeidbar“).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
