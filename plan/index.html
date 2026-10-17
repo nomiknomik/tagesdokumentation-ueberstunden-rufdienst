@@ -837,7 +837,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.14';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.15';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2140,12 +2140,18 @@ function autoVerteilen(){
         x.wert = x.score + x.n * 3 - nach * 15 - Math.max(0, nach - 0.5) * 30   // ueber dem Monatsziel: abwerten (Feinschliff in verbessern())
           - (ftWT(s) ? (weLast(x.p.k, ym) + 0.5 - zielWe[x.p.k]) * 12 : 0)   // 2.09: Feiertag Mo–Do = halbes WE
           - (wt(s) >= 5 && !weImMonat(x.p.k, ym).has(weBlock(s)[1]) ? (weLast(x.p.k, ym) + 1 - zielWe[x.p.k]) * 25 : 0)
-          + Math.random(); });
+          + Math.random() * rausch; });
       return kand.sort((a, b) => b.wert - a.wert);
     };
     /* Reihenfolge (1.94): 1. Tage, fuer die nur eine Person in Frage kommt, 2. Fr+So als Paar (eine Person),
        3. Samstage, 4. Feiertage, 5. Rest - innerhalb jeweils der engste Tag zuerst */
     const stufe = s => wt(s) === 5 || wt(s) === 7 ? 0 : wt(s) === 6 ? 1 : feiertag(s) ? 2 : 3;
+    /* 2.15: mehrere Anlaeufe mit Zufall (verteilen + nachbessern), der beste Gesamtwert gewinnt - lange Tauschketten,
+       die die Nachbesserung Schritt fuer Schritt nicht findet, entstehen so oft schon beim Verteilen */
+    let rausch = 1, bester = null; const t0 = Date.now();
+    const mehrW = Object.fromEntries(ps.map(p => [p.k, {d: Z[p.k].e.expN !== undefined, w: Z[p.k].e.expWeBN !== undefined}]));
+    for(let lauf = 0; lauf < 3; lauf++, rausch = 25){
+    SIM = {};
     let offen = [...frei0]; const rest = [];
     while(offen.length){
       const liste = offen.map(s => ({s, kand: kandFuer(s)}));
@@ -2161,7 +2167,31 @@ function autoVerteilen(){
       }
       SIM[best.s] = best.kand[0].p.k;
     }
-    verbessern(frei0.filter(s => SIM[s]), ps, ziel, zielWe, Object.fromEntries(ps.map(p => [p.k, {d: Z[p.k].e.expN !== undefined, w: Z[p.k].e.expWeBN !== undefined}])));
+    const wert = verbessern(frei0.filter(s => SIM[s]), ps, ziel, zielWe, mehrW) + rest.length * 1000;
+    if(!bester || wert < bester.wert) bester = {wert, plan: {...SIM}, rest};
+    }
+    /* 2.15: Schuetteln - vom besten Plan aus einige Tage (Fr+So zusammen) zufaellig neu vergeben (nur ohne rote Regel)
+       und nachbessern; besser -> uebernehmen. Findet lange Tauschketten wie von Hand. Max. ~4 s. */
+    const belegt = frei0.filter(s => bester.plan[s]);
+    while(Date.now() - t0 < 4000){
+      SIM = {...bester.plan};
+      /* bevorzugt Tage von Personen, die beim Ziel daneben liegen */
+      const daneben = belegt.filter(s => { const k = SIM[s]; return Math.abs(diensteIm(k, ym) - ziel[k]) >= 1 || Math.abs(weLast(k, ym) - zielWe[k]) >= 0.5; });
+      for(let i = 0, n = 1 + Math.floor(Math.random() * 4); i < n; i++){
+        const aus = daneben.length && Math.random() < 0.5 ? daneben : belegt;
+        const s = aus[Math.floor(Math.random() * aus.length)];
+        const so = wt(s) === 5 && SIM[plus(s, 2)] === SIM[s] && belegt.includes(plus(s, 2)) ? plus(s, 2) : '';
+        const fr = wt(s) === 7 && SIM[plus(s, -2)] === SIM[s] && belegt.includes(plus(s, -2)) ? plus(s, -2) : '';
+        const tage = [s, so || fr].filter(Boolean), alt = SIM[s];
+        tage.forEach(t => delete SIM[t]);
+        const k = ps.filter(p => p.k !== alt && tage.every(t => !bewerte(p, t).tags.some(x => x[0] === 'r')));
+        const q = k.length ? k[Math.floor(Math.random() * k.length)] : null;
+        tage.forEach(t => SIM[t] = q ? q.k : alt);
+      }
+      const wert = verbessern(belegt, ps, ziel, zielWe, mehrW) + bester.rest.length * 1000;
+      if(wert < bester.wert - 0.5) bester = {...bester, wert, plan: {...SIM}};
+    }
+    SIM = bester.plan; const rest = bester.rest;
     const hinw = frei0.filter(s => SIM[s]).map(s => [s, bewerte(person(SIM[s]), s).tags.filter(t => t[0] === 'o').map(t => t[1])]).filter(x => x[1].length);
     const plan = SIM; SIM = null;
     let n = 0; Object.entries(plan).forEach(([s, k]) => { if(k){ einteilen(s, k, true); n++; } });
@@ -2172,6 +2202,7 @@ function autoVerteilen(){
 /* Nachbesserung (1.96): verteilte Tage (Fr+So als ein Paket) zwischen Personen verschieben oder tauschen,
    solange die Abweichung vom Ziel (Dienste und Wochenenden je Person) kleiner wird, keine rote Regel
    verletzt ist und die Wunsch-/Regel-Bewertung kaum schlechter wird. */
+const WE_GEW = 2;
 function verbessern(tage, ps, ziel, zielWe, mehr = {}){
   const pakete = [], drin = new Set();
   for(const s of tage){
@@ -2187,7 +2218,7 @@ function verbessern(tage, ps, ziel, zielWe, mehr = {}){
   /* 2.05: wer mehr Dienste/WE wuenscht, dem kostet jedes Fehlen wie ein leichter Verstoss (Einkommen) */
   const unter = (d, w) => w ? Math.max(0, -d - 0.3) * 30 : 0;
   const J = () => ps.reduce((a, p) => { const d = diensteIm(p.k, ym) - ziel[p.k], dw = weLast(p.k, ym) - zielWe[p.k], m = mehr[p.k] || {};
-    return a + band(d) + band(dw) + unter(d, m.d) + unter(dw, m.w); }, 0);
+    return a + band(d) + WE_GEW * band(dw) + unter(d, m.d) + unter(dw, m.w); }, 0);   // 2.15: WE daneben wiegt mehr als ein Dienst unter der Woche
   /* 1.97: Guete = weiche Verstoesse (No-Go weich, Regeln, WE-Serie, 3. WE, WE an Fortbildung, Folgetag knapp …)
      aller Dienste der beteiligten Personen im Monat (Serien/WE-Zahl wirken ueber den einzelnen Tag hinaus) */
   const alleTage = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0, 4), +ym.slice(5, 7), i + 1));
@@ -2222,6 +2253,7 @@ function verbessern(tage, ps, ziel, zielWe, mehr = {}){
     }
     if(!besser) break;
   }
+  return J() + kosten(ps.map(p => p.k));   // 2.15: Gesamtwert (kleiner = besser) fuer den Vergleich mehrerer Anlaeufe
 }
 $('autoBtn').onclick = autoVerteilen;
 $('autoWegBtn').onclick = ()=>{
