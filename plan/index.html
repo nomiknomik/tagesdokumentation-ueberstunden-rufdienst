@@ -48,7 +48,7 @@ nav.tabs button{border:0;background:transparent;padding:7px 11px;border-radius:9
 nav.tabs button.on{background:var(--primary);color:#fff}
 nav.tabs .ic{width:16px;height:16px}
 .monat{display:flex;align-items:center;gap:6px;margin-left:auto}
-.monat h2{margin:0;font-size:17px;min-width:140px;text-align:center}
+.monat h2{margin:0;font-size:17px;width:158px;text-align:center;white-space:nowrap}   /* 2.03: feste Breiten, sonst wandern die Pfeile mit Monat/Status */
 .rund{width:34px;height:34px;border-radius:999px;border:1.5px solid var(--border);background:var(--card);color:var(--primary);
   display:flex;align-items:center;justify-content:center;cursor:pointer}
 .rund:hover{border-color:var(--primary)}
@@ -61,6 +61,7 @@ nav.tabs .ic{width:16px;height:16px}
 .zoom button .ic{width:16px;height:16px;vertical-align:middle}
 .zoom span{font-size:11px;font-weight:700;color:var(--text2);min-width:40px;text-align:center}
 .status{border:0;background:transparent;cursor:pointer;padding:4px 6px;border-radius:8px}
+@media (min-width:761px){ .status{width:160px;justify-content:flex-start} #statusTxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} }
 .hknopf{position:relative;border:1px solid var(--border);background:var(--card);border-radius:999px;width:38px;height:38px;display:grid;place-items:center;cursor:pointer;color:var(--text2);padding:0}
 .hknopf:hover{border-color:var(--primary);color:var(--primary)}
 .hknopf .badge{position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font:700 11px/18px system-ui,sans-serif;font-style:normal;padding:0 5px;text-align:center}
@@ -831,7 +832,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.02';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.03';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
