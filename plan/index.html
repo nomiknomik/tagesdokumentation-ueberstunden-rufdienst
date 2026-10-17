@@ -439,6 +439,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 .raster th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-align:left;padding:6px}
 .raster td{padding:5px 6px;border-top:1px solid var(--line);vertical-align:middle}
 .raster input[type=number]{width:58px}
+#teamTab input[type=text]{min-width:110px}
 .raster input[type=text]{width:100%}
 .farbe{width:30px;height:30px;border:0;padding:0;background:none;cursor:pointer}
 .chk{display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:12.5px;white-space:nowrap}
@@ -480,9 +481,9 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 /* ---------- Schmal (Handy) ---------- */
 @media (max-width:1560px){ .ich b{display:none} .ich{padding:4px} .logo small{display:none} }
 @media (max-width:1000px){
-  .planwrap{grid-template-columns:1fr}
+  .planwrap{grid-template-columns:minmax(0,1fr)}
   .seite{position:static}
-  .zwei{grid-template-columns:1fr}
+  .zwei{grid-template-columns:minmax(0,1fr)}   /* minmax(0,…): breite Inhalte duerfen die Seite nicht verbreitern (Handy) */
 }
 @media (max-width:760px){
   .hd{padding:8px 16px;gap:8px}
@@ -499,7 +500,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
   .kal button{min-height:58px;padding:4px}
   .kal button .chip .txt{display:none}
   .kal button .mein-d{font-size:9px;padding:0 3px;max-width:100%;overflow:hidden}
-  .cfggrid{grid-template-columns:1fr}
+  .cfggrid{grid-template-columns:minmax(0,1fr)}
   #druckBtn{display:none}
   .raster{font-size:12px}
   /* Urlaub am Handy: Kachel als Spalte (Datum, Besetzung, Chips) statt absolut uebereinander */
@@ -830,7 +831,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.01';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.02';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
