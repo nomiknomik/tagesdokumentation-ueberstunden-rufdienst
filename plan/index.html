@@ -836,7 +836,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.08';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.09';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1647,7 +1647,7 @@ function detailHtml(p, z, zf){
   const h = z.h, e = z.e, li = a => a.map(x => `<li>${x}</li>`).join('');
   /* 2.06: Vormonate je Monat (Ist/Soll), keine Summen */
   const vm = (f, fe) => h.mon.length ? h.mon.map(x => { const z = f === 'n' ? x.zu : x.zuW;
-    return `${MON[+x.m.slice(5, 7) - 1].slice(0, 3)} ${x[f]}/${x[fe] - (z || 0)}${z ? ` <span title="Urlaubsmonat: ${z} mehr abgeschlossen">(U +${z})</span>` : x.u ? ' (U)' : ''}`; }).join(' · ') : 'keine Pläne';
+    return `${MON[+x.m.slice(5, 7) - 1].slice(0, 3)} ${zahlG(x[f])}/${zahlG(x[fe] - (z || 0))}${z ? ` <span title="Urlaubsmonat: ${z} mehr abgeschlossen">(U +${z})</span>` : x.u ? ' (U)' : ''}`; }).join(' · ') : 'keine Pläne';
   const sal = x => (x > 0 ? '+' : '') + zahl1(x);
   const zeilen = [
     `Anwesend ${e.da} von ${e.tage} Tagen · Quote ${p.quote || 100} % · max. ${maxDienste(p)}`,
@@ -1655,7 +1655,7 @@ function detailHtml(p, z, zf){
       + `, ganz ${z.ganz}${z.rN ? ` ${z.rN > 0 ? '+' : '−'} Ausgleich 1` : ''} = <b>Ziel ${z.ziel}</b>, Ist ${diensteIm(p.k, ym)}`,
     `Vormonate Ist/Soll: ${vm('n', 'exp')} → Bilanz ${sal(h.n - h.exp)} (zum Team ${sal(-h.relN)})${zf ? `, mit diesem Monat ${sal(zf.d)}` : ''}`,
     `<b>WE</b> diesen Monat: Anteil ${zahl1(e.expWeBN !== undefined ? e.expWeBN : e.expWeB)}${e.expWeBN !== undefined ? ` → Wunsch ${zahl1(e.expWeB)}` : ''}, ganz ${z.weGanz}`
-      + `${z.rW ? ` ${z.rW > 0 ? '+' : '−'} Ausgleich 1` : ''} = <b>Ziel ${z.zielWe}</b>, Ist ${weImMonat(p.k, ym).size}`,
+      + `${z.rW ? ` ${z.rW > 0 ? '+' : '−'} Ausgleich 1` : ''} = <b>Ziel ${zahlG(z.zielWe)}</b>, Ist ${zahlG(weLast(p.k, ym))} <small>(Feiertag Mo–Do = ½)</small>`,
     `Vormonate Ist/Soll: ${vm('weB', 'expWeB')} → Bilanz ${sal(h.weB - h.expWeB)} (zum Team ${sal(-h.relW)})${zf ? `, mit diesem Monat ${sal(zf.dw)}` : ''}`,
   ];
   const dienste = [], gesperrt = {};
@@ -1965,12 +1965,17 @@ $('planTab').addEventListener('touchcancel', dWischEnde);
    (Anteil an max. Diensten, Wochenend-/Feiertagsdienste). Markiert als auto. */
 const dienstAuto = s => { const d = dienstDaten(ymVon(s)); return !!(d && d.tage && d.tage[s] && d.tage[s].auto); };
 const weTag = s => wt(s) >= 6 || !!feiertag(s);
+/* 2.09: Feiertag Mo–Do zaehlt als halbes WE (egal ob am WE), Freitag gehoert immer zum WE-Block */
+const ftWT = s => wt(s) < 5 && !!feiertag(s);
+const weLast = (k, m) => { let n = weImMonat(k, m).size;
+  for(let i = 1; i <= tageIm(m); i++){ const s = ds(+m.slice(0, 4), +m.slice(5, 7), i); if(ftWT(s) && dienstVon(s) === k) n += 0.5; }
+  return n; };
 /* Erwartete Dienste je Person und Monat: an jedem Tag teilen sich die Anwesenden den
    einen Dienst (Gewicht = Arbeitsquote, bei Teilzeit-Muster 1, da die freien Tage
    schon fehlen). Wer im Urlaub ist, erwartet an dem Tag nichts - fehlen dann viele,
    steigt der Anteil der Uebrigen. So wird Abwesenheit fair verrechnet. */
 function erwartung(m, nurBelegte){
-  const r = {}, ps = diensttauglich(); ps.forEach(p => r[p.k] = {exp: 0, expWe: 0, expWeB: 0, da: 0, tage: 0});
+  const r = {}, ps = diensttauglich(); ps.forEach(p => r[p.k] = {exp: 0, expWe: 0, expWeB: 0, expFt: 0, da: 0, tage: 0});
   /* 2.06: Gewicht 1 nur, solange ein Teilzeit-Muster an dem Tag gilt (dessen freie Tage fehlen schon) - vor Beginn,
      nach Ende und in Luecken zwischen Mustern zaehlt die Arbeitsquote */
   const gew = (p, s) => (p.teilzeit || []).some(t => !(t.ab && s < t.ab) && !(t.bis && s > t.bis)) ? 1 : (p.quote || 100) / 100;
@@ -1985,6 +1990,7 @@ function erwartung(m, nurBelegte){
     /* 1.95: Wochenenden als Block (Fr+So + Sa = 2 Einsaetze je WE), nach Arbeitsquote geteilt. 2.00: gezaehlt wie
        weImMonat() - Sa im Monat = 1 Einsatz, Fr oder So im Monat = 1 Einsatz (WE am Monatswechsel zaehlt in beiden) */
     if(wt(s) === 6 || wt(s) === 5 || (wt(s) === 7 && i <= 2)){ const Q = da.reduce((a, p) => a + quote(p), 0); if(Q) da.forEach(p => r[p.k].expWeB += quote(p) / Q); }
+    if(ftWT(s)){ const Q = da.reduce((a, p) => a + quote(p), 0); if(Q) da.forEach(p => { r[p.k].expWeB += 0.5 * quote(p) / Q; r[p.k].expFt += 0.5 * quote(p) / Q; }); }   // 2.09
   }
   /* 2.01: gewuenschte Dienstmenge - die Person bekommt ihren Wunsch als Erwartung (gilt damit als ausgeglichen,
      auch im Rueckstand der Folgemonate), die uebrigen teilen sich den Rest nach ihrem Anteil */
@@ -2012,6 +2018,8 @@ function mengeWunsch(p, m, feld, e){
   return w > normal + 0.05 ? w : null;
 }
 /* 3 Vormonate: tatsaechliche und erwartete Dienste bzw. WE/Feiertagsdienste */
+/* WE-Soll: WE-Bloecke in ganzen, Feiertage Mo–Do in halben (2.09) */
+const weRund = (we, ft = 0) => Math.round(we - ft) + Math.round(ft * 2) / 2;
 const VORMONATE = 6;   // 2.06: Bilanz ueber 6 Monate (WE-Monate mit 4 oder 5 WE, Teilzeit ohne Bruchteile gleichen sich aus)
 function vorherAlle(){
   const r = {}; diensttauglich().forEach(p => r[p.k] = {n: 0, we: 0, weB: 0, exp: 0, expWe: 0, expWeB: 0, mon: []});
@@ -2021,9 +2029,9 @@ function vorherAlle(){
     /* gewuenschte Dienstmenge zaehlt als Erwartung: mehr bis zum Wunsch ist ausgeglichen, weniger (2.05) Rueckstand -
        ein nicht erfuellter Wunsch kostet Einkommen und wird nachgeholt */
     const belegt = !!(d && d.tage && Object.keys(d.tage).length);
-    for(const k in r){ const wb = weImMonat(k, m).size, n = belegt ? diensteIm(k, m) : 0;
+    for(const k in r){ const wb = weLast(k, m), n = belegt ? diensteIm(k, m) : 0;
       r[k].exp += e[k].exp; r[k].expWe += e[k].expWe; r[k].expWeB += e[k].expWeB; r[k].weB += wb;
-      if(belegt) r[k].mon.unshift({m, n, exp: e[k].exp, weB: wb, expWeB: e[k].expWeB}); }   // je Monat fuer die Details
+      if(belegt) r[k].mon.unshift({m, n, exp: e[k].exp, weB: wb, expWeB: e[k].expWeB, expFt: e[k].expFt}); }   // je Monat fuer die Details
   }
   /* 2.07: Soll je Monat in ganzen Diensten/WE (Anteil gerundet: 5,4 → 5, 5,6 → 6; 50 % = 1 WE) - nur die Abweichung
      davon zaehlt. exp/expWeB = Summe dieser Soll-Werte. */
@@ -2033,7 +2041,7 @@ function vorherAlle(){
   const URL_TYP = ['urlaub', 'fb', 'fza'], ab = x => x >= 2 ? x - 1 : 0;
   for(const k in r){
     const p = person(k);
-    r[k].mon.forEach(x => { x.exp = Math.round(x.exp); x.expWeB = Math.round(x.expWeB);
+    r[k].mon.forEach(x => { x.exp = Math.round(x.exp); x.expWeB = weRund(x.expWeB, x.expFt);
       const y = +x.m.slice(0, 4), mo = +x.m.slice(5, 7);
       x.u = Array.from({length: tageIm(x.m)}, (_, i) => ds(y, mo, i + 1)).some(s => URL_TYP.includes(abwesend(p, s)));
       if(x.u){ const dN = x.n - x.exp, dW = x.weB - x.expWeB;
@@ -2050,13 +2058,14 @@ function vorherAlle(){
   return r;
 }
 const zahl1 = x => x.toFixed(1).replace('.', ',');
+const zahlG = x => Number.isInteger(x) ? String(x) : zahl1(x);   // ganze Zahl ohne Nachkomma, halbe WE mit Komma
 /* Ziel je Person (1.96, als Funktion seit 2.04 - auch fuer Thermometer und Details). 2.07: nur ganze Zahlen - Anteil
    in diesem Monat (Quote, Abwesenheit, gewuenschte Menge) gerundet (`ganz`/`weGanz` = Pflicht); ±1 erst, wenn die
    Bilanz der 6 Vormonate (relativ zum Team) um einen ganzen Dienst bzw. ein ganzes WE oder mehr abweicht */
 function ziele(){
   const hist = vorherAlle(), jetzt = erwartung(ym), r = {}, eins = x => x >= 1 ? 1 : x <= -1 ? -1 : 0;
   diensttauglich().forEach(p => { const h = hist[p.k], e = jetzt[p.k], rN = eins(h.relN), rW = eins(h.relW);
-    const ganz = Math.round(e.exp), weGanz = Math.round(e.expWeB);
+    const ganz = Math.round(e.exp), weGanz = weRund(e.expWeB, e.expFt);
     r[p.k] = {h, e, rN, rW, ganz, weGanz, ziel: Math.max(0, ganz + rN), zielWe: Math.max(0, weGanz + rW)}; });
   return r;
 }
@@ -2066,7 +2075,7 @@ function ziele(){
 const TEAM_TAGS = /^Folgetag/;
 function zufriedenheit(p, z){
   const t = [], ab = (txt, pkt) => { if(pkt >= 0.5) t.push([txt, Math.round(pkt)]); };
-  const n = diensteIm(p.k, ym), we = weImMonat(p.k, ym).size, max = maxDienste(p);
+  const n = diensteIm(p.k, ym), we = weLast(p.k, ym), max = maxDienste(p);
   /* 2.05: Saldo ueber die Vormonate + diesen Monat (Ist − Soll): ±1 ist Streuung, ab 2 (z. B. zwei Monate je 1 zu viel)
      Abweichung; mit Wunsch nach mehr ist schon das Unterschreiten ein leichter Verstoss. 2.06: 6 Monate; WE dieses
      Monats gegen das ganzzahlige Ziel; ohne Mengen-Wunsch ist zu wenig kein Nachteil (wer mehr will, traegt es ein) */
@@ -2094,7 +2103,6 @@ function autoVerteilen(){
   if(!confirm(`${frei0.length} leere Tage in ${monatName(ym)} automatisch belegen?\n\nBestehende Einteilungen bleiben. Ausgeglichen wird nach Arbeitsquote in diesem Monat (Rückstand aus den 3 Vormonaten fließt mit ein); Abwesenheiten werden fair verrechnet. Die Vorschläge sind gestrichelt markiert und lassen sich mit „Vorschlag verwerfen“ wieder entfernen.`)) return;
   const ps = diensttauglich(), Z = ziele(), hist = {}, jetzt = {}, ziel = {}, zielWe = {};
   ps.forEach(p => { hist[p.k] = Z[p.k].h; jetzt[p.k] = Z[p.k].e; ziel[p.k] = Z[p.k].ziel; zielWe[p.k] = Z[p.k].zielWe; });
-  const weZahl = k => alle.filter(s => weTag(s) && wt(s) < 5 && dienstVon(s) === k).length;   // Feiertage unter der Woche
   const rot = x => x.tags.some(t => t[0] === 'r');
   SIM = {};
   try{
@@ -2102,8 +2110,8 @@ function autoVerteilen(){
       const kand = ps.map(p => ({p, ...bewerte(p, s)})).filter(x => !rot(x));
       kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k], nach = x.n + 1 - ziel[x.p.k];
         x.wert = x.score + x.n * 3 - nach * 15 - Math.max(0, nach - 0.5) * 30   // ueber dem Monatsziel: abwerten (Feinschliff in verbessern())
-          - (weTag(s) && wt(s) < 5 ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0)
-          - (wt(s) >= 5 && !weImMonat(x.p.k, ym).has(weBlock(s)[1]) ? (weImMonat(x.p.k, ym).size + 1 - zielWe[x.p.k]) * 25 : 0)
+          - (ftWT(s) ? (weLast(x.p.k, ym) + 0.5 - zielWe[x.p.k]) * 12 : 0)   // 2.09: Feiertag Mo–Do = halbes WE
+          - (wt(s) >= 5 && !weImMonat(x.p.k, ym).has(weBlock(s)[1]) ? (weLast(x.p.k, ym) + 1 - zielWe[x.p.k]) * 25 : 0)
           + Math.random(); });
       return kand.sort((a, b) => b.wert - a.wert);
     };
@@ -2150,7 +2158,7 @@ function verbessern(tage, ps, ziel, zielWe, mehr = {}){
   const band = d => Math.max(0, Math.abs(d) - 1) ** 2 * 100 + d * d * 5;
   /* 2.05: wer mehr Dienste/WE wuenscht, dem kostet jedes Fehlen wie ein leichter Verstoss (Einkommen) */
   const unter = (d, w) => w ? Math.max(0, -d - 0.3) * 30 : 0;
-  const J = () => ps.reduce((a, p) => { const d = diensteIm(p.k, ym) - ziel[p.k], dw = weImMonat(p.k, ym).size - zielWe[p.k], m = mehr[p.k] || {};
+  const J = () => ps.reduce((a, p) => { const d = diensteIm(p.k, ym) - ziel[p.k], dw = weLast(p.k, ym) - zielWe[p.k], m = mehr[p.k] || {};
     return a + band(d) + band(dw) + unter(d, m.d) + unter(dw, m.w); }, 0);
   /* 1.97: Guete = weiche Verstoesse (No-Go weich, Regeln, WE-Serie, 3. WE, WE an Fortbildung, Folgetag knapp …)
      aller Dienste der beteiligten Personen im Monat (Serien/WE-Zahl wirken ueber den einzelnen Tag hinaus) */
