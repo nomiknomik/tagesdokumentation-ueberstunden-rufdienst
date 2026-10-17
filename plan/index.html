@@ -311,8 +311,8 @@ body.weit .hd,body.weit main{max-width:1760px}
 table.tda{border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:12px;width:100%;background:#fff}
 .tda th,.tda td{border:1px solid #D6D3CE;padding:4px 1px;text-align:center;min-width:30px;white-space:nowrap}
 .tda thead th{background:#C8C8C8;font-weight:400;color:#222}
-.tda thead th.sa{background:#E8E36A} .tda thead th.so{background:#9FD98C}
-.tda td.sa{background:#FFFDA8} .tda td.so{background:#C6F2B5}
+.tda thead th.sa{background:#E8E36A} .tda thead th.so{background:#9FD98C} .tda thead th.ft{background:#3FE0F0}
+.tda td.sa{background:#FFFDA8} .tda td.so{background:#C6F2B5} .tda td.ft{background:#00F0FF}
 .tda .tda-n{text-align:left;padding:4px 8px;min-width:170px;position:sticky;left:0;background:#F2F0EC;z-index:1}
 .tda thead .tda-n{background:#E6E2DA;font-weight:700}
 .tda td.d{font-weight:700}
@@ -817,7 +817,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.91';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.92';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1583,14 +1583,14 @@ function renderPlan(){
 /* Kompakt: Monat wie in TDA (Zeilen = Personen, Spalten = Tage, Sa gelb, So/Feiertag gruen),
    Zellen mit TDA-Kuerzeln zum Abtippen. Werktag ohne Dienst/Abwesenheit bleibt leer
    (Funktion Amb… traegt der Planer in TDA ein). */
-const TDA_ABW = {urlaub: 'U', fb: 'Fo', fza: 'FZA', frei: '0', tz: '0'};
+const TDA_ABW = {urlaub: 'U*', fb: 'F0*', fza: 'FZA', frei: '0', tz: '0'};   // 1.92: Bezeichnungen wie im Original-TDA
 const tdaDienst = s => { const a = dienstArt(s); return a === 'RBD' ? 'RBD1' : a; };
 const tdaName = p => { const t = (p.name || p.k).trim().split(/\s+/); const n = t.length > 1 ? t.pop() + ', ' + t.join(' ') : t[0];
   return n + (p.pnr ? ` (${p.pnr})` : ''); };
 function tdaCode(p, s){
   if(dienstVon(s) === p.k) return ['d', tdaDienst(s)];
   const a = abwesend(p, s);
-  if(!werktag(s)) return a === 'fb' ? ['a', 'Fo'] : ['', '0'];   // WE/Feiertag ohne Dienst = 0 (auch im Urlaub), Fortbildung = Fo
+  if(!werktag(s)) return a === 'fb' ? ['a', 'F0*'] : ['', '0'];   // WE/Feiertag ohne Dienst = 0 (auch im Urlaub), Fortbildung = F0*
   if(a) return ['a', TDA_ABW[a] || a];
   const h = halbWeg(p, s);
   if(h) return ['h', h === 'vm' ? 'Nachm.' : 'Vorm.'];   // 1.59: halber Tag = anwesende Haelfte
@@ -1599,19 +1599,19 @@ function tdaCode(p, s){
 }
 function kompaktHtml(){
   const n = tageIm(ym), tage = Array.from({length: n}, (_, i) => ds(+ym.slice(0, 4), +ym.slice(5, 7), i + 1));
-  const kl = s => feiertag(s) || wt(s) === 7 ? 'so' : wt(s) === 6 ? 'sa' : '';
+  const kl = s => feiertag(s) ? 'ft' : wt(s) === 7 ? 'so' : wt(s) === 6 ? 'sa' : '';   // wie TDA: Sa gelb, So gruen, Feiertag tuerkis
   let h = `<table class="tda"><thead><tr><th class="tda-n" rowspan="2">${monatName(ym)}</th>${tage.map(s => `<th class="${kl(s)}" title="${esc(feiertag(s))}">${WT[wt(s)]}</th>`).join('')}</tr>`
     + `<tr>${tage.map(s => `<th class="${kl(s)}">${+s.slice(8)}</th>`).join('')}</tr></thead><tbody>`;
   for(const p of [...personen()].sort((a, b) => tdaName(a).localeCompare(tdaName(b), 'de')))   // wie TDA: nach Nachname
     h += `<tr><td class="tda-n">${esc(tdaName(p))}</td>${tage.map(s => { const [c, t] = tdaCode(p, s);
       const e = eintrag(p.k, s), offen = c === 'a' && e && pflicht(e.typ) && !e.ok;
       return `<td class="${kl(s)} ${c} ${offen ? 'offen' : ''}" data-tag="${s}" data-k="${esc(p.k)}"${offen ? ` title="${esc(TYPEN[e.typ].name)} beantragt – noch nicht genehmigt"` : ''}>${t}</td>`; }).join('')}</tr>`;
-  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U Urlaub · Fo Fortbildung · FZA Freizeitausgleich · 0 frei · Chef: leer = ganztags, Vorm./Nachm. = nur vormittags/nachmittags da · <u style="text-decoration-style:dashed;color:#B5651D">U</u> = beantragt, noch nicht genehmigt. Klick auf ein Feld: ändern – Dienst hat je Tag nur eine Person.</div>`;
+  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U* Urlaub · F0* Fortbildung · FZA Freizeitausgleich · 0 frei · Chef: leer = ganztags, Vorm./Nachm. = nur vormittags/nachmittags da · <u style="text-decoration-style:dashed;color:#B5651D">U*</u> = beantragt, noch nicht genehmigt. Klick auf ein Feld: ändern – Dienst hat je Tag nur eine Person.</div>`;
 }
 /* TDA ist nur eine Ansicht auf die echten Daten (1.56): ein Klick aendert Dienst bzw.
    Wunsch-Eintrag, nichts Eigenes. Regeldienst = anwesend (Amb2 Mo / Amb4 Di-Fr), 0 = frei.
    Alles in einer Aktion = ein Rueckgaengig-Schritt. */
-const TDA_TYP = {U: 'urlaub', Fo: 'fb', FZA: 'fza'};
+const TDA_TYP = {'U*': 'urlaub', 'F0*': 'fb', FZA: 'fza'};
 const tdaRegel = s => wt(s) === 1 ? 'Amb2' : 'Amb4';
 function tdaSetzen(k, s, code){
   const p = person(k), e = eintrag(k, s), alt = dienstVon(s);
@@ -1624,7 +1624,7 @@ function tdaSetzen(k, s, code){
   const abw = e && TYPEN[e.typ] && TYPEN[e.typ].abw;
   if(code === tdaDienst(s)){ if(abw && (werktag(s) || e.typ === 'fb')) wunsch(null); einteilen(s, k); return; }
   if(alt === k) einteilen(s, '');
-  if(!werktag(s)){ if(code === 'Fo') wunsch({typ: 'fb'}); else if(e && e.typ === 'fb') wunsch(null); return; }   // WE/Feiertag: nur Fo oder 0
+  if(!werktag(s)){ if(code === 'F0*') wunsch({typ: 'fb'}); else if(e && e.typ === 'fb') wunsch(null); return; }   // WE/Feiertag: nur F0* oder 0
   if(TDA_TYP[code]) wunsch({typ: TDA_TYP[code]});   // Antrag wie ueberall - genehmigt wird im Urlaub-Reiter/To-do
   else if(code === '0') wunsch(teilzeitFrei(p, s) ? null : {typ: 'frei'});
   else if(code === tdaRegel(s) || code === 'ganztags') wunsch(teilzeitFrei(p, s) ? {typ: 'da'} : null);
@@ -1634,8 +1634,8 @@ function tdaWahl(k, s){
   if(!darfVeroeffentlichen()) return;
   const p = person(k), dienst = tdaDienst(s), alt = dienstVon(s), chef = p.rolle === 'chef';
   const akt = tdaCode(p, s)[1] || 'ganztags';
-  const codes = chef ? (werktag(s) ? ['U', 'Fo', 'FZA', 'ganztags', 'Vorm.', 'Nachm.', '0'] : ['Fo', '0'])   // Chef: keine Dienste, kein Amb
-    : werktag(s) ? [dienst, 'U', 'Fo', 'FZA', tdaRegel(s), '0'] : [dienst, 'Fo', '0'];
+  const codes = chef ? (werktag(s) ? ['U*', 'F0*', 'FZA', 'ganztags', 'Vorm.', 'Nachm.', '0'] : ['F0*', '0'])   // Chef: keine Dienste, kein Amb
+    : werktag(s) ? [dienst, 'U*', 'F0*', 'FZA', tdaRegel(s), '0'] : [dienst, 'F0*', '0'];
   dialog(`<h3>${esc(tdaName(p))}</h3><div class="unter">${WTL[wt(s)]}, ${kurzDat(s)}${feiertag(s) ? ' · ' + esc(feiertag(s)) : ''}${alt && alt !== k ? ` · Dienst hat bisher ${esc(alt)}` : ''}</div>
     <div class="tda-wahl" style="grid-template-columns:repeat(${codes.length > 2 ? 3 : 2},1fr)">${codes.map(c => `<button data-c="${c}" class="${c === akt ? 'on' : ''} ${c === dienst ? 'dienst' : ''}">${c}</button>`).join('')}</div>
     <div class="fuss"><button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
@@ -1665,7 +1665,7 @@ function wocheTagHtml(s){
   const ub = urlBesetzung(s), da = [], weg = [];
   for(const p of [...personen()].sort((a, b) => nachn(a).localeCompare(nachn(b), 'de'))){
     const a = abwesend(p, s);
-    if(a){ if(a !== 'tz' && a !== 'frei') weg.push(`${p.k} (${{urlaub: 'U', fb: 'Fo', fza: 'FZA'}[a] || a})`); else weg.push(p.k); continue; }
+    if(a){ if(a !== 'tz' && a !== 'frei') weg.push(`${p.k} (${TDA_ABW[a] || a})`); else weg.push(p.k); continue; }
     const h = halbWeg(p, s);
     const zusatz = p.k === dh ? ['ab 11', 'Dienst ab 11 Uhr'] : gefaehrdet(p, s) ? ['n. D.', 'nach Dienst – fehlt evtl.']
       : h ? [h === 'vm' ? 'nachm.' : 'vorm.', halbTitel(p, s)] : null;

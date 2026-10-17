@@ -121,10 +121,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   ändert nur der Planer (`gesperrtFuer()`). Abwesend zählt er schon als Antrag.
   TDA-Ansicht (1.46, intern `kompakt`, dritte Wahl neben Liste/Matrix, `kompaktHtml()`): Monat wie TDA – Zeilen
   „Nachname, Vorname (Pers.-Nr.)“ (`p.pnr`, Team-Tabelle), Spalten Tage, Sa gelb, So/Feiertag grün;
-  Codes ZD1/ZD2/RBD1/RBD2, U, Fo, FZA, 0 (frei/WE), Regeldienst Amb2 (Mo)/Amb4 (wie Tagesdoku `derive()`). Ohne Seitenleiste; Drucken = A4 quer.
+  Codes ZD1/ZD2/RBD1/RBD2, U*, F0* (Bezeichnungen wie Original-TDA seit 1.92, `TDA_ABW`), FZA, 0 (frei/WE), Feiertag-Spalte türkis, Regeldienst Amb2 (Mo)/Amb4 (wie Tagesdoku `derive()`). Ohne Seitenleiste; Drucken = A4 quer.
   Seit 1.54 nur Planer/Admin (`darfVeroeffentlichen()`), Zeilen nach Nachname. Reine Ansicht (1.56): Klick
   auf ein Feld (`tdaWahl()`/`tdaSetzen()`) ändert nur echte Daten – Dienstcode → `einteilen()` (Vorgänger
-  fällt auf Regeldienst zurück), U/Fo/FZA → Wunsch-Eintrag als Antrag (1.57, nicht genehmigt; in TDA gestrichelt unterstrichen), Regeldienst (Amb2 Mo/Amb4
+  fällt auf Regeldienst zurück), U*/F0*/FZA → Wunsch-Eintrag als Antrag (1.57, nicht genehmigt; in TDA gestrichelt unterstrichen), Regeldienst (Amb2 Mo/Amb4
   Di–Fr, `tdaRegel()`) → anwesend (`da` an Teilzeit-freien Tagen), 0 → `frei`; WE/Feiertag nur Dienst/0.
   Keine eigenen TDA-Codes (die `tda`-Felder aus 1.54/1.55 in Dienstdateien werden ignoriert).
   Chef (1.59): kein Amb/Dienst – ganztags da = leer, halber Tag = „Vorm.“/„Nachm.“ (anwesende Hälfte, auch
@@ -153,7 +153,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Angaben enden oft am Samstag); weitere Jahre per ICS-Import (`#termIcs`, DTEND exklusiv, ebenfalls gekürzt);
   Regel-Typ `nachFreiWE` (1.79): kein Dienst am Montag (nur Arbeits-Montag, nicht Feiertag; Ferien egal – 1.81), wenn Sa+So kein eigener Dienst (`regelFreiWE()`, in `bewerte()` und
   Wunschkalender), weich/hart wie andere Regeln; `wt` fest 1. Gegenstück `prefNachFreiWE` (1.80): Montag nach freiem Wochenende bevorzugt (wie `pref`).
-  Fortbildung (1.82) auch an Wochenenden/Feiertagen pinselbar, zählt dort im FB-Zähler und erscheint in TDA als „Fo“.
+  Fortbildung (1.82) auch an Wochenenden/Feiertagen pinselbar, zählt dort im FB-Zähler und erscheint in TDA als „F0*“.
   Wunschkalender zeigt Termine seit 1.78 ebenso (Balken `terminBand()`, Name am 1. Tag/montags, Ferien hellblau).
   Doppelklick auf einen Termin rechts scrollt den Urlaub-Kalender zum ersten Tag (`urlZuTag()`, 1.77, Kachel blinkt).
   Winterferien legt jede Schule selbst fest → von Hand. Urlaub-Kacheln: Besetzung
