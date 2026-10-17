@@ -79,6 +79,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   1.99 `verbessern()`: Fairness mit Toleranzband (`band()`: bis ±0,5 fast gratis, darüber ×60), Kosten je Verstoß =
   3 × Abzug aus `bewerte()` (No-Go weich 90, kein Sa 60, 3. WE 120 …); Tausch auch Sa ↔ Fr+So; Ringtausch für Tage
   mit Verstoß (p gibt Tag an r, bekommt Paket von q). Toast nennt verbleibende weiche Verstöße („Nicht ganz vermeidbar“).
+  2.00 (kalibriert an Handplänen per Playwright mit Backup, nur lokal): `band()` Toleranz ±1 (5·d² + 100·(|d|−1)²),
+  Dienste und WE gleich gewichtet; WE-Erwartung zählt wie `weImMonat()` (Sa im Monat 1, Fr oder So im Monat 1 –
+  Monatswechsel-WE in beiden); Vormonats-Rückstand auf Summe 0 normiert (`vorherAlle()`), WE-Rückstand max. ±0,5;
+  „2. WE“-Abzug (`fair` aus `bewerte()`) nicht in `kosten`. Halber Tag: Symbol `logOutL` (Pfeil links) „Vormittag“ bzw.
+  `logOut` „Nachmittag“ (`typIcon()`/`typName()`).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
