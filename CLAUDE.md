@@ -55,8 +55,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Wahl in `planung_ansicht`); beide aus denselben Tagesdaten (`info`). Letzter
   Monat/Reiter je Gerät in `planung_monat`/`planung_tab` (Start/Update dort).
   Zoom −/+ im Kopf: CSS `zoom` auf `main` + `#dlg` (Kopf bleibt), Sticky-Abstände
-  über `--z`, 70–200 %, je Gerät in `planung_zoom`. Plan-Leiste (Ansicht … Signieren, 1.90) einzeilig und klebend unter dem Kopf
-  (`--kopfH`; zu breit = waagerecht wischen); Sticky-Köpfe darunter addieren `--werkH` (ResizeObserver). „Automatisch verteilen“
+  über `--z`, 70–200 %, je Gerät in `planung_zoom`. Plan-Leiste (Ansicht … Signieren, 1.90) klebend unter dem Kopf
+  (`--kopfH`), seit 1.91 über volle Breite (vor `.planwrap`), Desktop bricht um, Handy einzeilig wischbar;
+  Plan-Reiter breiter (`body.weit`, 1760 px); Sticky-Köpfe darunter addieren `--werkH` (ResizeObserver). „Automatisch verteilen“
   (`autoVerteilen()`): nur leere Tage, engster Tag zuerst, rote Tags tabu, Fairness
   über 3 Vormonate + Monat als Saldo Ist − Erwartung (`erwartung()`: je Tag teilen
   sich die Anwesenden den Dienst, Abwesende 0; Vormonate nur Tage mit Plan;
@@ -103,7 +104,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   ausgeblendet (`cfgSperren()`, Karte `.frei` ausgenommen). Person wechseln (Kopf `#ichBtn`, `#ichWechsel`)
   seit 1.61 nur auf dem Admin-Gerät (`adminGeraet()`), auch nicht der Planer. Seit 1.63 kommen die Rechte
   immer von der gewählten Person (`istAdmin()` nur ohne gewählte Person) – der Admin sieht genau ihre
-  Ansicht, die Personenwahl bleibt sein Rückweg. Wünsche/Urlaub öffnen seit 1.65 immer mit der eigenen Person (`fuerK`/`urlK` = `ichK` beim Reiterwechsel; Doppelklick im Plan setzt danach); seit 1.66 sind dort alle Personen wählbar, fremde ohne `darfFuer()` nur ansehen (`#meinLesen`, Pinsel aus, rechte Spalte gesperrt). Kopf-Knopf `#ichBtn` seit 1.64 nur auf dem Admin-Gerät; „Angemeldet als“ für alle in der Karte Zugang. Ohne gewählte Person darf jedes Gerät einmal wählen.
+  Ansicht, die Personenwahl bleibt sein Rückweg. Wünsche/Urlaub öffnen seit 1.65 immer mit der eigenen Person (`fuerK`/`urlK` = `ichK` beim Reiterwechsel; Doppelklick im Plan setzt danach); seit 1.66 sind dort alle Personen wählbar, fremde ohne `darfFuer()` nur ansehen (`#meinLesen`, Pinsel aus, rechte Spalte gesperrt). Kopf-Knopf `#ichBtn` seit 1.64 nur auf dem Admin-Gerät, seit 1.91 ganz ausgeblendet (Personenwahl nur noch in der Karte Zugang); „Angemeldet als“ für alle in der Karte Zugang. Ohne gewählte Person darf jedes Gerät einmal wählen.
   1.62: „Admin-Anmeldung“ in der Karte Zugang (Gist-Token, `GET /user` = Besitzer `TEAM_REPO`, setzt
   `tagesdoku_admin`) und „Repo und Token direkt“ im Erstlogin seit 1.71 nur über `…/plan/#admin` (`ADMIN_TUER`) oder
   seit 1.72 7 schnelle Tipps (4 s) auf das Kopf-Logo bzw. den Erstlogin-Titel (`fuenfTipps()`, auch für installierte App) –

@@ -140,11 +140,16 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 /* ---------- Plan (vertikal) ---------- */
 .planwrap{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start}
 .werkzeug{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
-/* Plan-Leiste (1.90): eine Zeile, klebt unter dem Kopf; zu breit = waagerecht wischen */
-#tab-plan .werkzeug{position:sticky;top:calc(var(--kopfH, 57px) / var(--z, 1));z-index:8;background:var(--bg);flex-wrap:nowrap;
-  overflow-x:auto;scrollbar-width:none;padding:8px 0;margin:-8px 0 4px;white-space:nowrap}
-#tab-plan .werkzeug::-webkit-scrollbar{display:none} #tab-plan .werkzeug > *{flex:none}
+/* Plan-Leiste (1.90/1.91): ueber volle Breite (auch ueber der Seitenleiste), klebt unter dem Kopf,
+   bricht bei Platzmangel in eine zweite Zeile um */
+#tab-plan .werkzeug{position:sticky;top:calc(var(--kopfH, 57px) / var(--z, 1));z-index:8;background:var(--bg);gap:8px 10px;
+  padding:8px 0;margin:-8px 0 4px}
 #tab-plan .planwrap > div{min-width:0}
+@media (max-width:760px){   /* Handy: eine Zeile, waagerecht wischen (sonst frisst die Leiste den Bildschirm) */
+  #tab-plan .werkzeug{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+  #tab-plan .werkzeug::-webkit-scrollbar{display:none} #tab-plan .werkzeug > *{flex:none} }
+/* Plan-Reiter (1.91): breiterer Inhalt fuer grosse Bildschirme */
+body.weit .hd,body.weit main{max-width:1760px}
 .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700}
 .pill.entwurf{background:#F0ECE6;color:var(--text2)}
 .pill.pub{background:var(--success-soft);color:var(--success)}
@@ -188,6 +193,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .dimm .zeile:not(.kopf):not(.mark){opacity:.38}
 
 .seite{position:sticky;top:calc(var(--kopfH, 57px) / var(--z, 1) + 19px)}
+#tab-plan .seite{top:calc(var(--kopfH, 57px) / var(--z, 1) + var(--werkH, 0px) + 8px)}
 .seite .card{padding:14px}
 .prow{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:10px;cursor:pointer}
 .prow:hover,.prow.on{background:var(--primary-soft)}
@@ -578,8 +584,6 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 
   <!-- ===== Plan ===== -->
   <section id="tab-plan">
-    <div class="planwrap">
-      <div>
         <div class="werkzeug">
           <span class="seg" id="ansichtSeg"><button data-a="liste">Liste</button><button data-a="matrix">Matrix</button><button data-a="kompakt" title="Monat wie in TDA – zum Übertragen">TDA</button><button data-a="woche" title="Mo–Fr: wer ist da (Sprechstunde, OP-Planung)">Woche</button></span>
           <span class="pill entwurf" id="pubPill">Entwurf</span>
@@ -592,6 +596,8 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <button class="btn out hidden" id="unpubBtn" title="Signatur zurücknehmen (Planer/Admin)"><span data-icon="refresh"></span>Zurücknehmen</button>
           <button class="btn" id="pubBtn"><span data-icon="send"></span>Signieren</button>
         </div>
+    <div class="planwrap">
+      <div>
         <div class="tabelle" id="planTab"></div>
       </div>
       <aside class="seite">
@@ -811,7 +817,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.90';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.91';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1421,7 +1427,8 @@ function render(){
   $('mTitel').textContent = monatName(ym);
   const p = ich();
   $('ichBtn').innerHTML = p ? `${pk(p)}<b>${esc(p.name || p.k)}</b>` : '<span class="hint">nicht angemeldet</span>';
-  $('ichBtn').classList.toggle('hidden', !adminGeraet() && !!p);   // 1.64: Kopf-Knopf nur Admin (Personenwahl), sonst in Einstellungen → Zugang
+  $('ichBtn').classList.add('hidden');   // 1.91: kein Kopf-Knopf mehr – Personenwahl (Admin) in Einstellungen → Zugang
+  document.body.classList.toggle('weit', tab === 'plan');
   $('ichBtn').title = adminGeraet() ? 'Angemeldet als – Klick: Person wechseln (Admin)' : 'Angemeldet als';
   $('ichWechsel').classList.toggle('hidden', !!ich() && !adminGeraet());   // Person wechseln nur Admin
   $('adminLogin').classList.toggle('hidden', adminGeraet() || !ADMIN_TUER);
