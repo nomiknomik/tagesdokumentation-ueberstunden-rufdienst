@@ -124,6 +124,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   mit Schütteln überall gleich/besser. Test-Schalter `window.AV_TEST = {heat, laeufe, zeit, heatMin, protokoll: []}`.
   2.17: Reihenfolge WE > Feiertag > Rest geht vor der Wahrscheinlichkeit; 1. Anlauf Schwelle 60 %, 2. Anlauf Heatmap bis zum
   Ende (Schwelle 0), 3. bisheriges Verfahren. Jan −760, Nov −855, Okt −1005. Erklärgrafik nur lokal (Scratchpad).
+  2.18 Schichten (Idee Team, `schichtenStart()`, Anlauf 4 statt Zufallsanlauf): je Person bis 40 eigene Monatspläne (nie in
+  Folge, Abstand 2–3 bevorzugt, WE-Zahl nach Ziel, Fr+So oder Sa, nicht 2 WE hintereinander, keine rote Regel), übereinander
+  gelegt ab unflexibelster Person (Strahlsuche 30, Kollision 60), Rest normal. Starts: Heatmap 60 % / Heatmap ganz / Schichten,
+  dann Schütteln. Jan 6/6 × −760, Nov meist −875…−915. Test-Schalter zusätzlich `nur`, `schichten`, `zufall`.
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).

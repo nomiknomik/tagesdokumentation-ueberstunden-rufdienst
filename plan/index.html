@@ -837,7 +837,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.17';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.18';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2151,8 +2151,11 @@ function autoVerteilen(){
     let rausch = 1, bester = null; const t0 = Date.now();
     const mehrW = Object.fromEntries(ps.map(p => [p.k, {d: Z[p.k].e.expN !== undefined, w: Z[p.k].e.expWeBN !== undefined}]));
     const AV = window.AV_TEST || {};   // nur fuer Tests: {heat, laeufe, zeit}
-    for(let lauf = 0; lauf < (AV.laeufe ?? 3); lauf++, rausch = 25){
+    for(let lauf = 0; lauf < (AV.laeufe ?? 4); lauf++, rausch = 25){
     SIM = {};
+    if(AV.nur !== undefined && AV.nur !== lauf) continue;   // Test: nur ein Anlauf
+    if(lauf === 2 && AV.zufall !== true) continue;   // 2.18: Zufallsanlauf durch Schichten ersetzt (Test: zufall:true)
+    if(lauf === 3){ if(AV.schichten === false) continue; schichtenStart(frei0, ps, ziel, zielWe); }   // 2.18: Schichten je Person
     /* 2.16: 1. Anlauf sichere Zellen (>= 60 %) zuerst, 2. Anlauf ganz per Heatmap (immer die sicherste), 3. wie bisher */
     if(AV.heat !== false && lauf < 2) heatVorbelegen(frei0, ps, ziel, stufe, lauf === 0 ? (AV.heatMin ?? 0.6) : 0);
     let offen = frei0.filter(s => !SIM[s]); const rest = [];
@@ -2234,6 +2237,66 @@ function heatVorbelegen(frei, ps, ziel, stufe, MIN = 0.6){
     if(!best) return;
     pakete[best.i].forEach(s => SIM[s] = ps[best.j].k);
   }
+}
+/* Schichten (2.18, Idee aus dem Team): je Person viele eigene Monatsplaene (Varianten), jeder fuer sich gut - nie zwei
+   Dienste in Folge, Abstand bevorzugt 2-3 Tage, WE-Zahl nach Ziel (Fr+So oder Sa, nicht zwei WE hintereinander), keine
+   rote Regel, weiche Regeln/Wuensche ueber bewerte(). Dann die Varianten uebereinanderlegen, unflexibelste Person zuerst
+   (wenige moegliche Tage je Bedarf); Strahlsuche (beste 30 Kombinationen je Stufe), Kollision kostet wie ein weicher
+   Verstoss - der zuerst belegte Tag bleibt. Luecken/Konflikte loest danach der normale Ablauf. */
+function schichtenStart(frei, ps, ziel, zielWe){
+  const VAR = 40, STRAHL = 30, KOLL = 60, zufall = a => a[Math.floor(Math.random() * a.length)];
+  const wahl = (liste, gew) => { const g = liste.map(gew), t = g.reduce((a, x) => a + x, 0); if(!t) return null;
+    let r = Math.random() * t; for(let i = 0; i < liste.length; i++){ r -= g[i]; if(r <= 0) return liste[i]; } return liste[liste.length - 1]; };
+  const info = ps.map(p => {
+    const moegl = frei.filter(s => !bewerte(p, s).tags.some(t => t[0] === 'r'));
+    const sc = Object.fromEntries(moegl.map(s => [s, bewerte(p, s).score]));
+    const eigen = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0, 4), +ym.slice(5, 7), i + 1)).filter(s => dienstVon(s) === p.k);
+    const n = Math.max(0, Math.round(ziel[p.k]) - eigen.length), weN = Math.max(0, Math.round(zielWe[p.k] - weLast(p.k, ym)));
+    /* WE-Einheiten: Fr+So (beide moeglich) oder Sa */
+    const sams = [...new Set(moegl.filter(s => wt(s) >= 5).map(s => weBlock(s)[1]))];
+    const einheiten = [];
+    sams.forEach(sa => { const fr = plus(sa, -1), so = plus(sa, 1);
+      if(moegl.includes(fr) && moegl.includes(so)) einheiten.push({sa, tage: [fr, so]});
+      if(moegl.includes(sa)) einheiten.push({sa, tage: [sa]}); });
+    const werk = moegl.filter(s => wt(s) < 5 && !(wt(s) === 5));   // Mo-Do (inkl. Feiertage); Freitage nur als Teil von Fr+So
+    const vars = new Map();
+    for(let versuch = 0; versuch < VAR * 4 && vars.size < VAR; versuch++){
+      const tage = new Set(), belegtSa = [];
+      for(let w = 0; w < weN; w++){
+        const e = wahl(einheiten.filter(x => !belegtSa.some(sa => Math.abs(tn(sa) - tn(x.sa)) <= 7) && x.tage.every(t => !tage.has(t))),
+          x => Math.exp(x.tage.reduce((a, t) => a + sc[t], 0) / x.tage.length / 15));
+        if(!e) break; e.tage.forEach(t => tage.add(t)); belegtSa.push(e.sa);
+      }
+      while(tage.size < n){
+        const alle = [...tage, ...eigen];
+        const frei2 = werk.filter(s => !tage.has(s) && alle.every(t => Math.abs(tn(t) - tn(s)) >= 2));
+        const s = wahl(frei2, x => { const abst = Math.min(99, ...alle.map(t => Math.abs(tn(t) - tn(x))));
+          return Math.exp(sc[x] / 15) * (abst === 2 || abst === 3 ? 1.6 : 1); });
+        if(!s) break; tage.add(s);
+      }
+      const liste = [...tage].sort(), key = liste.join();
+      if(vars.has(key)) continue;
+      /* Kosten: weiche Bewertung + Abweichung von Bedarf/WE + enge Abstaende */
+      const alle = [...liste, ...eigen].map(tn).sort((a, b) => a - b);
+      let eng = 0; for(let i = 1; i < alle.length; i++) if(alle[i] - alle[i - 1] === 2 && i > 1 && alle[i - 1] - alle[i - 2] === 2) eng++;
+      vars.set(key, {tage: liste, kosten: -liste.reduce((a, t) => a + sc[t], 0) + Math.abs(n - liste.length) * 40 + eng * 10});
+    }
+    return {p, n, flex: moegl.length / Math.max(1, n), vars: [...vars.values()].sort((a, b) => a.kosten - b.kosten)};
+  }).sort((a, b) => a.flex - b.flex);
+  let strahl = [{belegt: {}, kosten: 0}];
+  for(const x of info){
+    if(!x.vars.length) continue;
+    const neu = [];
+    for(const st of strahl) for(const v of x.vars){
+      const koll = v.tage.filter(t => st.belegt[t]).length;
+      neu.push({st, v, kosten: st.kosten + v.kosten + koll * KOLL});
+    }
+    neu.sort((a, b) => a.kosten - b.kosten);
+    strahl = neu.slice(0, STRAHL).map(({st, v, kosten}) => { const b = {...st.belegt}; v.tage.forEach(t => { if(!b[t]) b[t] = x.p.k; }); return {belegt: b, kosten}; });
+  }
+  const offen = st => frei.filter(s => !st.belegt[s]).length;
+  const best = strahl.sort((a, b) => (a.kosten + offen(a) * 40) - (b.kosten + offen(b) * 40))[0];
+  Object.assign(SIM, best.belegt);
 }
 /* Nachbesserung (1.96): verteilte Tage (Fr+So als ein Paket) zwischen Personen verschieben oder tauschen,
    solange die Abweichung vom Ziel (Dienste und Wochenenden je Person) kleiner wird, keine rote Regel
