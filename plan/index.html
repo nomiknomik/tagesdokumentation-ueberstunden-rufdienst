@@ -818,7 +818,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.97';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.98';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1321,15 +1321,21 @@ function bewerte(p, s){
   if(n >= max){ tags.push(['r', `max. ${max} erreicht`]); score -= 50; }
   if(dienstVon(plus(s, -1)) === p.k) { tags.push(['r', 'Dienst am Vortag']); score -= 100; }   // 1.94: zwei Dienste in Folge verboten
   if(dienstVon(plus(s, 1)) === p.k) { tags.push(['r', 'Dienst am Folgetag']); score -= 100; }
+  /* 1.98: Dienst Mo-Do geht bis 7:30 des Folgetags - ist die Person am Folgetag weg (Urlaub, frei, Teilzeit …),
+     wirkt er wie ein Freitagsdienst: ungern */
+  if(!a && wt(s) <= 4 && werktag(s) && werktag(plus(s, 1)) && abwesend(p, plus(s, 1))){ tags.push(['o', 'vor Abwesenheit']); score -= 25; }
+  /* 1.98: drei Dienste jeden 2. Tag (z. B. Fr-So-Di) - ungern */
+  const d2 = i => dienstVon(plus(s, i)) === p.k;
+  if((d2(-2) && d2(-4)) || (d2(-2) && d2(2)) || (d2(2) && d2(4))){ tags.push(['o', '3× jeden 2. Tag']); score -= 10; }
   const blk = weBlock(s);
   if(blk && !a){
     /* angrenzend an Urlaub: tabu, an Fortbildung ungern (Fr-Dienst: ab Do, Sa/So-Dienst: ab Fr) */
     const nb = [werktagNeben(wt(s) === 5 ? blk[0] : blk[1], -1), werktagNeben(blk[2], 1)].map(x => abwesend(p, x));
     if(nb.includes('urlaub')){ tags.push(['r', 'WE am Urlaub']); score -= 100; }
     else if(nb.includes('fb')){ tags.push(['o', 'WE an Fortbildung']); score -= 25; }
-    const wes = weImMonat(p.k, ymVon(s));
-    if(!wes.has(blk[1]) && wes.size >= 2){ tags.push(['o', `${wes.size + 1}. WE im Monat`]); score -= 40; }
-    else if(!wes.has(blk[1]) && wes.size === 1) score -= 8;
+    const andere = [...weImMonat(p.k, ymVon(s))].filter(x => x !== blk[1]).length;   // 1.98: auch wenn dieses WE schon eingeteilt ist
+    if(andere >= 2){ tags.push(['o', `${andere + 1}. WE im Monat`]); score -= 40; }
+    else if(andere === 1) score -= 8;
   }
   if(wt(s) >= 6){
     const serie = weSerie(p.k, s);
@@ -1993,7 +1999,7 @@ function verbessern(tage, ps, ziel, zielWe){
   const alleTage = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0, 4), +ym.slice(5, 7), i + 1));
   const kosten = ks => alleTage.reduce((a, d) => { const k = dienstVon(d);
     if(!ks.includes(k)) return a;
-    const b = bewerte(person(k), d); return a - (b.score + b.n * 3) + b.tags.filter(t => t[0] === 'o').length * 30; }, 0);   // ohne Anzahl-Term (Fairness misst J)
+    const b = bewerte(person(k), d); return a - (b.score + b.n * 3) + b.tags.filter(t => t[0] === 'o').length * 45; }, 0);   // ohne Anzahl-Term (Fairness misst J)
   const ok = pk => pk.every(s => [-1, 0, 1].every(i => { const d = plus(s, i), k = dienstVon(d);
     return !k || !person(k) || !bewerte(person(k), d).tags.some(t => t[0] === 'r'); }));
   const versuch = (aend) => {   // aend: [[tag, neu], ...]; behalten, wenn Fairness + Guete zusammen besser

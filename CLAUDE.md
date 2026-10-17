@@ -74,6 +74,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   WE-Fairness (1.95) je Block: Erwartung `expWeB` = je Samstag 2 Einsätze nach Arbeitsquote (auch bei Teilzeit-Muster),
   Saldo über 3 Vormonate + Monat × 25 in `autoVerteilen()` – Rückstand wird nachgeholt; Tages-WE-Fairness nur noch Feiertage Mo–Do;
   WE angrenzend an Urlaub tabu ('r', Nachbar-Arbeitstag über `werktagNeben()`), an Fortbildung −25.
+  1.98: „3. WE im Monat“ zählt auch, wenn das WE schon eingeteilt ist (andere Blöcke ≥ 2); Dienst Mo–Do vor einem
+  Abwesenheitstag (geht bis 7:30, wirkt wie Fr) = 'o' „vor Abwesenheit“ −25; drei Dienste jeden 2. Tag = 'o' −10;
+  weicher Verstoß kostet in `verbessern()` 45.
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
