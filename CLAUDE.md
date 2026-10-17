@@ -128,6 +128,14 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Folge, Abstand 2–3 bevorzugt, WE-Zahl nach Ziel, Fr+So oder Sa, nicht 2 WE hintereinander, keine rote Regel), übereinander
   gelegt ab unflexibelster Person (Strahlsuche 30, Kollision 60), Rest normal. Starts: Heatmap 60 % / Heatmap ganz / Schichten,
   dann Schütteln. Jan 6/6 × −760, Nov meist −875…−915. Test-Schalter zusätzlich `nur`, `schichten`, `zufall`.
+  2.19 Exakt (MIP): `autoVerteilen()` (jetzt async) löst zuerst `mipModell()` mit HiGHS (`plan/highs/`, highs-js 1.15.4, MIT,
+  WASM 3,5 MB, erst beim Klick geladen, `highsLaden()`/`mipVerteilen()`, max. 15 s) – Heuristik nur noch Rückfall
+  (`AV_TEST.mip:false`). Modell = exakt J + kosten aus `verbessern()` (Band stückweise linear in ganzen/halben Schritten,
+  Paare/Serien/3. WE/3×2. Tag über Hilfsvariablen, feste Tage als Konstanten; Modellwert + `konst` = `verbessern([])`).
+  Neu dazu: Folgetag-Regel in BEIDE Richtungen (Heuristik prüfte nur den Folgetag des neuen Dienstes → konnte Regel 6
+  brechen), 900 je Verstoß < 1000 leerer Tag. Winziger Zufall (≤ 0,004 je x) → erneutes Verteilen zeigt andere gleich gute
+  Lösung. Optimal in < 1,2 s: Okt −1005, Nov −915, Dez −820, Jan −760, Feb −805 (Heuristik −955/−855/−810/−750/−805).
+  Jede Änderung an `bewerte()`/`verbessern()`-Kosten muss in `mipModell()` nachgezogen werden (Test: Modellwert = App-Wert).
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).

@@ -837,7 +837,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.18';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.19';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2124,7 +2124,7 @@ function zufriedenheit(p, z){
   }
   return {wert: Math.max(0, 100 - t.reduce((a, x) => a + x[1], 0)), t, n, we, d, dw};
 }
-function autoVerteilen(){
+async function autoVerteilen(){
   const alle = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1));
   const frei0 = alle.filter(s => !dienstVon(s));
   if(!frei0.length) return toast('Alle Tage sind schon besetzt.');
@@ -2132,8 +2132,18 @@ function autoVerteilen(){
   const ps = diensttauglich(), Z = ziele(), hist = {}, jetzt = {}, ziel = {}, zielWe = {};
   ps.forEach(p => { hist[p.k] = Z[p.k].h; jetzt[p.k] = Z[p.k].e; ziel[p.k] = Z[p.k].ziel; zielWe[p.k] = Z[p.k].zielWe; });
   const rot = x => x.tags.some(t => t[0] === 'r');
+  const mehrW = Object.fromEntries(ps.map(p => [p.k, {d: Z[p.k].e.expN !== undefined, w: Z[p.k].e.expWeBN !== undefined}]));
+  const AV = window.AV_TEST || {};   // nur fuer Tests: {mip, heat, laeufe, zeit}
   SIM = {};
   try{
+    /* 2.19: zuerst exakt (ganzzahliges Modell, HiGHS) - gleiche Zielfunktion wie verbessern(), dazu die Folgetag-Regel
+       in beide Richtungen. Klappt das nicht (Solver nicht ladbar, keine Loesung), wie bisher heuristisch. */
+    let mip = null;
+    if(AV.mip !== false){
+      toast('Berechne den besten Plan …'); await new Promise(r => setTimeout(r, 50));
+      try{ mip = await mipVerteilen(frei0, ps, ziel, zielWe, mehrW); }catch(e){ console.warn('MIP', e); }
+      SIM = {};
+    }
     const kandFuer = s => {
       const kand = ps.map(p => ({p, ...bewerte(p, s)})).filter(x => !rot(x));
       kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k], nach = x.n + 1 - ziel[x.p.k];
@@ -2148,10 +2158,8 @@ function autoVerteilen(){
     const stufe = s => wt(s) === 5 || wt(s) === 7 ? 0 : wt(s) === 6 ? 1 : feiertag(s) ? 2 : 3;
     /* 2.15: mehrere Anlaeufe mit Zufall (verteilen + nachbessern), der beste Gesamtwert gewinnt - lange Tauschketten,
        die die Nachbesserung Schritt fuer Schritt nicht findet, entstehen so oft schon beim Verteilen */
-    let rausch = 1, bester = null; const t0 = Date.now();
-    const mehrW = Object.fromEntries(ps.map(p => [p.k, {d: Z[p.k].e.expN !== undefined, w: Z[p.k].e.expWeBN !== undefined}]));
-    const AV = window.AV_TEST || {};   // nur fuer Tests: {heat, laeufe, zeit}
-    for(let lauf = 0; lauf < (AV.laeufe ?? 4); lauf++, rausch = 25){
+    let rausch = 1, bester = mip; const t0 = Date.now();
+    for(let lauf = 0; !mip && lauf < (AV.laeufe ?? 4); lauf++, rausch = 25){
     SIM = {};
     if(AV.nur !== undefined && AV.nur !== lauf) continue;   // Test: nur ein Anlauf
     if(lauf === 2 && AV.zufall !== true) continue;   // 2.18: Zufallsanlauf durch Schichten ersetzt (Test: zufall:true)
@@ -2181,7 +2189,7 @@ function autoVerteilen(){
     /* 2.15: Schuetteln - vom besten Plan aus einige Tage (Fr+So zusammen) zufaellig neu vergeben (nur ohne rote Regel)
        und nachbessern; besser -> uebernehmen. Findet lange Tauschketten wie von Hand. Max. ~4 s. */
     const belegt = frei0.filter(s => bester.plan[s]);
-    while(Date.now() - t0 < (AV.zeit ?? 4000)){
+    while(!mip && Date.now() - t0 < (AV.zeit ?? 4000)){
       SIM = {...bester.plan};
       /* bevorzugt Tage von Personen, die beim Ziel daneben liegen */
       const daneben = belegt.filter(s => { const k = SIM[s]; return Math.abs(diensteIm(k, ym) - ziel[k]) >= 1 || Math.abs(weLast(k, ym) - zielWe[k]) >= 0.5; });
@@ -2204,7 +2212,8 @@ function autoVerteilen(){
     const plan = SIM; SIM = null;
     let n = 0; Object.entries(plan).forEach(([s, k]) => { if(k){ einteilen(s, k, true); n++; } });
     toast(`${n} Tage verteilt` + (rest.length ? ` – ${rest.length} ohne passende Person: ${rest.map(kurzDat).join(', ')}` : '.')
-      + (hinw.length ? ` Nicht ganz vermeidbar: ${hinw.map(([s, t]) => `${kurzDat(s)} ${plan[s]} (${t.join(', ')})`).join('; ')}` : ''));
+      + (hinw.length ? ` Nicht ganz vermeidbar: ${hinw.map(([s, t]) => `${kurzDat(s)} ${plan[s]} (${t.join(', ')})`).join('; ')}` : '')
+      + (mip && mip.optimal ? ' Rechnerisch bestmöglicher Plan.' : ''));
   }finally{ SIM = null; }
 }
 /* Heatmap-Vorbelegung (2.16, Idee aus dem Team): freie Tage als Pakete (Fr+So zusammen), je Person und Paket eine
@@ -2353,6 +2362,216 @@ function verbessern(tage, ps, ziel, zielWe, mehr = {}){
     if(!besser) break;
   }
   return J() + kosten(ps.map(p => p.k));   // 2.15: Gesamtwert (kleiner = besser) fuer den Vergleich mehrerer Anlaeufe
+}
+/* Exaktes Modell (MIP) der automatischen Verteilung: dieselbe Zielfunktion wie verbessern() (J + kosten),
+   als ganzzahliges lineares Programm im LP-Format fuer HiGHS. Liefert {lp, konst, lesen(sol) -> plan}.
+   Variablen: x_p_t = Person p hat Dienst am freien Tag t. Alles andere (Paare, Strafen, Band) sind Hilfsgroessen. */
+function mipModell(frei, ps, ziel, zielWe, mehr, rausch = 0){
+  const y0 = +ym.slice(0, 4), m0 = +ym.slice(5, 7), N = tageIm(ym);
+  const alle = Array.from({length: N}, (_, i) => ds(y0, m0, i + 1)), imMonat = s => ymVon(s) === ym;
+  const pi = Object.fromEntries(ps.map((p, i) => [p.k, i])), freiSet = new Set(frei);
+  const obj = new Map(), zeilen = [], bin = new Set(), grenzen = []; let konst = 0, nz = 0;
+  const neu = (pre, b = true) => { const v = pre + '_' + (nz++); if(b) bin.add(v); return v; };
+  /* lineare Ausdruecke: {c: Zahl, t: Map(var -> koeff)} */
+  const L = (c = 0, t = new Map()) => ({c, t});
+  const add = (...a) => { const r = L(); for(const [f, e] of a){ r.c += f * e.c; for(const [v, k] of e.t) r.t.set(v, (r.t.get(v) || 0) + f * k); } return r; };
+  const V = v => L(0, new Map([[v, 1]]));
+  const ziele_ = (e, f) => { konst += f * e.c; for(const [v, k] of e.t) obj.set(v, (obj.get(v) || 0) + f * k); };
+  const zeile = (e, op, rhs) => {   // e op rhs (Konstante in e wird verrechnet)
+    const t = [...e.t].filter(([, k]) => Math.abs(k) > 1e-12); if(!t.length) return;
+    const r = rhs - e.c;
+    zeilen.push(t.map(([v, k]) => (k < 0 ? '- ' : '+ ') + (Math.abs(k) === 1 ? '' : +Math.abs(k).toFixed(9) + ' ') + v).join(' ') + ` ${op} ${+r.toFixed(9)}`);
+  };
+  /* Kandidaten je freiem Tag: keine Abwesenheit, kein hartes No-Go, keine harte Wochentags-Regel */
+  const xv = {};   // 'k|s' -> Variable
+  const kandidat = (p, s) => {
+    if(abwesend(p, s)) return false;
+    const e = eintrag(p.k, s);
+    if(e && e.typ === 'nogo' && e.stufe === 'hart') return false;
+    if((p.regeln || []).some(r => r.typ === 'kein' && r.stufe === 'hart' && r.wt === wt(s))) return false;
+    return true;
+  };
+  const rest = [];
+  for(const s of frei){
+    const k = ps.filter(p => kandidat(p, s));
+    if(!k.length){ rest.push(s); continue; }
+    k.forEach(p => { xv[p.k + '|' + s] = `x_${pi[p.k]}_${s.slice(5).replace('-', '')}${s.slice(0, 4) !== ym.slice(0, 4) ? 'y' : ''}`; bin.add(xv[p.k + '|' + s]); });
+    /* jeder Tag genau einmal; leer nur mit Strafe 1000 (wie „ohne passende Person“) */
+    const leer = neu('leer'); ziele_(V(leer), 1000);
+    zeile(add(...k.map(p => [1, V(xv[p.k + '|' + s])]), [1, V(leer)]), '=', 1);
+  }
+  rest.forEach(s => freiSet.delete(s));
+  const X = (k, s) => freiSet.has(s) ? (xv[k + '|' + s] ? V(xv[k + '|' + s]) : L(0)) : L(dienstVon(s) === k ? 1 : 0);
+  const leerTag = s => !freiSet.has(s) && !dienstVon(s);
+  /* UND zweier Ausdruecke (0/1) als Hilfsvariable, exakt */
+  const und = (a, b) => {
+    if(!a.t.size && !b.t.size) return L(a.c * b.c);
+    if(!a.t.size) return a.c ? b : L(0);
+    if(!b.t.size) return b.c ? a : L(0);
+    const y = neu('y'); zeile(add([1, V(y)], [-1, a]), '<=', 0); zeile(add([1, V(y)], [-1, b]), '<=', 0);
+    zeile(add([1, V(y)], [-1, a], [-1, b]), '>=', -1); return V(y);
+  };
+  /* Strafe f * max(0, Summe - (n-1)), d. h. f, wenn alle n Ausdruecke 1 sind (nur fuer f >= 0) */
+  const alleStrafe = (es, f) => {
+    const s = add(...es.map(e => [1, e])), n = es.length;
+    if(!s.t.size){ if(s.c >= n - 0.5) konst += f; return; }
+    if(s.c + [...s.t.values()].reduce((a, k) => a + Math.max(0, k), 0) < n - 0.5) return;   // nie alle 1
+    const t = neu('t', false); grenzen.push(`${t} >= 0`); ziele_(V(t), f); zeile(add([1, V(t)], [-1, s]), '>=', -(n - 1));
+  };
+  /* Bonus f (< 0) fuer UND(a, b) */
+  const undBonus = (a, b, f) => ziele_(und(a, b), f);
+
+  const fpaar = {};   // Freitag-Datum + k -> UND(Fr, So) (gleiche Person)
+  const paar = (k, fr) => fpaar[k + fr] ||= und(X(k, fr), X(k, plus(fr, 2)));
+  const maxF = cfg.maxWeFolge || 2;
+  for(const p of ps){
+    const k = p.k;
+    /* nie zwei Dienste in Folge (auch ueber den Monatsrand) */
+    for(let i = -1; i < N; i++){ const s = plus(alle[0], i); zeile(add([1, X(k, s)], [1, X(k, plus(s, 1))]), '<=', 1); }
+    /* max. Dienste */
+    const n = add(...alle.map(s => [1, X(k, s)]));
+    zeile(n, '<=', Math.max(maxDienste(p), n.c));
+    /* Wochenend-Bloecke, die den Monat beruehren (Schluessel = Samstag), W_b wie weImMonat() */
+    const bloecke = {};
+    for(const s of alle) if(wt(s) >= 5) bloecke[weBlock(s)[1]] = weBlock(s);
+    const W = {};
+    for(const [sa, [fr, , so]] of Object.entries(bloecke)){
+      let w = L();
+      if(imMonat(sa)) w = add([1, w], [1, X(k, sa)]);
+      if(imMonat(so)) w = add([1, w], [1, X(k, so)]);
+      else if(imMonat(fr) && dienstVon(so) === k) w = add([1, w], [1, X(k, fr)]);
+      W[sa] = w;
+    }
+    const Wsum = add(...Object.values(W).map(w => [1, w]));
+    /* weLast: Bloecke + ½ je Feiertag Mo–Do bzw. Feiertags-Freitag ohne den Sonntag */
+    let weL = Wsum;
+    for(const s of alle){
+      if(ftWT(s)) weL = add([1, weL], [0.5, X(k, s)]);
+      else if(wt(s) === 5 && feiertag(s)) weL = add([1, weL], [0.5, X(k, s)], [-0.5, paar(k, s)]);
+    }
+    /* J: Toleranzband (exakt, da d ganzzahlig bzw. in halben) + Unterschreitung des Mengen-Wunschs */
+    const band = d => Math.max(0, Math.abs(d) - 1) ** 2 * 100 + d * d * 5;
+    const bandTerm = (e, zielWert, schritt, gew) => {
+      const d = add([1, e]); d.c -= zielWert;
+      if(!d.t.size){ konst += gew * band(d.c); return; }
+      const z = neu('z', false); grenzen.push(`${z} >= 0`); ziele_(V(z), gew);
+      for(let a = -20; a < 20; a += schritt){ const b = a + schritt, sl = (band(b) - band(a)) / schritt;   // z >= band(a) + sl (d - a)
+        zeile(add([1, V(z)], [-sl, d]), '>=', band(a) - sl * a); }
+    };
+    bandTerm(n, ziel[k], 1, 1);
+    bandTerm(weL, zielWe[k], 0.5, WE_GEW);
+    const unterTerm = (e, zielWert) => { const d = add([1, e]); d.c -= zielWert;
+      if(!d.t.size){ konst += Math.max(0, -d.c - 0.3) * 30; return; }
+      const u = neu('u', false); grenzen.push(`${u} >= 0`); ziele_(V(u), 1); zeile(add([1, V(u)], [30, d]), '>=', -9); };
+    if((mehr[k] || {}).d) unterTerm(n, ziel[k]);
+    if((mehr[k] || {}).w) unterTerm(weL, zielWe[k]);
+
+    /* „3. WE im Monat“: e_thr = 1, sobald Wsum >= thr */
+    const G = weGrenze(p, ym), eW = {};
+    const ab = thr => { if(eW[thr]) return eW[thr];
+      if(!Wsum.t.size) return eW[thr] = L(Wsum.c >= thr ? 1 : 0);
+      const e = neu('e'); zeile(add([1, Wsum], [-40, V(e)]), '<=', thr - 1); return eW[thr] = V(e); };
+
+    /* kosten: je Tag im Monat mit Dienst von p  −3 × (score ohne n- und 2.-WE-Anteil) */
+    for(const s of alle){
+      const x = X(k, s); if(!x.t.size && !x.c) continue;
+      const e = eintrag(k, s), a = abwesend(p, s); let sc = 0;
+      if(a) sc -= 100;
+      if(e && e.typ === 'nogo') sc -= e.stufe === 'hart' ? 80 : 30;
+      if(e && e.typ === 'wunsch') sc += e.stufe === 'hart' ? 60 : 30;
+      for(const r of p.regeln || []){
+        if(/FreiWE$/.test(r.typ)){
+          if(wt(s) !== 1 || !werktag(s)) continue;
+          const frei = [X(k, plus(s, -1)), X(k, plus(s, -2))];   // Montag nach WE ohne eigenen Dienst
+          if(r.typ === 'nachFreiWE'){
+            if(r.stufe === 'hart' && x.t.size) zeile(add([1, x], [-1, frei[0]], [-1, frei[1]]), '<=', 0);
+            else alleStrafe([x, add([1, L(1)], [-1, frei[0]], [-1, frei[1]])], 60);
+          }else{ const v = und(x, add([1, L(1)], [-1, frei[0]], [-1, frei[1]])); ziele_(v, -3 * (r.stufe === 'hart' ? 25 : 12)); }
+          continue;
+        }
+        if(r.wt !== wt(s)) continue;
+        if(r.typ === 'kein') sc -= r.stufe === 'hart' ? 60 : 20;
+        if(r.typ === 'pref') sc += r.stufe === 'hart' ? 25 : 12;
+      }
+      if(!a && wt(s) <= 4 && werktag(s) && werktag(plus(s, 1)) && abwesend(p, plus(s, 1))) sc -= 25;
+      ziele_(x, -3 * sc);
+      /* 3× jeden 2. Tag */
+      const d2 = i => X(k, plus(s, i));
+      const ketten = [[-4, -2], [-2, 2], [2, 4]];
+      if(ketten.some(c => c.every(i => { const z = d2(i); return z.t.size || z.c; }))){
+        const t = neu('t', false); grenzen.push(`${t} >= 0`); ziele_(V(t), 30);
+        ketten.forEach(c => zeile(add([1, V(t)], [-1, x], ...c.map(i => [-1, d2(i)])), '>=', -2));
+      }
+      /* Wochenende */
+      if(wt(s) >= 5){
+        const blk = weBlock(s), [fr, sa, so] = blk;
+        /* A = Dienst an s mit WE-Regeln (Freitag nur, wenn der Sonntag auch p gehoert oder leer ist) */
+        const A = wt(s) !== 5 ? x : freiSet.has(so) ? paar(k, s) : (leerTag(so) || dienstVon(so) === k) ? x : L(0);
+        if(!a && (A.t.size || A.c)){
+          const nb = [werktagNeben(wt(s) === 5 ? fr : sa, -1), werktagNeben(so, 1)].map(z => abwesend(p, z));
+          if(nb.includes('urlaub')){ if(A.t.size) zeile(A, '<=', 0); else konst += 300; }
+          else if(nb.includes('fb')) ziele_(A, 75);
+          /* andere Bloecke >= Grenze: Wsum - W_b >= G */
+          const counted = wt(s) !== 5 || imMonat(so) ? 1 : dienstVon(so) === k ? 1 : 0;   // zaehlt dieser Block selbst?
+          alleStrafe([A, ab(G + counted)], 120);
+        }
+        if(wt(s) >= 6){   // mehr als maxF Wochenenden in Folge
+          const satW = sa0 => add([1, X(k, sa0)], [1, X(k, plus(sa0, 1))]);
+          /* ein Abzug je Tag, auch wenn mehrere Fenster zutreffen */
+          const fe = [];
+          for(let st = -maxF; st <= 0; st++) fe.push(add(...Array.from({length: maxF + 1}, (_, j) => plus(sa, (st + j) * 7)).map(w => [1, w === sa ? x : satW(w)])));
+          const moegl = fe.filter(e => e.c + [...e.t.values()].reduce((a, k) => a + Math.max(0, k), 0) >= maxF + 0.5);
+          if(moegl.some(e => !e.t.size)) konst += 75;
+          else if(moegl.length){ const t = neu('t', false); ziele_(V(t), 75); moegl.forEach(e => zeile(add([1, V(t)], [-1, e]), '>=', -maxF)); }
+        }
+        if(wt(s) === 7) undBonus(x, X(k, plus(s, -2)), -105);
+        if(wt(s) === 5) undBonus(x, X(k, plus(s, 2)), -105);
+      }
+    }
+    /* Folgetag: bis 11 Uhr muss noch jemand sicher da sein - in beide Richtungen (die Heuristik prueft nur den
+       Folgetag des neuen Dienstes). Fast hart: 900 < 1000 fuer einen leeren Tag, bricht also nur, wenn sonst ein Tag
+       leer bliebe (z. B. weil der Vortag schon fest vergeben ist). Nicht Teil der Bewertung in verbessern(). */
+    for(let i = -1; i < N; i++){
+      const s = plus(alle[0], i), f = plus(s, 1), x = X(k, s);
+      if((!x.t.size && !x.c) || !werktag(f) || abwesend(p, f)) continue;
+      const S = personen().filter(q => q.k !== k && !abwesend(q, f) && halbWeg(q, f) !== 'vm');
+      if(S.length > 1) continue;
+      const e = S.length ? add([1, x], [1, X(S[0].k, f)], [-1, L(1)]) : x;   // 1 = Verstoss
+      if(!e.t.size) continue;
+      const v = neu('v', false); ziele_(V(v), 900); zeile(add([1, e], [-1, V(v)]), '<=', 0);
+    }
+  }
+  /* winziger Zufall (< 0,15 in Summe, Zielwerte liegen >= 0,25 auseinander): erneutes Verteilen zeigt eine andere
+     gleich gute Loesung */
+  if(rausch) Object.values(xv).forEach(v => obj.set(v, (obj.get(v) || 0) + Math.random() * rausch));
+  const lp = ['Minimize', ' obj: ' + ([...obj].filter(([, k]) => k).map(([v, k]) => (k < 0 ? '- ' : '+ ') + +Math.abs(k).toFixed(9) + ' ' + v).join(' ') || '0 leer_dummy'),
+    'Subject To', ...zeilen.map((z, i) => ` c${i}: ${z}`), 'Bounds', ...grenzen.map(g => ' ' + g),
+    'Binary', ...[...bin].map(v => ' ' + v), 'End'].join('\n');
+  const lesen = sol => { const plan = {};
+    for(const [kk, v] of Object.entries(xv)){ const c = sol[v]; if(c && c.Primal > 0.5){ const [k, s] = kk.split('|'); plan[s] = k; } }
+    return plan; };
+  return {lp, konst, lesen, rest, xv};
+}
+/* HiGHS (MIT, highs-js 1.15.4, WebAssembly, plan/highs/) erst beim ersten Verteilen laden */
+let highsP = null;
+const highsLaden = () => highsP ||= new Promise((ok, fehler) => {
+  const sc = document.createElement('script'); sc.src = 'highs/highs.js';
+  sc.onload = () => { try{ window.Module({locateFile: f => 'highs/' + f}).then(ok, fehler); }catch(e){ fehler(e); } };
+  sc.onerror = () => { highsP = null; fehler(new Error('Solver nicht geladen')); };
+  document.head.appendChild(sc);
+});
+/* 2.19: exakte Verteilung - Modell loesen (max. 15 s), Plan lesen und mit derselben Bewertung wie verbessern() pruefen */
+async function mipVerteilen(frei, ps, ziel, zielWe, mehr){
+  const highs = await highsLaden();
+  SIM = {};
+  const mod = mipModell(frei, ps, ziel, zielWe, mehr, 0.004);
+  const r = highs.solve(mod.lp, {time_limit: (window.AV_TEST || {}).mipZeit ?? 15, mip_rel_gap: 0, output_flag: false});
+  if(!r.Columns || !['Optimal', 'Time limit reached'].includes(r.Status)) return null;
+  const plan = mod.lesen(r.Columns);
+  if(!Object.keys(plan).length) return null;
+  SIM = {...plan};
+  const wert = verbessern([], ps, ziel, zielWe, mehr) + frei.filter(s => !plan[s]).length * 1000;
+  return {plan, rest: frei.filter(s => !plan[s]), wert, optimal: r.Status === 'Optimal'};
 }
 $('autoBtn').onclick = autoVerteilen;
 $('autoWegBtn').onclick = ()=>{
