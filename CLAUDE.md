@@ -84,6 +84,14 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Monatswechsel-WE in beiden); Vormonats-Rückstand auf Summe 0 normiert (`vorherAlle()`), WE-Rückstand max. ±0,5;
   „2. WE“-Abzug (`fair` aus `bewerte()`) nicht in `kosten`. Halber Tag: Symbol `logOutL` (Pfeil links) „Vormittag“ bzw.
   `logOut` „Nachmittag“ (`typIcon()`/`typName()`).
+  2.01 Gewünschte Dienstmenge (Wünsche, Karte `#mengeKarte`, nicht Chef): `p.menge = [{ab, dienste, we}]` gilt ab Monat
+  (`mengeVon()`), Zahl = bei voller Anwesenheit (anteilig, Teilzeit-frei zählt als da), `+n` = über normal.
+  `mengeWunsch()` wirkt nur, wenn über normal (sonst still ignoriert – in der Oberfläche nicht erwähnen, Wunsch);
+  `erwartung()` setzt den Wunsch, die übrigen teilen sich den Rest; Vormonate: zwischen normal und Wunsch = ausgeglichen
+  (`exp`/`expN` in `vorherAlle()`). „3. WE“-Grenze = `weGrenze()`. Zähler im Plan: n / Wunsch ♡ statt n / max.
+  Datum/Uhrzeit per Tastatur (`zeitFeld()`, nur `pointer:fine`, MutationObserver auf alle `input[type=date|time]`):
+  Textfeld TT.MM.JJJJ / hh:mm, `.value` bleibt ISO (eigene Property), Auto-Weiter, ←/→, ↑/↓, Jahr 2-stellig = 20xx,
+  h/g/m (Jahr: h), j = jetzt; 'change' erst bei Blur/Enter. ½-Tag-Uhrzeit = `type=time` (`halbTitel()`: vorm. „bis“, nachm. „ab“).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',

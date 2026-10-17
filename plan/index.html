@@ -109,8 +109,9 @@ main{max-width:1320px;margin:0 auto;padding:18px 20px 60px}
 .btn.rot{background:var(--danger)}
 .btn:disabled{opacity:.4;cursor:default}
 .btn .ic{width:16px;height:16px}
-input[type=text],input[type=date],input[type=number],input[type=password],select{background:var(--input);border:1px solid transparent;
+input[type=text],input[type=date],input[type=time],input[type=number],input[type=password],select{background:var(--input);border:1px solid transparent;
   border-radius:10px;padding:8px 10px;min-width:0}
+input.zf{font-variant-numeric:tabular-nums} input.zf-datum{width:124px} input.zf-zeit{width:84px}
 input:focus,select:focus{outline:2px solid var(--primary);outline-offset:0;background:#fff}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text2);font-weight:600}
 .reihe{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
@@ -467,6 +468,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 .seg{display:inline-flex;background:var(--input);border-radius:999px;padding:3px;gap:2px}
 .seg button{border:0;background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:600;color:var(--text2)}
 .seg button.on{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.seg button .ic{width:14px;height:14px;vertical-align:-2px;margin-right:5px}
 .fuss{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 .tip{position:fixed;z-index:70;pointer-events:none;background:#2A2420;color:#fff;font-size:12.5px;line-height:1.45;
   padding:7px 10px;border-radius:9px;box-shadow:0 8px 20px rgba(0,0,0,.25);white-space:pre-line;max-width:320px}
@@ -676,6 +678,16 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <div class="hint" style="margin-top:8px">Beispiel Wechsel Mi–Di: erster Arbeitstag = ein Mittwoch, 7 Tage da, 7 frei.
             Einzelne Tage im Kalender als „frei“ oder „anwesend“ korrigieren. Das Ende („bis“) lässt sich oben im Muster jederzeit nachtragen.</div>
         </div>
+        <div class="card" id="mengeKarte">
+          <h3><span data-icon="heart"></span>Gewünschte Dienstmenge</h3>
+          <div class="reihe">
+            <label class="f">Dienste im Monat<input type="text" id="mgD" placeholder="normal" inputmode="decimal" style="width:96px"></label>
+            <label class="f">Wochenenden im Monat<input type="text" id="mgW" placeholder="normal" inputmode="decimal" style="width:96px"></label>
+            <div class="hint" id="mgInfo" style="padding-bottom:9px"></div>
+          </div>
+          <div class="hint" style="margin-top:8px">Zahl für einen Monat ohne Abwesenheit (z. B. 6) oder zusätzlich zum normalen Anteil (z. B. +1).
+            Urlaub und Fortbildung werden anteilig abgezogen. Gilt ab dem angezeigten Monat, leer = normal.</div>
+        </div>
       </div>
     </div>
   </section>
@@ -688,7 +700,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <label class="f" style="flex-direction:row;align-items:center;gap:8px">Eintragen für <select id="urlSel"></select></label>
           <span class="seg" id="urlTyp"><button data-t="urlaub" class="on">Urlaub</button><button data-t="fb">Fortbildung</button><button data-t="fza">FZA</button><button data-t="halb" title="Nur vormittags oder nachmittags weg">½ Tag</button><button data-t="termin">Termin</button></span>
           <span id="urlHalbBox" class="hidden"><span class="seg" id="urlHalbZeit"><button data-z="vm" class="on"><span data-icon="logOutL"></span>vormittags</button><button data-z="nm"><span data-icon="logOut"></span>nachmittags</button></span>
-            <input type="text" id="urlHalbUhr" placeholder="Uhrzeit, z. B. ab 13 Uhr (optional)" style="width:190px"></span>
+            <input type="time" id="urlHalbUhr" title="Uhrzeit (optional): vormittags weg = bis, nachmittags weg = ab" style="width:110px"></span>
           <span class="hint" id="urlTermInfo"></span>
           <span class="hint desk">Antippen oder über Tage streichen; nochmal = löschen. Urlaub zählt nur an Werktagen.</span>
           <span class="hint mobil">Tippen = ein Tag · lang drücken = Pinsel (gestrichelt, endet 3 s nach dem Loslassen) · nochmal = löschen</span>
@@ -818,7 +830,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.00';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.01';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1246,7 +1258,8 @@ const HALB_TXT = {vm: 'vormittags weg', nm: 'nachmittags weg'};
 /* 2.00: halber Tag mit eigenem Symbol - vormittags weg = Pfeil nach links „Vormittag“, nachmittags weg = Pfeil nach rechts „Nachmittag“ */
 const typIcon = e => e.typ === 'halb' ? (e.zeit === 'nm' ? 'logOut' : 'logOutL') : TYPEN[e.typ].icon;
 const typName = e => e.typ === 'halb' ? (e.zeit === 'nm' ? 'Nachmittag' : 'Vormittag') : TYPEN[e.typ].name;
-const halbTitel = (p, s) => { const e = eintrag(p.k, s); return `${p.name || p.k}: ${HALB_TXT[e.zeit || 'vm']}${e.uhr ? ' (' + e.uhr + ')' : ''}`; };
+const halbTitel = (p, s) => { const e = eintrag(p.k, s), z = e.zeit || 'vm';   // 2.01: Uhrzeit hh:mm (vorm. weg = bis, nachm. weg = ab), alte Freitexte unveraendert
+  return `${p.name || p.k}: ${HALB_TXT[z]}${e.uhr ? ' (' + (/^\d\d:\d\d$/.test(e.uhr) ? (z === 'nm' ? 'ab ' : 'bis ') : '') + e.uhr + ')' : ''}`; };
 const gefaehrdet = (p, s) => werktag(s) && dienstVon(plus(s, -1)) === p.k && !abwesend(p, s);
 const maxDienste = p => Math.floor((cfg.maxDienste || 13) * (p.quote || 100) / 100);
 const diensteIm = (k, m) => { if(SIM){ let n = 0; for(let i = 1; i <= tageIm(m); i++) if(dienstVon(ds(+m.slice(0, 4), +m.slice(5, 7), i)) === k) n++; return n; } const d = dienstDaten(m); return d && d.tage ? Object.values(d.tage).filter(x => x.oa === k).length : 0; };
@@ -1338,7 +1351,7 @@ function bewerte(p, s){
     if(nb.includes('urlaub')){ tags.push(['r', 'WE am Urlaub']); score -= 100; }
     else if(nb.includes('fb')){ tags.push(['o', 'WE an Fortbildung']); score -= 25; }
     const andere = [...weImMonat(p.k, ymVon(s))].filter(x => x !== blk[1]).length;   // 1.98: auch wenn dieses WE schon eingeteilt ist
-    if(andere >= 2){ tags.push(['o', `${andere + 1}. WE im Monat`]); score -= 40; }
+    if(andere >= weGrenze(p, ymVon(s))){ tags.push(['o', `${andere + 1}. WE im Monat`]); score -= 40; }
     else if(andere === 1){ score -= 8; fair = 8; }   // 2. WE: nur leichte Gleichverteilung (wie n * 3)
   }
   if(wt(s) >= 6){
@@ -1598,10 +1611,13 @@ function renderPlan(){
   $('autoWegBtn').classList.toggle('hidden', !Object.values(D.tage || {}).some(x => x.auto) || nurLesen);
   // Zaehler
   let z = '';
+  const erw = diensttauglich().some(p => mengeVon(p, ym)) ? erwartung(ym) : {};
   for(const p of diensttauglich()){
     const n2 = diensteIm(p.k, ym), max = maxDienste(p);
+    /* 2.01: mit gewuenschter Dienstmenge n / Wunsch (anteilig nach Abwesenheit) statt n / max */
+    const w = erw[p.k] && erw[p.k].wunsch && mengeWunsch(p, ym, 'dienste', erw[p.k]) !== null ? Math.round(erw[p.k].exp) : 0;
     z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : ''}</small></div>`
-      + `<div class="zahl">${n2}<small> / ${max}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, max) * 100)}%"></i></div>`;
+      + `<div class="zahl"${w ? ` data-tip="gewünscht (anteilig nach Abwesenheit), max. ${max}"` : ''}>${n2}<small> / ${w || max}${w ? ' ♡' : ''}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, w || max) * 100)}%"></i></div>`;
   }
   const frei = Array.from({length: n}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
   z += `<div class="hint" style="margin-top:8px">${frei ? frei + ' Tag' + (frei > 1 ? 'e' : '') + ' noch ohne Dienst' : 'Alle Tage besetzt ✓'}</div>`;
@@ -1912,20 +1928,44 @@ const weTag = s => wt(s) >= 6 || !!feiertag(s);
    schon fehlen). Wer im Urlaub ist, erwartet an dem Tag nichts - fehlen dann viele,
    steigt der Anteil der Uebrigen. So wird Abwesenheit fair verrechnet. */
 function erwartung(m, nurBelegte){
-  const r = {}, ps = diensttauglich(); ps.forEach(p => r[p.k] = {exp: 0, expWe: 0, expWeB: 0});
+  const r = {}, ps = diensttauglich(); ps.forEach(p => r[p.k] = {exp: 0, expWe: 0, expWeB: 0, da: 0, tage: 0});
   const gew = p => (p.teilzeit && p.teilzeit.length) ? 1 : (p.quote || 100) / 100;
   const quote = p => (p.quote || 100) / 100;   // Wochenenden: Teilzeit-Muster gilt dort nie -> immer nach Arbeitsquote
   for(let i = 1; i <= tageIm(m); i++){
     const s = ds(+m.slice(0, 4), +m.slice(5, 7), i);
     if(nurBelegte && !dienstVon(s)) continue;   // Vormonate: nur Tage mit Plan zaehlen
     const da = ps.filter(p => !abwesend(p, s));
+    ps.forEach(p => { r[p.k].tage++; if(da.includes(p) || abwesend(p, s) === 'tz') r[p.k].da++; });   // Anwesenheit fuer die Dienstmenge (Teilzeit-frei zaehlt nicht als Abwesenheit)
     const W = da.reduce((a, p) => a + gew(p), 0); if(!W) continue;
     da.forEach(p => { const a = gew(p) / W; r[p.k].exp += a; if(weTag(s) && wt(s) < 5) r[p.k].expWe += a; });   // expWe: nur Feiertage Mo-Do (Fr gehoert zum WE-Block)
     /* 1.95: Wochenenden als Block (Fr+So + Sa = 2 Einsaetze je WE), nach Arbeitsquote geteilt. 2.00: gezaehlt wie
        weImMonat() - Sa im Monat = 1 Einsatz, Fr oder So im Monat = 1 Einsatz (WE am Monatswechsel zaehlt in beiden) */
     if(wt(s) === 6 || wt(s) === 5 || (wt(s) === 7 && i <= 2)){ const Q = da.reduce((a, p) => a + quote(p), 0); if(Q) da.forEach(p => r[p.k].expWeB += quote(p) / Q); }
   }
+  /* 2.01: gewuenschte Dienstmenge - die Person bekommt ihren Wunsch als Erwartung (gilt damit als ausgeglichen,
+     auch im Rueckstand der Folgemonate), die uebrigen teilen sich den Rest nach ihrem Anteil */
+  for(const [f, feld] of [['exp', 'dienste'], ['expWeB', 'we']]){
+    let mehr = 0; const rest = [];
+    ps.forEach(p => { const w = mengeWunsch(p, m, feld, r[p.k]);
+      if(w === null) rest.push(p); else { mehr += w - r[p.k][f]; r[p.k][f + 'N'] = r[p.k][f]; r[p.k][f] = w; r[p.k].wunsch = 1; } });
+    const R = rest.reduce((a, p) => a + r[p.k][f], 0);
+    if(mehr > 0 && R > 0) rest.forEach(p => r[p.k][f] *= Math.max(0, R - mehr) / R);
+  }
   return r;
+}
+/* Gewuenschte Dienstmenge (2.01): p.menge = [{ab: 'JJJJ-MM', dienste, we}] - gilt ab dem Monat bis zum naechsten
+   Eintrag, leer = normal. Zahl = Menge bei voller Anwesenheit (anteilig), '+n' = zusaetzlich zum normalen Anteil. */
+const mengeVon = (p, m) => (p.menge || []).filter(x => x.ab <= m).sort((a, b) => a.ab < b.ab ? -1 : 1).pop() || null;
+/* WE je Monat ohne Abzug: 2, mit gewuenschter Menge entsprechend mehr */
+const weGrenze = (p, m) => { const x = mengeVon(p, m), v = String((x && x.we) || '').replace(',', '.');
+  return !v || isNaN(+v) ? 2 : Math.max(2, Math.round(/^\+/.test(v) ? 2 + +v : +v)); };
+function mengeWunsch(p, m, feld, e){
+  const x = mengeVon(p, m), v = String((x && x[feld]) || '').trim().replace(',', '.');
+  if(!v || isNaN(+v)) return null;
+  const f = e.tage ? e.da / e.tage : 1, normal = feld === 'we' ? e.expWeB : e.exp;
+  let w = /^\+/.test(v) ? normal + +v * f : +v * f;
+  if(feld === 'dienste') w = Math.min(w, maxDienste(p));
+  return w > normal + 0.05 ? w : null;
 }
 /* 3 Vormonate: tatsaechliche und erwartete Dienste bzw. WE/Feiertagsdienste */
 function vorherAlle(){
@@ -1933,7 +1973,11 @@ function vorherAlle(){
   for(let i = 1; i <= 3; i++){
     const m = ymPlus(ym, -i), d = dienstDaten(m), e = erwartung(m, true);
     for(const [s, x] of Object.entries((d && d.tage) || {})) if(r[x.oa]){ r[x.oa].n++; if(weTag(s) && wt(s) < 5) r[x.oa].we++; }
-    for(const k in r){ r[k].exp += e[k].exp; r[k].expWe += e[k].expWe; r[k].expWeB += e[k].expWeB; r[k].weB += weImMonat(k, m).size; }
+    /* 2.01: mit gewuenschter Dienstmenge gilt als ausgeglichen, wer zwischen normal und Wunsch lag (kein Rueckstand aus
+       einem nicht ganz erfuellten Wunsch) */
+    const zw = (ist, x, f) => x[f + 'N'] === undefined ? x[f] : Math.max(x[f + 'N'], Math.min(x[f], ist));
+    for(const k in r){ const wb = weImMonat(k, m).size;
+      r[k].exp += zw(diensteIm(k, m), e[k], 'exp'); r[k].expWe += e[k].expWe; r[k].expWeB += zw(wb, e[k], 'expWeB'); r[k].weB += wb; }
   }
   /* 2.00: Rueckstand nur relativ (Summe 0) - getrennte Fr/So und Leute ausserhalb der Liste verschieben sonst alle Ziele */
   const sum = f => Object.values(r).reduce((a, x) => a + x[f], 0), fW = sum('expWeB') ? sum('weB') / sum('expWeB') : 1, fN = sum('exp') ? sum('n') / sum('exp') : 1;
@@ -2113,6 +2157,10 @@ function renderMeine(){
   // Teilzeit
   $('quote').value = p.quote || 100;
   $('maxInfo').textContent = `→ max. ${maxDienste(p)} Dienste im Monat`;
+  { const mg = mengeVon(p, ym) || {};
+    $('mengeKarte').classList.toggle('hidden', p.rolle === 'chef');
+    $('mgD').value = mg.dienste || ''; $('mgW').value = mg.we || '';
+    $('mgInfo').textContent = mg.ab && mg.ab < ym && (mg.dienste || mg.we) ? `seit ${monatName(mg.ab)}` : ''; }
   $('tzListe').innerHTML = (p.teilzeit || []).map((t, i) => `<div class="lz">${icon('clock')}<span class="t">${t.typ === 'block'
       ? `${t.an} Tage da, ${t.aus} frei, ab ${kurzDat(t.ab)}${t.ab.slice(0,4)} (${WT[wt(t.ab)]}–${WT[wt(plus(t.ab, t.an - 1))]})`
       : t.typ === 'manuell' ? `nur gepinselte Tage anwesend${t.ab ? ', ab ' + kurzDat(t.ab) + t.ab.slice(0,4) : ''}`
@@ -2137,6 +2185,23 @@ function renderMeine(){
   $('tzListe').querySelectorAll('.x').forEach(b => b.onclick = ()=> personAendern(p.k, 'Teilzeitmuster entfernt', q => q.teilzeit.splice(+b.dataset.i, 1)));
 }
 $('fuerSel').onchange = e => { fuerK = e.target.value; renderMeine(); };
+/* Dienstmenge (2.01): gilt ab dem angezeigten Monat */
+['mgD', 'mgW'].forEach(id => $(id).onchange = ()=>{
+  const v = $(id).value.trim().replace(/\s/g, ''), feld = id === 'mgD' ? 'dienste' : 'we';
+  if(v && !/^\+?\d{1,2}([.,]\d)?$/.test(v)) return toast('Bitte eine Zahl (z. B. 6) oder +1 eingeben.');
+  const p = person(fuerK), alt = p && mengeVon(p, ym);
+  if(!p || (alt ? alt[feld] || '' : '') === v) return;
+  personAendern(fuerK, 'Dienstmenge', q => {
+    q.menge ||= [];
+    let x = q.menge.find(e => e.ab === ym);
+    if(!x){ x = {...(mengeVon(q, ym) || {}), ab: ym}; q.menge.push(x); }
+    if(v) x[feld] = v; else delete x[feld];
+    q.menge.sort((a, b) => a.ab < b.ab ? -1 : 1);
+    /* Eintraege ohne Wirkung aufraeumen: leer ganz am Anfang bzw. gleich wie der Vorgaenger */
+    q.menge = q.menge.filter((e, i, a) => { const v0 = a[i - 1]; return v0 ? (v0.dienste || '') !== (e.dienste || '') || (v0.we || '') !== (e.we || '') : !!(e.dienste || e.we); });
+    if(!q.menge.length) delete q.menge;
+  });
+});
 $('rWt').innerHTML = WTL.slice(1).map((x, i) => `<option value="${i + 1}">${x}</option>`).join('');
 $('tzWoche').innerHTML = WT.slice(1, 6).map((x, i) => `<label class="chk"><input type="checkbox" value="${i + 1}">${x}</label>`).join('')
   + '<label class="f">ab (optional)<input type="date" id="tzWAb"></label>';
@@ -2189,7 +2254,7 @@ function pinselLeiste(){
     + liste.map(([k, n, ic]) => `<button data-p="${k}" class="${pinsel === k ? 'on' : ''}">${icon(ic)}${n}</button>`).join('')
     + (pinsel === 'wunsch' || pinsel === 'nogo' ? `<span class="seg"><button data-st="weich" class="${pinselStufe === 'weich' ? 'on' : ''}">weich</button><button data-st="hart" class="${pinselStufe === 'hart' ? 'on' : ''}">hart</button></span>` : '')
     + (pinsel === 'halb' ? `<span class="seg"><button data-z="vm" class="${urlHalb === 'vm' ? 'on' : ''}">${icon('logOutL')}vormittags</button><button data-z="nm" class="${urlHalb === 'nm' ? 'on' : ''}">${icon('logOut')}nachmittags</button></span>`
-      + `<input type="text" id="pinHalbUhr" placeholder="Uhrzeit (optional)" style="width:150px" value="${esc(halbUhr)}">` : '');
+      + `<input type="time" id="pinHalbUhr" title="Uhrzeit (optional): vormittags weg = bis, nachmittags weg = ab" style="width:110px" value="${esc(halbUhr)}">` : '');
   $('pinsel').querySelectorAll('[data-p]').forEach(b => b.onclick = ()=>{ pinsel = b.dataset.p; renderMeine(); });
   $('pinsel').querySelectorAll('[data-st]').forEach(b => b.onclick = ()=>{ pinselStufe = b.dataset.st; pinselLeiste(); });
   $('pinsel').querySelectorAll('[data-z]').forEach(b => b.onclick = ()=>{ urlHalb = b.dataset.z; pinselLeiste(); });
@@ -2868,7 +2933,7 @@ function eintragDialog(p, s){
     <div id="stufeBox" style="margin-bottom:12px"><div class="seg"><button data-s="weich">weich</button><button data-s="hart">hart</button></div>
       <span class="hint" style="margin-left:8px">hart = möglichst unbedingt</span></div>
     <div id="halbBox" class="reihe" style="margin-bottom:12px"><div class="seg"><button data-z="vm"><span data-icon="logOutL"></span>vormittags</button><button data-z="nm"><span data-icon="logOut"></span>nachmittags</button></div>
-      <input type="text" id="eUhr" value="${esc(e.uhr || '')}" placeholder="Uhrzeit (optional)" style="flex:1"></div>
+      <input type="time" id="eUhr" value="${esc(e.uhr || '')}" title="Uhrzeit (optional): vormittags weg = bis, nachmittags weg = ab" style="width:110px"></div>
     <div class="reihe"><label class="f">bis einschließlich<input type="date" id="eBis" value="${s}" min="${s}"></label>
       <label class="f" style="flex:1">Notiz<input type="text" id="eNotiz" value="${esc(e.notiz || '')}" placeholder="optional"></label></div>
     <div class="fuss">${e.typ ? `<button class="btn out" id="eDel">${icon('trash')}Löschen</button>` : ''}<button class="btn gh" id="dlgZu">Abbrechen</button><button class="btn" id="eOk">${icon('check')}Speichern</button></div>`,
@@ -3280,6 +3345,99 @@ $('verBtn').onclick = async ()=>{
   toast(neu && neu !== PLAN_VERSION ? 'Update auf v' + neu + ' …' : 'Neu laden …');
   setTimeout(()=> location.replace(location.pathname + '?v=' + Date.now()), 600);
 };
+/* Datum/Uhrzeit per Tastatur (2.01, nur Geraete mit Maus - am Handy bleibt der native Auswaehler):
+   Feld wird Textfeld TT.MM.JJJJ bzw. hh:mm, .value bleibt ISO (JJJJ-MM-TT bzw. hh:mm). Ziffern fuellen das aktive
+   Teil und springen weiter, ←/→ wechseln, ↑/↓ zaehlen, Jahr zweistellig = 20xx; h heute (im Jahr: dieses Jahr),
+   g gestern, m morgen, j jetzt (Uhrzeit). 'input' je Aenderung, 'change' beim Verlassen bzw. Enter (wie bisher). */
+const NAT_WERT = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+function zeitFeld(el){
+  if(el._zf) return; el._zf = 1;
+  const zeit = el.type === 'time', L = zeit ? [2, 2] : [2, 2, 4], AB = zeit ? [0, 3] : [0, 3, 6], SEP = zeit ? ':' : '.';
+  const LEER = zeit ? ['--', '--'] : ['TT', 'MM', 'JJJJ'], MAX = zeit ? [23, 59] : [31, 12];
+  const start = NAT_WERT.get.call(el);
+  el.type = 'text'; el.autocomplete = 'off'; el.inputMode = 'numeric'; el.spellcheck = false;
+  el.classList.add('zf', zeit ? 'zf-zeit' : 'zf-datum');
+  let seg = L.map(() => ''), akt = 0, puf = '', iso = '', beimFokus = '', sprung = false;   // sprung: eben automatisch weiter - folgender Trenner zaehlt nicht
+  const p2 = x => String(x).padStart(2, '0');
+  const ausIso = v => { const m = zeit ? /^(\d\d):(\d\d)/.exec(v || '') : /^(\d{4})-(\d\d)-(\d\d)$/.exec(v || '');
+    seg = m ? (zeit ? [m[1], m[2]] : [m[3], m[2], m[1]]) : L.map(() => ''); };
+  const gueltig = () => {
+    if(zeit) return /^\d\d$/.test(seg[0]) && /^\d\d$/.test(seg[1]) && +seg[0] < 24 && +seg[1] < 60 ? seg[0] + ':' + seg[1] : '';
+    if(!/^\d\d$/.test(seg[0]) || !/^\d\d$/.test(seg[1]) || !/^\d{4}$/.test(seg[2])) return '';
+    const j = seg[2] + '-' + seg[1];
+    return +seg[1] >= 1 && +seg[1] <= 12 && +seg[0] >= 1 && +seg[0] <= tageIm(j) ? j + '-' + seg[0] : '';
+  };
+  const fokus = () => document.activeElement === el;
+  const zeig = () => {
+    const leer = seg.every(x => x === '');
+    NAT_WERT.set.call(el, leer && !fokus() ? '' : seg.map((x, i) => x || LEER[i]).join(SEP));
+    if(fokus()) el.setSelectionRange(AB[akt], AB[akt] + Math.max(L[akt], seg[akt].length));
+  };
+  const melden = () => { const neu = gueltig(); if(neu !== iso){ iso = neu; el.dispatchEvent(new Event('input', {bubbles: true})); } };
+  const fertigJahr = () => { if(!zeit && puf.length === 1) seg[2] = '200' + puf; puf = ''; };
+  const geh = i => { fertigJahr(); akt = Math.max(0, Math.min(L.length - 1, i)); };
+  const setzeIso = v => { ausIso(v); puf = ''; };
+  const jetzt = () => { const d = new Date(); return p2(d.getHours()) + ':' + p2(d.getMinutes()); };
+  const ziffer = d => {
+    puf += d;
+    if(!zeit && akt === 2){   // Jahr: 2 Ziffern = 20xx, 4 Ziffern = so
+      seg[2] = puf.length === 2 ? '20' + puf : puf;
+      if(puf.length >= 4) puf = '';
+      return;
+    }
+    seg[akt] = p2(puf);
+    const voll = puf.length >= 2 || +puf > (akt === 0 ? (zeit ? 2 : 3) : (zeit ? 5 : 1));
+    if(voll){ if(+seg[akt] > MAX[akt]) seg[akt] = p2(MAX[akt]); puf = ''; if(akt < L.length - 1){ akt++; sprung = true; } }
+  };
+  const zaehle = r => {
+    if(seg.every(x => x === '')){ setzeIso(zeit ? jetzt() : heute()); return; }
+    puf = '';
+    if(seg[akt] === ''){ const h = zeit ? jetzt().split(':') : heute().split('-').reverse(); seg[akt] = h[akt]; return; }
+    if(!zeit && akt === 2){ seg[2] = String(Math.max(1000, +seg[2] + r)); return; }
+    const lo = zeit ? 0 : 1, hi = zeit ? MAX[akt] : akt === 0 ? (/^\d{4}$/.test(seg[2]) && +seg[1] >= 1 ? tageIm(seg[2] + '-' + seg[1]) : 31) : 12;
+    let v = +seg[akt] + r; if(v > hi) v = lo; if(v < lo) v = hi;
+    seg[akt] = p2(v);
+  };
+  el.addEventListener('keydown', e => {
+    if(e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab' || e.key === 'Escape') return;
+    if(e.key === 'Enter'){ fertigJahr(); zeig(); melden(); if(iso !== beimFokus){ beimFokus = iso; el.dispatchEvent(new Event('change', {bubbles: true})); } return; }
+    e.preventDefault();
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key, war = sprung; sprung = false;
+    if(/^\d$/.test(k)) ziffer(k);
+    else if('.:/-, '.includes(k) && war) return;
+    else if(k === 'ArrowLeft') geh(akt - 1);
+    else if(k === 'ArrowRight' || '.:/-, '.includes(k)) geh(akt + 1);
+    else if(k === 'Home') geh(0);
+    else if(k === 'End') geh(L.length - 1);
+    else if(k === 'ArrowUp' || k === 'ArrowDown') zaehle(k === 'ArrowUp' ? 1 : -1);
+    else if(k === 'Backspace' || k === 'Delete'){
+      if(seg[akt] === '' && !puf && k === 'Backspace') geh(akt - 1); else { seg[akt] = ''; puf = ''; } }
+    else if(!zeit && k === 'h' && akt === 2){ seg[2] = heute().slice(0, 4); puf = ''; }
+    else if(!zeit && 'hgm'.includes(k)) setzeIso(plus(heute(), k === 'g' ? -1 : k === 'm' ? 1 : 0));
+    else if(zeit && (k === 'j' || k === 'h')) setzeIso(jetzt());
+    else return;
+    zeig(); melden();
+  });
+  el.addEventListener('beforeinput', e => e.preventDefault());   // Einfuegen/Diktat usw. nicht als Freitext
+  el.addEventListener('paste', e => { e.preventDefault(); const t = (e.clipboardData.getData('text') || '').trim();
+    const m = zeit ? /^(\d{1,2})[:.](\d\d)$/.exec(t) : /^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/.exec(t) || /^(\d{4})-(\d\d)-(\d\d)$/.exec(t);
+    if(!m) return;
+    if(zeit) seg = [p2(m[1]), m[2]]; else if(m[0].includes('-')) seg = [m[3], m[2], m[1]]; else seg = [p2(m[1]), p2(m[2]), m[3].length === 2 ? '20' + m[3] : m[3]];
+    zeig(); melden(); });
+  let maus = false;   // Klick: Teil unter der Maus waehlen (Caret setzt der Browser), Tab: erstes Teil
+  el.addEventListener('mousedown', ()=>{ maus = true; });
+  el.addEventListener('focus', ()=>{ beimFokus = iso; puf = ''; akt = 0; if(!maus) setTimeout(zeig); });
+  el.addEventListener('mouseup', ()=>{ maus = false; const c = el.selectionStart || 0; puf = ''; akt = Math.max(0, AB.filter(a => a <= c).length - 1); zeig(); });
+  el.addEventListener('blur', ()=>{ fertigJahr(); zeig(); melden(); if(iso !== beimFokus){ beimFokus = iso; el.dispatchEvent(new Event('change', {bubbles: true})); } });
+  Object.defineProperty(el, 'value', {configurable: true, get: () => iso, set: v => { setzeIso(v); iso = gueltig(); zeig(); }});
+  el.value = start;
+}
+if(matchMedia('(pointer: fine)').matches){
+  const zfAlle = r => r.querySelectorAll && r.querySelectorAll('input[type=date],input[type=time]').forEach(zeitFeld);
+  zfAlle(document);
+  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if(n.nodeType === 1){ if(n.matches('input[type=date],input[type=time]')) zeitFeld(n); else zfAlle(n); } })))
+    .observe(document.body, {childList: true, subtree: true});
+}
 render();
 start();
 </script>
