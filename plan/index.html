@@ -836,7 +836,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.12';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.13';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1630,7 +1630,7 @@ function renderPlan(){
     /* 2.04: Thermometer Zufriedenheit unter dem Balken (erst, wenn der Monat Dienste hat) */
     const zf = geplant ? zufriedenheit(p, ZL[p.k]) : null;
     const zfTip = zf && `Zufriedenheit ${zf.wert} %` + (zf.t.length ? '\n' + zf.t.map(([x, n]) => `−${n}  ${x}`).join('\n') : '\nZiel getroffen, Wünsche und Regeln eingehalten');
-    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : ''}</small></div>`
+    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' % · ' : ''}<span data-tip="Wochenenden im Monat (Fr+So oder Sa = 1, Feiertag unter der Woche = ½)">${zahlG(weLast(p.k, ym))} WE</span></small></div>`
       + `<div class="zahl"${w ? ` data-tip="gewünscht (anteilig nach Abwesenheit), max. ${max}"` : ''}>${n2}<small> / ${w || max}${w ? ' ♡' : ''}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, w || max) * 100)}%"></i></div>`
       + (zf ? `<div class="thermo" data-tip="${esc(zfTip)}"><i class="${zf.wert >= 80 ? 'gut' : zf.wert >= 50 ? 'mittel' : 'schlecht'}" style="width:${Math.max(4, zf.wert)}%"></i></div>` : '');
     if(markK === p.k && adminGeraet()) z += detailHtml(p, ZL[p.k], zf);
