@@ -1,0 +1,7 @@
+{
+  "name": "dienstplan-regel-tests",
+  "private": true,
+  "type": "module",
+  "description": "Lokale Tests fuer plan/index.html (Solver-Modell gegen App-Bewertung). Nie mit Daten committen.",
+  "dependencies": { "highs": "1.15.4", "playwright-core": "^1.55.0" }
+}

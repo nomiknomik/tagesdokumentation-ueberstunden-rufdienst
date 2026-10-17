@@ -139,6 +139,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   2.20: Verfahren als Team-Einstellung `cfg.verfahren` ('mip' Standard | 'heuristik', Karte Grenzen `#gVerf`, nur Verwalter).
   Kein stiller Rückfall mehr: scheitert der Solver, nennt `confirm()` den Grund, Heuristik nur nach Ja. Geplant: Heuristik
   (Heatmap, Schichten, Schütteln, `kandFuer`-Anläufe) entfernen, sobald der Solver sich bewährt hat (Wunsch).
+  Regeln/Formeln ändern: Skill `.claude/skills/dienstplan-regel` (Bausteine für `mipModell()`, Abnahme `scripts/pruefen.mjs <backup>`).
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
