@@ -836,7 +836,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.10';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.11';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2084,7 +2084,17 @@ function zufriedenheit(p, z){
      Abweichung; mit Wunsch nach mehr ist schon das Unterschreiten ein leichter Verstoss. 2.06: 6 Monate; WE dieses
      Monats gegen das ganzzahlige Ziel; ohne Mengen-Wunsch ist zu wenig kein Nachteil (wer mehr will, traegt es ein) */
   const d = n - z.ganz - (z.h.exp - z.h.n), dw = we - z.weGanz - (z.h.expWeB - z.h.weB), mehrD = z.e.expN !== undefined, mehrW = z.e.expWeBN !== undefined;   // 2.07: gegen die ganzzahlige Pflicht
+  /* 2.11: eingetragene Menge = Mindestmenge dieses Monats (anteilig nach Abwesenheit) - auch wenn sie nicht ueber der
+     normalen Menge liegt; solange sie nicht erreicht ist, zeigt das Thermometer es (auch waehrend der Monat noch offen ist) */
+  const mg = mengeVon(p, ym) || {}, fA = z.e.tage ? z.e.da / z.e.tage : 1, mind = {};
+  for(const [feld, ist, norm, rund] of [['dienste', n, z.e.expN ?? z.e.exp, Math.round], ['we', we, z.e.expWeBN ?? z.e.expWeB, x => Math.round(x * 2) / 2]]){
+    const v = String(mg[feld] || '').trim().replace(',', '.');
+    if(!v || isNaN(+v)) continue;
+    const soll = rund(/^\+/.test(v) ? norm + +v * fA : +v * fA), was = feld === 'we' ? 'WE' : 'Dienste';
+    if(ist < soll){ mind[feld] = 1; ab(`gewünschte Mindestmenge: ${zahlG(ist)} von ${zahlG(soll)} ${was}`, 10 + (soll - ist - 1) * (feld === 'we' ? 15 : 20)); }
+  }
   const saldo = (x, was, w, pkt) => {
+    if(mind[was === 'WE' ? 'we' : 'dienste']) return;   // schon als Mindestmenge gezaehlt
     if(w && x < -0.3) ab(`gewünschte Menge: ${zahl1(-x)} ${was} zu wenig (Bilanz ${VORMONATE + 1} Monate)`, 10 + Math.max(0, -x - 1) * pkt);
     else if(x > 1.2 && !w) ab(`${zahl1(x)} ${was} zu viel (Bilanz ${VORMONATE + 1} Monate)`, (x - 1) * pkt); };
   if(n > max) ab(`max. ${max} Dienste überschritten`, 40);

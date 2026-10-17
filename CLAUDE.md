@@ -112,6 +112,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   2.09: Feiertag Mo–Do = ½ WE (`ftWT()`, `weLast()` statt `weImMonat().size` für Fairness/Thermometer/Details; Erwartung
   `expFt`); Soll `weRund()`: Blöcke ganz, Feiertage in halben. „3. WE“ zählt nur Blöcke.
   2.10: einzelner Freitag ohne den Sonntag zählt nicht als WE (`weImMonat()`), als Feiertag ½ (`weLast()`).
+  2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
+  wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
