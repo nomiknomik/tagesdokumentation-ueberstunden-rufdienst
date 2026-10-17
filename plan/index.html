@@ -124,6 +124,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .chip.t-urlaub{background:#FFF6DC;border-color:#F0D99A}
 .chip.t-fb{background:#E7EEFA;border-color:#BCCDEB}
 .chip.t-fza{background:#EEF0F6;border-color:#C9CEDF;color:#3A4F8F}
+.chip.t-krank{background:#FBEDEA;border-color:#E9C2B8;color:#A2412A}
 .chip.t-frei,.chip.t-tz{background:#F0ECE6;border-color:#DDD3C5;color:var(--text2)}
 .chip.gef{border-style:dashed;border-color:var(--warning);background:var(--warning-soft);color:var(--warning)}
 .chip.t-wunsch{background:var(--success-soft);border-color:#A8D8B8;color:#0F6B35}
@@ -817,7 +818,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.92';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.93';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -849,6 +850,7 @@ const ICONS = {
   redo:'<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
   copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   printer:'<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  thermo:'<path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>',
   clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   sliders:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
   layers:'<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
@@ -937,10 +939,11 @@ const TYPEN = {
   fb:     {name:'Fortbildung', icon:'book', abw:true},
   frei:   {name:'frei', icon:'moon', abw:true},
   fza:    {name:'FZA', icon:'clock', abw:true},   // Freizeitausgleich fuer Ueberstunden
+  krank:  {name:'krank', icon:'thermo', abw:true},   // 1.93: TDA „KA*“, keine Freigabe
   halb:   {name:'½ Tag weg', icon:'logOut'},      // 1.58: nur vormittags/nachmittags abwesend (zeit 'vm'|'nm', uhr = Text), v.a. Chef
   da:     {name:'anwesend', icon:'check'}
 };
-const ABW_NAME = {urlaub:'Urlaub', fb:'Fortbildung', frei:'frei', fza:'Freizeitausgleich (FZA)', tz:'Teilzeit frei'};
+const ABW_NAME = {urlaub:'Urlaub', fb:'Fortbildung', frei:'frei', fza:'Freizeitausgleich (FZA)', krank:'krank', tz:'Teilzeit frei'};
 const ABW_ICON = {urlaub:'sun', fb:'book', frei:'moon', fza:'clock', tz:'clock'};
 
 let cfg = clone(CFG_LEER);
@@ -1273,6 +1276,13 @@ function hinweise(s){
   }
   return out;
 }
+/* Wochenende (1.93) = Fr+Sa+So; ueblich: Fr+So eine Person, Sa eine andere. Ziel 1-2 Wochenenden je Monat. */
+const weBlock = s => { const w = wt(s); if(w < 5) return null; const sa = plus(s, 6 - w); return [plus(sa, -1), sa, plus(sa, 1)]; };
+const weImMonat = (k, m) => { const n = new Set();
+  for(let i = 1; i <= tageIm(m); i++){ const s = ds(+m.slice(0, 4), +m.slice(5, 7), i); if(wt(s) >= 5 && dienstVon(s) === k) n.add(weBlock(s)[1]); }
+  return n; };
+/* naechster Arbeitstag vor/nach dem Wochenende (Feiertage ueberspringen) */
+const werktagNeben = (s, r) => { for(let i = 0; i < 5; i++){ s = plus(s, r); if(werktag(s)) return s; } return s; };
 const weGearbeitet = (k, sa) => dienstVon(sa) === k || dienstVon(plus(sa, 1)) === k;
 /* Laenge der Serie gearbeiteter Wochenenden, wenn k am Tag s (Sa/So) Dienst macht */
 function weSerie(k, s){
@@ -1309,12 +1319,22 @@ function bewerte(p, s){
   if(n >= max){ tags.push(['r', `max. ${max} erreicht`]); score -= 50; }
   if(dienstVon(plus(s, -1)) === p.k) { tags.push(['o', 'Dienst am Vortag']); score -= 15; }
   if(dienstVon(plus(s, 1)) === p.k) { tags.push(['o', 'Dienst am Folgetag']); score -= 15; }
+  const blk = weBlock(s);
+  if(blk && !a){
+    /* angrenzend an Urlaub: tabu, an Fortbildung ungern (Fr-Dienst: ab Do, Sa/So-Dienst: ab Fr) */
+    const nb = [werktagNeben(wt(s) === 5 ? blk[0] : blk[1], -1), werktagNeben(blk[2], 1)].map(x => abwesend(p, x));
+    if(nb.includes('urlaub')){ tags.push(['r', 'WE am Urlaub']); score -= 100; }
+    else if(nb.includes('fb')){ tags.push(['o', 'WE an Fortbildung']); score -= 25; }
+    const wes = weImMonat(p.k, ymVon(s));
+    if(!wes.has(blk[1]) && wes.size >= 2){ tags.push(['o', `${wes.size + 1}. WE im Monat`]); score -= 40; }
+    else if(!wes.has(blk[1]) && wes.size === 1) score -= 8;
+  }
   if(wt(s) >= 6){
     const serie = weSerie(p.k, s);
     if(serie > (cfg.maxWeFolge || 2)){ tags.push(['o', `${serie}. WE in Folge`]); score -= 25; }
   }
-  if(wt(s) === 7 && dienstVon(plus(s, -2)) === p.k){ tags.push(['g', 'passt zu Fr']); score += 10; }
-  if(wt(s) === 5 && dienstVon(plus(s, 2)) === p.k){ tags.push(['g', 'passt zu So']); score += 10; }
+  if(wt(s) === 7 && dienstVon(plus(s, -2)) === p.k){ tags.push(['g', 'passt zu Fr']); score += 35; }   // 1.93: Fr+So eine Person
+  if(wt(s) === 5 && dienstVon(plus(s, 2)) === p.k){ tags.push(['g', 'passt zu So']); score += 35; }
   const f = plus(s, 1);
   if(werktag(f) && !abwesend(p, f) && dienstVon(s) !== p.k){
     // Folgetag mit p als "nach Dienst": wird es eng?
@@ -1583,7 +1603,7 @@ function renderPlan(){
 /* Kompakt: Monat wie in TDA (Zeilen = Personen, Spalten = Tage, Sa gelb, So/Feiertag gruen),
    Zellen mit TDA-Kuerzeln zum Abtippen. Werktag ohne Dienst/Abwesenheit bleibt leer
    (Funktion Amb… traegt der Planer in TDA ein). */
-const TDA_ABW = {urlaub: 'U*', fb: 'F0*', fza: 'FZA', frei: '0', tz: '0'};   // 1.92: Bezeichnungen wie im Original-TDA
+const TDA_ABW = {urlaub: 'U*', fb: 'F0*', fza: 'FZA', krank: 'KA*', frei: '0', tz: '0'};   // 1.92: Bezeichnungen wie im Original-TDA
 const tdaDienst = s => { const a = dienstArt(s); return a === 'RBD' ? 'RBD1' : a; };
 const tdaName = p => { const t = (p.name || p.k).trim().split(/\s+/); const n = t.length > 1 ? t.pop() + ', ' + t.join(' ') : t[0];
   return n + (p.pnr ? ` (${p.pnr})` : ''); };
@@ -1606,12 +1626,12 @@ function kompaktHtml(){
     h += `<tr><td class="tda-n">${esc(tdaName(p))}</td>${tage.map(s => { const [c, t] = tdaCode(p, s);
       const e = eintrag(p.k, s), offen = c === 'a' && e && pflicht(e.typ) && !e.ok;
       return `<td class="${kl(s)} ${c} ${offen ? 'offen' : ''}" data-tag="${s}" data-k="${esc(p.k)}"${offen ? ` title="${esc(TYPEN[e.typ].name)} beantragt – noch nicht genehmigt"` : ''}>${t}</td>`; }).join('')}</tr>`;
-  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U* Urlaub · F0* Fortbildung · FZA Freizeitausgleich · 0 frei · Chef: leer = ganztags, Vorm./Nachm. = nur vormittags/nachmittags da · <u style="text-decoration-style:dashed;color:#B5651D">U*</u> = beantragt, noch nicht genehmigt. Klick auf ein Feld: ändern – Dienst hat je Tag nur eine Person.</div>`;
+  return h + `</tbody></table><div class="hint" style="margin-top:8px">Dienste: ZD1 Mo–Do, ZD2 Fr, RBD1 Sa, RBD2 So/Feiertag · Regeldienst Amb2 Mo, Amb4 Di–Fr · U* Urlaub · F0* Fortbildung · FZA Freizeitausgleich · KA* krank · 0 frei · Chef: leer = ganztags, Vorm./Nachm. = nur vormittags/nachmittags da · <u style="text-decoration-style:dashed;color:#B5651D">U*</u> = beantragt, noch nicht genehmigt. Klick auf ein Feld: ändern – Dienst hat je Tag nur eine Person.</div>`;
 }
 /* TDA ist nur eine Ansicht auf die echten Daten (1.56): ein Klick aendert Dienst bzw.
    Wunsch-Eintrag, nichts Eigenes. Regeldienst = anwesend (Amb2 Mo / Amb4 Di-Fr), 0 = frei.
    Alles in einer Aktion = ein Rueckgaengig-Schritt. */
-const TDA_TYP = {'U*': 'urlaub', 'F0*': 'fb', FZA: 'fza'};
+const TDA_TYP = {'U*': 'urlaub', 'F0*': 'fb', FZA: 'fza', 'KA*': 'krank'};
 const tdaRegel = s => wt(s) === 1 ? 'Amb2' : 'Amb4';
 function tdaSetzen(k, s, code){
   const p = person(k), e = eintrag(k, s), alt = dienstVon(s);
@@ -1634,8 +1654,8 @@ function tdaWahl(k, s){
   if(!darfVeroeffentlichen()) return;
   const p = person(k), dienst = tdaDienst(s), alt = dienstVon(s), chef = p.rolle === 'chef';
   const akt = tdaCode(p, s)[1] || 'ganztags';
-  const codes = chef ? (werktag(s) ? ['U*', 'F0*', 'FZA', 'ganztags', 'Vorm.', 'Nachm.', '0'] : ['F0*', '0'])   // Chef: keine Dienste, kein Amb
-    : werktag(s) ? [dienst, 'U*', 'F0*', 'FZA', tdaRegel(s), '0'] : [dienst, 'F0*', '0'];
+  const codes = chef ? (werktag(s) ? ['U*', 'F0*', 'FZA', 'KA*', 'ganztags', 'Vorm.', 'Nachm.', '0'] : ['F0*', '0'])   // Chef: keine Dienste, kein Amb
+    : werktag(s) ? [dienst, 'U*', 'F0*', 'FZA', 'KA*', tdaRegel(s), '0'] : [dienst, 'F0*', '0'];
   dialog(`<h3>${esc(tdaName(p))}</h3><div class="unter">${WTL[wt(s)]}, ${kurzDat(s)}${feiertag(s) ? ' · ' + esc(feiertag(s)) : ''}${alt && alt !== k ? ` · Dienst hat bisher ${esc(alt)}` : ''}</div>
     <div class="tda-wahl" style="grid-template-columns:repeat(${codes.length > 2 ? 3 : 2},1fr)">${codes.map(c => `<button data-c="${c}" class="${c === akt ? 'on' : ''} ${c === dienst ? 'dienst' : ''}">${c}</button>`).join('')}</div>
     <div class="fuss"><button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
@@ -1921,7 +1941,8 @@ function autoVerteilen(){
           - (weTag(s) ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0)
         - ((dienstVon(plus(s, -1)) === x.p.k || dienstVon(plus(s, 1)) === x.p.k) ? 30 : 0) + Math.random(); });
       kand.sort((a, b) => b.wert - a.wert);
-      if(!best || kand.length < best.kand.length) best = {s, kand};
+      const rang = kand.length + (wt(s) === 6 ? 2 : 0);   // 1.93: Sa nach Fr/So - erst das Fr+So-Paar, dann ein:e andere:r fuer Sa
+      if(!best || rang < best.rang) best = {s, kand, rang};
     }
     offen = offen.filter(x => x !== best.s);
     if(!best.kand.length){ rest.push(best.s); continue; }

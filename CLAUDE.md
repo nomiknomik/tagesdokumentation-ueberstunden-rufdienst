@@ -63,6 +63,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   sich die Anwesenden den Dienst, Abwesende 0; Vormonate nur Tage mit Plan;
   `vorherAlle()`), WE/Feiertage ebenso, Folgetage; Einträge `auto:true` (gestrichelt),
   „Vorschlag verwerfen“ entfernt nur diese.
+  Wochenende (1.93, `weBlock()` = Fr+Sa+So): Fr+So eine Person (Bonus „passt zu Fr/So“ +35), Sa eine andere
+  (Sa wird in `autoVerteilen()` nach Fr/So verteilt); Ziel 1–2 WE je Monat (`weImMonat()`, 3. WE −40);
+  WE angrenzend an Urlaub tabu ('r', Nachbar-Arbeitstag über `werktagNeben()`), an Fortbildung −25.
+  Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
   Matrix-Hinweise als Symbole neben dem Datum (! rot, ★ Kongress, i Gruppe), Text per Tooltip.
   Backup (Einstellungen): alle `plan/*.json` als eine JSON-Datei (`meta.app`='Dienstplanung',
   `files`), Einspielen ersetzt gleichnamige Dateien – in EINEM Commit über die
