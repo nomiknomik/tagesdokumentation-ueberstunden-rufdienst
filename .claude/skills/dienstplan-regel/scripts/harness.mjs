@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 const require = createRequire(import.meta.url);
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
-export async function starten(backupPfad, monat, ich = ''){
+export async function starten(backupPfad, monat, ich = '', opts = {}){   // opts.handy: iPhone-Groesse mit Touch
   const files = JSON.parse(fs.readFileSync(backupPfad, 'utf8')).files;
   const srv = http.createServer((req, res) => {
     let p = decodeURIComponent(req.url.split('?')[0]);
@@ -22,7 +22,7 @@ export async function starten(backupPfad, monat, ich = ''){
   });
   await new Promise(r => srv.listen(0, r));
   const browser = await chromium.launch({executablePath: '/opt/pw-browsers/chromium'});
-  const ctx = await browser.newContext({serviceWorkers: 'block', viewport: {width: 1400, height: 900}});
+  const ctx = await browser.newContext({serviceWorkers: 'block', ...(opts.handy ? {viewport: {width: 390, height: 844}, hasTouch: true, isMobile: true} : {viewport: {width: 1400, height: 900}})});
   const erste = JSON.parse(JSON.stringify(files['plan/config.json'])).personen.find(p => p.rolle !== 'sek' && p.rolle !== 'pa');
   await ctx.addInitScript(([m, k]) => {
     localStorage.setItem('planung_zugang', JSON.stringify({repo: 'nomiknomik/tagesdoku-team', token: 'test'}));

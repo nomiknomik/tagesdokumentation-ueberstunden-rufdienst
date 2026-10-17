@@ -838,7 +838,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.21';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.22';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -3825,13 +3825,30 @@ zoomSetzen(zoom);
     if(y + r.height > innerHeight - 8) y = e.clientY - r.height - 10;
     tip.style.left = x + 'px'; tip.style.top = y + 'px';
   };
+  /* 2.22: Touch (iPhone) - der Browser schickt beim Tippen ein kuenstliches mousemove (zeigt) und gleich mousedown
+     (versteckt) -> Tooltip blinkte nur. Jetzt: Tippen zeigt ihn unter dem Element, nochmal Tippen/Scrollen/4 s schliesst;
+     kuenstliche Maus-Ereignisse kurz nach einer Beruehrung werden ignoriert. */
+  let touchT = 0, start = null, zu = 0;
+  const weg = () => { el = null; tip.classList.add('hidden'); clearTimeout(zu); };
   document.addEventListener('mousemove', e => {
+    if(Date.now() - touchT < 1000) return;
     const ziel = e.target.closest && e.target.closest('[title],[data-tip]');
     if(!ziel || strich){ el = null; tip.classList.add('hidden'); return; }
     zeig(e, ziel);
   }, {passive: true});
-  document.addEventListener('mousedown', ()=> tip.classList.add('hidden'));
+  document.addEventListener('mousedown', ()=> { if(Date.now() - touchT > 1000) tip.classList.add('hidden'); });
   document.addEventListener('mouseleave', ()=> tip.classList.add('hidden'));
+  document.addEventListener('touchstart', e => { touchT = Date.now(); const t = e.touches[0]; start = t && {x: t.clientX, y: t.clientY, t: Date.now()}; }, {passive: true, capture: true});
+  document.addEventListener('touchend', e => {
+    touchT = Date.now(); const t = e.changedTouches[0];
+    if(!start || !t || Math.hypot(t.clientX - start.x, t.clientY - start.y) > 10 || Date.now() - start.t > 600) return;   // nur echtes Tippen
+    const ziel = e.target.closest && e.target.closest('[title],[data-tip]');
+    if(!ziel || ziel === el){ weg(); return; }
+    const r = ziel.getBoundingClientRect();
+    el = null; zeig({clientX: Math.max(8, r.left + r.width / 2 - 14), clientY: r.bottom - 8}, ziel);
+    clearTimeout(zu); zu = setTimeout(weg, 4000);
+  }, {passive: true, capture: true});
+  addEventListener('scroll', weg, {passive: true, capture: true});
 })();
 /* Version + Update: ausstehende Aenderungen speichern, dann ohne Cache neu laden */
 $('verBtn').textContent = 'v' + PLAN_VERSION;

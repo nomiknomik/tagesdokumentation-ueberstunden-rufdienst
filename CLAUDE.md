@@ -154,7 +154,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   am Handy nach links wischen > 80 px (`dWisch`, `.dzelle` touch-action pan-y; Klick danach ignoriert).
   Personenauswahl beim Einteilen erscheint neben der Maus (`dialog(…, nahe)`, letzte
   Klickposition `klickXY`, im Fenster gehalten, Zoom berücksichtigt).
-  Tooltips sofort über `#tip` (global: `title` wird beim Überfahren zu `data-tip`).
+  Tooltips sofort über `#tip` (global: `title` wird beim Überfahren zu `data-tip`). Touch (2.22): Tippen zeigt den Tooltip
+  unter dem Element, nochmal Tippen/Scrollen/4 s schließt; künstliche Maus-Ereignisse bis 1 s nach Berührung ignoriert (iOS blinkte).
   Besetzung nur Vormittag / Nachmittag (vor/ab 11; `besRegel()` fasst alte 3-Fenster-
   Konfiguration zusammen), keine Dienstart (ZD1…)
   in der Oberfläche – Funktionen statt Abrechnungsart folgen später.
