@@ -838,7 +838,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.22';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.23';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1268,7 +1268,7 @@ const HALB_TXT = {vm: 'vormittags weg', nm: 'nachmittags weg'};
 const typIcon = e => e.typ === 'halb' ? (e.zeit === 'nm' ? 'logOut' : 'logOutL') : TYPEN[e.typ].icon;
 const typName = e => e.typ === 'halb' ? (e.zeit === 'nm' ? 'Nachmittag' : 'Vormittag') : TYPEN[e.typ].name;
 const halbTitel = (p, s) => { const e = eintrag(p.k, s), z = e.zeit || 'vm';   // 2.01: Uhrzeit hh:mm (vorm. weg = bis, nachm. weg = ab), alte Freitexte unveraendert
-  return `${p.name || p.k}: ${HALB_TXT[z]}${e.uhr ? ' (' + (/^\d\d:\d\d$/.test(e.uhr) ? (z === 'nm' ? 'ab ' : 'bis ') : '') + e.uhr + ')' : ''}`; };
+  return `${p.name || p.k}: ${HALB_TXT[z]}${e.uhr ? ' (' + (/^\d\d:\d\d$/.test(e.uhr) ? (z === 'nm' ? 'ab ' : 'bis ') : '') + e.uhr + ')' : ''}${e.notiz ? ' – ' + e.notiz : ''}`; };   // 2.23: mit Notiz
 const gefaehrdet = (p, s) => werktag(s) && dienstVon(plus(s, -1)) === p.k && !abwesend(p, s);
 const maxDienste = p => Math.floor((cfg.maxDienste || 13) * (p.quote || 100) / 100);
 const diensteIm = (k, m) => { if(SIM){ let n = 0; for(let i = 1; i <= tageIm(m); i++) if(dienstVon(ds(+m.slice(0, 4), +m.slice(5, 7), i)) === k) n++; return n; } const d = dienstDaten(m); return d && d.tage ? Object.values(d.tage).filter(x => x.oa === k).length : 0; };
@@ -1759,18 +1759,20 @@ function wocheTagHtml(s){
   if(ft) return `<div class="wo-tag ft ${s < hz ? 'vorbei' : ''}">${terminBand(s)}${kopf}<div class="wo-ft">${esc(ft)}</div></div>`;
   const ub = urlBesetzung(s), da = [], weg = [];
   for(const p of [...personen()].sort((a, b) => nachn(a).localeCompare(nachn(b), 'de'))){
-    const a = abwesend(p, s);
-    if(a){ if(a !== 'tz' && a !== 'frei') weg.push(`${p.k} (${TDA_ABW[a] || a})`); else weg.push(p.k); continue; }
+    const a = abwesend(p, s), e = eintrag(p.k, s), notiz = e && e.notiz ? ' – ' + e.notiz : '';   // 2.23: Notiz im Tooltip
+    if(a){ const txt = a !== 'tz' && a !== 'frei' ? `${p.k} (${TDA_ABW[a] || a})` : p.k;
+      weg.push(`<span title="${esc(`${p.name || p.k}: ${ABW_NAME[a] || a}${notiz}`)}">${esc(txt)}</span>`); continue; }
     const h = halbWeg(p, s);
     const zusatz = p.k === dh ? ['ab 11', 'Dienst ab 11 Uhr'] : gefaehrdet(p, s) ? ['n. D.', 'nach Dienst – fehlt evtl.']
-      : h ? [h === 'vm' ? 'nachm.' : 'vorm.', halbTitel(p, s)] : null;
-    da.push(`<div class="wo-p ${zusatz ? 'teil' : ''}" title="${esc((p.name || p.k) + (zusatz ? ': ' + zusatz[1] : ''))}"><span class="nm">${esc(nachn(p))}</span>${zusatz ? `<small>${zusatz[0]}</small>` : ''}</div>`);
+      : h ? [h === 'vm' ? 'nachm.' : 'vorm.', ''] : null;
+    const tipp = h && !zusatz[1] ? halbTitel(p, s) : (p.name || p.k) + (zusatz ? ': ' + zusatz[1] : '') + notiz;
+    da.push(`<div class="wo-p ${zusatz ? 'teil' : ''}" title="${esc(tipp)}"><span class="nm">${esc(nachn(p))}</span>${zusatz ? `<small>${zusatz[0]}</small>` : ''}</div>`);
   }
   const hw = hinweise(s);
   return `<div class="wo-tag ${s === hz ? 'heute' : ''} ${s < hz ? 'vorbei' : ''}" title="${esc(hw.map(x => '⚠ ' + x.text).join('\n'))}">${terminBand(s)}${kopf}`
     + (ub ? `<span class="ur-zahl" title="anwesend vormittags | nachmittags">${ub.w.map((n, i) => `<b class="${ub.st[i]}">${n}</b>`).join('<i>|</i>')}</span>` : '')
     + `<div class="wo-liste">${da.join('') || '<span class="hint">niemand</span>'}</div>`
-    + (weg.length ? `<div class="wo-weg">weg: ${esc(weg.join(', '))}</div>` : '') + tmTxt + '</div>';
+    + (weg.length ? `<div class="wo-weg">weg: ${weg.join(', ')}</div>` : '') + tmTxt + '</div>';
 }
 function wocheHtml(){
   const hz = heute(), erster = ym + '-01';
