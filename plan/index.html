@@ -140,6 +140,11 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 /* ---------- Plan (vertikal) ---------- */
 .planwrap{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start}
 .werkzeug{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+/* Plan-Leiste (1.90): eine Zeile, klebt unter dem Kopf; zu breit = waagerecht wischen */
+#tab-plan .werkzeug{position:sticky;top:calc(var(--kopfH, 57px) / var(--z, 1));z-index:8;background:var(--bg);flex-wrap:nowrap;
+  overflow-x:auto;scrollbar-width:none;padding:8px 0;margin:-8px 0 4px;white-space:nowrap}
+#tab-plan .werkzeug::-webkit-scrollbar{display:none} #tab-plan .werkzeug > *{flex:none}
+#tab-plan .planwrap > div{min-width:0}
 .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700}
 .pill.entwurf{background:#F0ECE6;color:var(--text2)}
 .pill.pub{background:var(--success-soft);color:var(--success)}
@@ -149,7 +154,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .zeile:last-child{border-bottom:0}
 .zeile > div{padding:7px 10px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0}
 .zeile.kopf{background:#F7F1E6;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);min-height:34px;
-  position:sticky;top:calc(57px / var(--z, 1));z-index:5}
+  position:sticky;top:calc(var(--kopfH, 57px) / var(--z, 1) + var(--werkH, 0px));z-index:5}
 .zeile.we{background:var(--we)}
 .zeile.ft{background:var(--ft)}
 .zeile.heute{box-shadow:inset 3px 0 0 var(--primary)}
@@ -182,7 +187,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .hinw.rot .ic{color:var(--danger)}
 .dimm .zeile:not(.kopf):not(.mark){opacity:.38}
 
-.seite{position:sticky;top:calc(76px / var(--z, 1))}
+.seite{position:sticky;top:calc(var(--kopfH, 57px) / var(--z, 1) + 19px)}
 .seite .card{padding:14px}
 .prow{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:10px;cursor:pointer}
 .prow:hover,.prow.on{background:var(--primary-soft)}
@@ -264,7 +269,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--te
 .planwrap.breit{grid-template-columns:minmax(0,1fr)} .planwrap.breit > .seite{display:none}
 /* Wochenansicht (1.85): Mo–Fr, Anwesende je Tag; schmal = je Tag eine Zeile */
 .wo-monat{margin-bottom:6px}
-.wo-kopf{position:sticky;top:calc(var(--kopfH, 57px) / var(--z, 1));z-index:5;background:var(--bg, #FAF5EC);padding:8px 0 6px;
+.wo-kopf{position:sticky;top:calc(var(--kopfH, 57px) / var(--z, 1) + var(--werkH, 0px));z-index:5;background:var(--bg, #FAF5EC);padding:8px 0 6px;
   border-top:2px solid var(--border);margin-bottom:4px}
 .wo-monat:first-child .wo-kopf{border-top-color:transparent}
 .wo-kopf b{display:block;font-size:14px;font-weight:800;margin:0 2px 6px}
@@ -806,7 +811,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.89';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.90';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1364,6 +1369,8 @@ $('mZur').onclick = ()=> monatWechseln(-1);
 $('mVor').onclick = ()=> monatWechseln(1);
 /* Hoehe des (mitlaufenden) Kopfs fuer sticky-Abstaende der Wochenansicht (1.88; am Handy hoeher) */
 new ResizeObserver(()=> document.documentElement.style.setProperty('--kopfH', document.querySelector('header').offsetHeight + 'px')).observe(document.querySelector('header'));
+{ const w = document.querySelector('#tab-plan .werkzeug');   // klebende Plan-Leiste (1.90): Kopfzeilen darunter
+  new ResizeObserver(()=> w.offsetHeight && document.documentElement.style.setProperty('--werkH', w.offsetHeight + 'px')).observe(w); }
 /* Doppelklick auf den Monat (1.87): zurueck zum aktuellen Monat */
 $('mTitel').ondblclick = ()=>{ const h = heute().slice(0, 7), n = (+h.slice(0, 4) - +ym.slice(0, 4)) * 12 + +h.slice(5, 7) - +ym.slice(5, 7);
   getSelection().removeAllRanges(); if(n) monatWechseln(n); };

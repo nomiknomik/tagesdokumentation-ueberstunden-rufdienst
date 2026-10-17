@@ -55,7 +55,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Wahl in `planung_ansicht`); beide aus denselben Tagesdaten (`info`). Letzter
   Monat/Reiter je Gerät in `planung_monat`/`planung_tab` (Start/Update dort).
   Zoom −/+ im Kopf: CSS `zoom` auf `main` + `#dlg` (Kopf bleibt), Sticky-Abstände
-  über `--z`, 70–200 %, je Gerät in `planung_zoom`. „Automatisch verteilen“
+  über `--z`, 70–200 %, je Gerät in `planung_zoom`. Plan-Leiste (Ansicht … Signieren, 1.90) einzeilig und klebend unter dem Kopf
+  (`--kopfH`; zu breit = waagerecht wischen); Sticky-Köpfe darunter addieren `--werkH` (ResizeObserver). „Automatisch verteilen“
   (`autoVerteilen()`): nur leere Tage, engster Tag zuerst, rote Tags tabu, Fairness
   über 3 Vormonate + Monat als Saldo Ist − Erwartung (`erwartung()`: je Tag teilen
   sich die Anwesenden den Dienst, Abwesende 0; Vormonate nur Tage mit Plan;
