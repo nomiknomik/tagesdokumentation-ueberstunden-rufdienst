@@ -837,7 +837,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.15';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.16';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2150,9 +2150,11 @@ function autoVerteilen(){
        die die Nachbesserung Schritt fuer Schritt nicht findet, entstehen so oft schon beim Verteilen */
     let rausch = 1, bester = null; const t0 = Date.now();
     const mehrW = Object.fromEntries(ps.map(p => [p.k, {d: Z[p.k].e.expN !== undefined, w: Z[p.k].e.expWeBN !== undefined}]));
-    for(let lauf = 0; lauf < 3; lauf++, rausch = 25){
+    const AV = window.AV_TEST || {};   // nur fuer Tests: {heat, laeufe, zeit}
+    for(let lauf = 0; lauf < (AV.laeufe ?? 3); lauf++, rausch = 25){
     SIM = {};
-    let offen = [...frei0]; const rest = [];
+    if(lauf === 0 && AV.heat !== false) heatVorbelegen(frei0, ps, ziel, stufe);   // 2.16: sichere Zellen zuerst
+    let offen = frei0.filter(s => !SIM[s]); const rest = [];
     while(offen.length){
       const liste = offen.map(s => ({s, kand: kandFuer(s)}));
       const best = liste.find(x => x.kand.length <= 1)
@@ -2173,7 +2175,7 @@ function autoVerteilen(){
     /* 2.15: Schuetteln - vom besten Plan aus einige Tage (Fr+So zusammen) zufaellig neu vergeben (nur ohne rote Regel)
        und nachbessern; besser -> uebernehmen. Findet lange Tauschketten wie von Hand. Max. ~4 s. */
     const belegt = frei0.filter(s => bester.plan[s]);
-    while(Date.now() - t0 < 4000){
+    while(Date.now() - t0 < (AV.zeit ?? 4000)){
       SIM = {...bester.plan};
       /* bevorzugt Tage von Personen, die beim Ziel daneben liegen */
       const daneben = belegt.filter(s => { const k = SIM[s]; return Math.abs(diensteIm(k, ym) - ziel[k]) >= 1 || Math.abs(weLast(k, ym) - zielWe[k]) >= 0.5; });
@@ -2198,6 +2200,35 @@ function autoVerteilen(){
     toast(`${n} Tage verteilt` + (rest.length ? ` – ${rest.length} ohne passende Person: ${rest.map(kurzDat).join(', ')}` : '.')
       + (hinw.length ? ` Nicht ganz vermeidbar: ${hinw.map(([s, t]) => `${kurzDat(s)} ${plan[s]} (${t.join(', ')})`).join('; ')}` : ''));
   }finally{ SIM = null; }
+}
+/* Heatmap-Vorbelegung (2.16, Idee aus dem Team): freie Tage als Pakete (Fr+So zusammen), je Person und Paket eine
+   Eignung aus bewerte() (rot = unmoeglich). Daraus Wahrscheinlichkeiten: jedes Paket wird genau einmal vergeben, jede
+   Person bekommt ungefaehr ihren noch offenen Bedarf (abwechselnd Zeilen/Spalten normieren). Wer wenig moegliche Tage
+   hat, bekommt dort hohe Werte. Die sicherste Zelle (>= 60 %, bei Gleichstand WE > Feiertag > Rest) wird festgelegt,
+   dann neu gerechnet - bis keine sichere mehr bleibt. Den Rest verteilt der normale Ablauf. */
+function heatVorbelegen(frei, ps, ziel, stufe){
+  for(let runde = 0; runde < frei.length; runde++){
+    const offen = frei.filter(s => !SIM[s]), pakete = [], drin = new Set();
+    for(const s of offen){ if(drin.has(s)) continue;
+      const so = wt(s) === 5 && offen.includes(plus(s, 2)) ? plus(s, 2) : '';
+      pakete.push(so ? [s, so] : [s]); drin.add(s); if(so) drin.add(so); }
+    if(!pakete.length) return;
+    const W = pakete.map(pk => ps.map(p => { const b = pk.map(s => bewerte(p, s));
+      return b.some(x => x.tags.some(t => t[0] === 'r')) ? 0 : Math.exp(b.reduce((a, x) => a + x.score, 0) / pk.length / 15); }));
+    const bedarf = ps.map(p => Math.max(0.2, ziel[p.k] - diensteIm(p.k, ym)));
+    let P = W.map(z => z.slice());
+    for(let it = 0; it < 40; it++){
+      P = P.map(z => { const t = z.reduce((a, x) => a + x, 0); return t ? z.map(x => x / t) : z; });
+      ps.forEach((p, j) => { const c = P.reduce((a, z, i) => a + z[j] * pakete[i].length, 0); if(c) P.forEach(z => z[j] *= Math.min(5, bedarf[j] / c)); });
+    }
+    P = P.map(z => { const t = z.reduce((a, x) => a + x, 0); return t ? z.map(x => x / t) : z; });
+    let best = null;
+    P.forEach((z, i) => z.forEach((x, j) => { if(x < 0.6) return;
+      const st = stufe(pakete[i][0]);
+      if(!best || st < best.st || (st === best.st && x > best.x)) best = {i, j, x, st}; }));
+    if(!best) return;
+    pakete[best.i].forEach(s => SIM[s] = ps[best.j].k);
+  }
 }
 /* Nachbesserung (1.96): verteilte Tage (Fr+So als ein Paket) zwischen Personen verschieben oder tauschen,
    solange die Abweichung vom Ziel (Dienste und Wochenenden je Person) kleiner wird, keine rote Regel

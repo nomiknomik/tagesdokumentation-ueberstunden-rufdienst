@@ -118,6 +118,10 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   2.15: WE-Abweichung in `verbessern()` doppelt (`WE_GEW`), `verbessern()` gibt Gesamtwert zurück; `autoVerteilen()`
   macht 3 Anläufe + „Schütteln“ (~4 s: 1–4 Tage/Fr+So-Pakete zufällig neu, bevorzugt von Personen neben dem Ziel,
   nachbessern, besser → übernehmen) – findet lange Tauschketten (Jan 2027: Handplan-Niveau in ~50–60 % der Läufe).
+  2.16 Heatmap-Vorbelegung (Idee Team, `heatVorbelegen()`, 1. Anlauf): Pakete × Personen, Eignung exp(score/15), rot = 0,
+  abwechselnd normiert (je Paket Summe 1, je Person ≈ offener Bedarf) → sicherste Zelle ≥ 60 % (WE > Feiertag > Rest)
+  festlegen, neu rechnen; Rest normal. Simuliert (8 Läufe/Monat): Start allein deutlich besser (Okt −1005 statt −740…−885),
+  mit Schütteln überall gleich/besser. Test-Schalter `window.AV_TEST = {heat, laeufe, zeit}`.
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
