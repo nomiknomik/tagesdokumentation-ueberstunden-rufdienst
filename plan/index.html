@@ -818,7 +818,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '1.95';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '1.96';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1202,7 +1202,9 @@ window.addEventListener('focus', ()=>{ if(!wartet() && zugang() && cfg.personen.
 
 /* ---------- Abfragen ---------- */
 const dienstDaten = m => (files[pfadDienst(m)] || {}).data;
-const dienstVon = s => { const d = dienstDaten(ymVon(s)); return (d && d.tage && d.tage[s] && d.tage[s].oa) || ''; };
+/* SIM (1.96): Entwurf der automatischen Verteilung - erst komplett im Speicher planen und verbessern, dann schreiben */
+let SIM = null;
+const dienstVon = s => { if(SIM && s in SIM) return SIM[s]; const d = dienstDaten(ymVon(s)); return (d && d.tage && d.tage[s] && d.tage[s].oa) || ''; };
 const eintrag = (k, s) => { const f = files[pfadWunsch(k, ymVon(s))]; return f && f.data && f.data.tage ? f.data.tage[s] : undefined; };
 function teilzeitFrei(p, s){
   if(!werktag(s)) return false;   // Teilzeit betrifft nur Werktage, nie Wochenende/Feiertag
@@ -1243,7 +1245,7 @@ const HALB_TXT = {vm: 'vormittags weg', nm: 'nachmittags weg'};
 const halbTitel = (p, s) => { const e = eintrag(p.k, s); return `${p.name || p.k}: ${HALB_TXT[e.zeit || 'vm']}${e.uhr ? ' (' + e.uhr + ')' : ''}`; };
 const gefaehrdet = (p, s) => werktag(s) && dienstVon(plus(s, -1)) === p.k && !abwesend(p, s);
 const maxDienste = p => Math.floor((cfg.maxDienste || 13) * (p.quote || 100) / 100);
-const diensteIm = (k, m) => { const d = dienstDaten(m); return d && d.tage ? Object.values(d.tage).filter(x => x.oa === k).length : 0; };
+const diensteIm = (k, m) => { if(SIM){ let n = 0; for(let i = 1; i <= tageIm(m); i++) if(dienstVon(ds(+m.slice(0, 4), +m.slice(5, 7), i)) === k) n++; return n; } const d = dienstDaten(m); return d && d.tage ? Object.values(d.tage).filter(x => x.oa === k).length : 0; };
 
 /* Besetzung eines Werktags: sicher Anwesende je Zeitfenster (der Diensthabende
    ab 11 Uhr), dazu die nach Dienst evtl. Fehlenden */
@@ -1586,9 +1588,10 @@ function renderPlan(){
   $('autoWegBtn').classList.toggle('hidden', !Object.values(D.tage || {}).some(x => x.auto) || nurLesen);
   // Zaehler
   let z = '';
+  const erw = erwartung(ym);   // 1.96: fairer Anteil in diesem Monat (Quote, Abwesenheit)
   for(const p of diensttauglich()){
     const n2 = diensteIm(p.k, ym), max = maxDienste(p);
-    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : ''}</small></div>`
+    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${[p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' %' : '', erw[p.k] ? 'fair ≈ ' + zahl1(erw[p.k].exp) + ' · WE ≈ ' + zahl1(erw[p.k].expWeB) : ''].filter(Boolean).join(' · ')}</small></div>`
       + `<div class="zahl">${n2}<small> / ${max}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, max) * 100)}%"></i></div>`;
   }
   const frei = Array.from({length: n}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1)).filter(s => !dienstVon(s)).length;
@@ -1927,41 +1930,85 @@ function vorherAlle(){
 const zahl1 = x => x.toFixed(1).replace('.', ',');
 function autoVerteilen(){
   const alle = Array.from({length: tageIm(ym)}, (_, i) => ds(+ym.slice(0,4), +ym.slice(5,7), i + 1));
-  let offen = alle.filter(s => !dienstVon(s));
-  if(!offen.length) return toast('Alle Tage sind schon besetzt.');
-  if(!confirm(`${offen.length} leere Tage in ${monatName(ym)} automatisch belegen?\n\nBestehende Einteilungen bleiben. Ausgeglichen wird über diesen und die 3 Vormonate; Abwesenheiten werden fair verrechnet. Die Vorschläge sind gestrichelt markiert und lassen sich mit „Vorschlag verwerfen“ wieder entfernen.`)) return;
+  const frei0 = alle.filter(s => !dienstVon(s));
+  if(!frei0.length) return toast('Alle Tage sind schon besetzt.');
+  if(!confirm(`${frei0.length} leere Tage in ${monatName(ym)} automatisch belegen?\n\nBestehende Einteilungen bleiben. Ausgeglichen wird nach Arbeitsquote in diesem Monat (Rückstand aus den 3 Vormonaten fließt mit ein); Abwesenheiten werden fair verrechnet. Die Vorschläge sind gestrichelt markiert und lassen sich mit „Vorschlag verwerfen“ wieder entfernen.`)) return;
+  const ps = diensttauglich(), hist = vorherAlle(), jetzt = erwartung(ym);
+  const klemm = x => Math.max(-1, Math.min(1, x));
+  /* 1.96: Ziel je Person = Anteil in diesem Monat (Quote, Abwesenheit) + Rueckstand aus den Vormonaten (max. ±1) */
+  const ziel = {}, zielWe = {};
+  ps.forEach(p => { const h = hist[p.k], e = jetzt[p.k];
+    ziel[p.k] = e.exp + klemm(h.exp - h.n); zielWe[p.k] = e.expWeB + klemm(h.expWeB - h.weB); });
   const weZahl = k => alle.filter(s => weTag(s) && wt(s) < 5 && dienstVon(s) === k).length;   // Feiertage unter der Woche
-  const hist = vorherAlle(), jetzt = erwartung(ym);
-  let n = 0; const rest = [];
-  const kandFuer = s => {
-    const kand = diensttauglich().map(p => ({p, ...bewerte(p, s)})).filter(x => !x.tags.some(t => t[0] === 'r'));
-    /* Saldo ueber 4 Monate (3 Vormonate + dieser): Ist minus Erwartung (Abwesenheit fair verrechnet), WE/Feiertage extra */
-    kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k];
-      x.wert = x.score + x.n * 3 - ((h.n + x.n) - (h.exp + e.exp)) * 15
-        - (weTag(s) && wt(s) < 5 ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0)
-        /* 1.95: Wochenenden nach Arbeitsquote - wer im Rueckstand ist (auch aus den Vormonaten), holt nach */
-        - (wt(s) >= 5 && !weImMonat(x.p.k, ym).has(weBlock(s)[1]) ? ((h.weB + weImMonat(x.p.k, ym).size) - (h.expWeB + e.expWeB)) * 25 : 0)
-        + Math.random(); });
-    return kand.sort((a, b) => b.wert - a.wert);
-  };
-  /* Reihenfolge (1.94): 1. Tage, fuer die nur eine Person in Frage kommt, 2. Fr+So als Paar (eine Person),
-     3. Samstage, 4. Feiertage, 5. Rest - innerhalb jeweils der engste Tag zuerst */
-  const stufe = s => wt(s) === 5 || wt(s) === 7 ? 0 : wt(s) === 6 ? 1 : feiertag(s) ? 2 : 3;
-  while(offen.length){
-    const liste = offen.map(s => ({s, kand: kandFuer(s)}));
-    const best = liste.find(x => x.kand.length <= 1)
-      || liste.sort((a, b) => stufe(a.s) - stufe(b.s) || a.kand.length - b.kand.length)[0];
-    offen = offen.filter(x => x !== best.s);
-    if(!best.kand.length){ rest.push(best.s); continue; }
-    const w = wt(best.s), paar = w === 5 ? plus(best.s, 2) : w === 7 ? plus(best.s, -2) : '';
-    if(paar && offen.includes(paar)){   // Fr+So: dieselbe Person, die fuer beide Tage am besten passt
-      const pk = kandFuer(paar), beide = best.kand.map(x => ({x, y: pk.find(y => y.p.k === x.p.k)})).filter(z => z.y)
-        .sort((a, b) => (b.x.wert + b.y.wert) - (a.x.wert + a.y.wert))[0];
-      if(beide){ einteilen(best.s, beide.x.p.k, true); einteilen(paar, beide.x.p.k, true); offen = offen.filter(x => x !== paar); n += 2; continue; }
+  const rot = x => x.tags.some(t => t[0] === 'r');
+  SIM = {};
+  try{
+    const kandFuer = s => {
+      const kand = ps.map(p => ({p, ...bewerte(p, s)})).filter(x => !rot(x));
+      kand.forEach(x => { const h = hist[x.p.k], e = jetzt[x.p.k], nach = x.n + 1 - ziel[x.p.k];
+        x.wert = x.score + x.n * 3 - nach * 20 - Math.max(0, nach - 0.5) * 60   // ueber dem Monatsziel: stark abwerten
+          - (weTag(s) && wt(s) < 5 ? ((h.we + weZahl(x.p.k)) - (h.expWe + e.expWe)) * 12 : 0)
+          - (wt(s) >= 5 && !weImMonat(x.p.k, ym).has(weBlock(s)[1]) ? (weImMonat(x.p.k, ym).size + 1 - zielWe[x.p.k]) * 25 : 0)
+          + Math.random(); });
+      return kand.sort((a, b) => b.wert - a.wert);
+    };
+    /* Reihenfolge (1.94): 1. Tage, fuer die nur eine Person in Frage kommt, 2. Fr+So als Paar (eine Person),
+       3. Samstage, 4. Feiertage, 5. Rest - innerhalb jeweils der engste Tag zuerst */
+    const stufe = s => wt(s) === 5 || wt(s) === 7 ? 0 : wt(s) === 6 ? 1 : feiertag(s) ? 2 : 3;
+    let offen = [...frei0]; const rest = [];
+    while(offen.length){
+      const liste = offen.map(s => ({s, kand: kandFuer(s)}));
+      const best = liste.find(x => x.kand.length <= 1)
+        || liste.sort((a, b) => stufe(a.s) - stufe(b.s) || a.kand.length - b.kand.length)[0];
+      offen = offen.filter(x => x !== best.s);
+      if(!best.kand.length){ rest.push(best.s); continue; }
+      const w = wt(best.s), paar = w === 5 ? plus(best.s, 2) : w === 7 ? plus(best.s, -2) : '';
+      if(paar && offen.includes(paar)){   // Fr+So: dieselbe Person, die fuer beide Tage am besten passt
+        const pk = kandFuer(paar), beide = best.kand.map(x => ({x, y: pk.find(y => y.p.k === x.p.k)})).filter(z => z.y)
+          .sort((a, b) => (b.x.wert + b.y.wert) - (a.x.wert + a.y.wert))[0];
+        if(beide){ SIM[best.s] = SIM[paar] = beide.x.p.k; offen = offen.filter(x => x !== paar); continue; }
+      }
+      SIM[best.s] = best.kand[0].p.k;
     }
-    einteilen(best.s, best.kand[0].p.k, true); n++;
+    verbessern(frei0.filter(s => SIM[s]), ps, ziel, zielWe);
+    const plan = SIM; SIM = null;
+    let n = 0; Object.entries(plan).forEach(([s, k]) => { if(k){ einteilen(s, k, true); n++; } });
+    toast(`${n} Tage verteilt` + (rest.length ? ` – ${rest.length} ohne passende Person: ${rest.map(kurzDat).join(', ')}` : '.'));
+  }finally{ SIM = null; }
+}
+/* Nachbesserung (1.96): verteilte Tage (Fr+So als ein Paket) zwischen Personen verschieben oder tauschen,
+   solange die Abweichung vom Ziel (Dienste und Wochenenden je Person) kleiner wird, keine rote Regel
+   verletzt ist und die Wunsch-/Regel-Bewertung kaum schlechter wird. */
+function verbessern(tage, ps, ziel, zielWe){
+  const pakete = [], drin = new Set();
+  for(const s of tage){
+    if(drin.has(s)) continue;
+    const so = wt(s) === 5 ? plus(s, 2) : '';
+    if(so && tage.includes(so) && SIM[so] === SIM[s]){ pakete.push([s, so]); drin.add(so); } else pakete.push([s]);
+    drin.add(s);
   }
-  toast(`${n} Tage verteilt` + (rest.length ? ` – ${rest.length} ohne passende Person: ${rest.map(kurzDat).join(', ')}` : '.'));
+  const J = () => ps.reduce((a, p) => { const n = diensteIm(p.k, ym) - ziel[p.k], w = weImMonat(p.k, ym).size - zielWe[p.k];
+    return a + n * n + 2 * w * w; }, 0);
+  const guete = (pk) => pk.reduce((a, s) => a + bewerte(person(SIM[s]), s).score, 0);
+  const ok = pk => pk.every(s => [-1, 0, 1].every(i => { const d = plus(s, i), k = dienstVon(d);
+    return !k || !person(k) || !bewerte(person(k), d).tags.some(t => t[0] === 'r'); }));
+  const versuch = (aend) => {   // aend: [[tag, neu], ...]; behalten, wenn besser
+    const alt = aend.map(([s]) => [s, SIM[s]]), vorJ = J(), vorG = guete(aend.map(x => x[0]));
+    aend.forEach(([s, k]) => SIM[s] = k);
+    if(ok(aend.map(x => x[0])) && J() < vorJ - 0.01 && guete(aend.map(x => x[0])) >= vorG - 25) return true;
+    alt.forEach(([s, k]) => SIM[s] = k); return false;
+  };
+  for(let runde = 0; runde < 30; runde++){
+    let besser = false;
+    for(const pk of pakete) for(const q of ps)   // verschieben
+      if(q.k !== SIM[pk[0]] && versuch(pk.map(s => [s, q.k]))) besser = true;
+    for(let i = 0; i < pakete.length; i++) for(let j = i + 1; j < pakete.length; j++){   // tauschen (gleiche Paketgroesse)
+      const a = pakete[i], b = pakete[j], ka = SIM[a[0]], kb = SIM[b[0]];
+      if(ka === kb || a.length !== b.length) continue;
+      if(versuch([...a.map(s => [s, kb]), ...b.map(s => [s, ka])])) besser = true;
+    }
+    if(!besser) break;
+  }
 }
 $('autoBtn').onclick = autoVerteilen;
 $('autoWegBtn').onclick = ()=>{
