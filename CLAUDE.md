@@ -143,6 +143,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   2.21: Mengen-Wunsch anteilig an `tageIm(m)` (`mengeWunsch()`; teilweise geplanter Vormonat galt sonst mit vollem Wunsch als
   Soll → Scheindefizit und Soll 0 für die anderen). Wunsch = Untergrenze des Ziels (`ziele()`: Bilanz hebt an, senkt nicht
   darunter). Thermometer-Tooltip nennt die Monate der Bilanz („Nov −2, Jan +1“, `herkunft()`).
+  2.24: Regel-Gewichte als Team-Einstellung `cfg.gewichte` (`GEW_STD`/`gw()`, nur ganze Zahlen, Grenzen `GEW_MIN/MAX`):
+  W1 `nogo` 90, W2 `kein` 60, W6 `weDrei` 120 + `weGrenze` 2, B4 `frSo` 105, F3 `vormonate` 6 (`vormonate()`, `ladeAlles()`
+  lädt −n…+1), F5 `band1` 5 / `band2` 100 (`bandWert()`), F6 `weGew` 2. Karte „Regeln der automatischen Verteilung“
+  (`.frei`, `regelnRender()`): alle Regeln H/W/B/F für alle lesbar, Zahlenfelder nur `adminGeraet()`. Fest bleiben W3–W5,
+  W7 (über `maxWeFolge`), W8, B1–B3, F4, F7. `bewerte()` und `mipModell()` lesen dieselben `gw()`.
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).

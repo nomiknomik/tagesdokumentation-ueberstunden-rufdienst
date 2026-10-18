@@ -1,9 +1,9 @@
 ---
 name: dienstplan-regel
-description: "[Version 1.0] Neue oder geänderte Regel, Gewichtung oder Formel in der automatischen Dienstverteilung (plan/index.html) einbauen – App-Bewertung (bewerte/verbessern) und Solver-Modell (mipModell) synchron halten und mit einem Backup abnehmen. Verwenden bei: neue Dienstregel, No-Go/Wunsch-Logik ändern, Punkte/Gewichte anpassen, Fairness-/Zielformel ändern, „Solver rechnet falsch“, „Modell prüfen“, Abweichung Solver ↔ Heuristik."
+description: "[Version 1.1] Neue oder geänderte Regel, Gewichtung oder Formel in der automatischen Dienstverteilung (plan/index.html) einbauen – App-Bewertung (bewerte/verbessern) und Solver-Modell (mipModell) synchron halten und mit einem Backup abnehmen. Verwenden bei: neue Dienstregel, No-Go/Wunsch-Logik ändern, Punkte/Gewichte anpassen, Fairness-/Zielformel ändern, „Solver rechnet falsch“, „Modell prüfen“, Abweichung Solver ↔ Heuristik."
 ---
 
-# Dienstplan-Regel einbauen (Version 1.0)
+# Dienstplan-Regel einbauen (Version 1.1)
 
 Die Verteilung hat **eine** Wahrheit: die Bewertung der App
 (`bewerte()` je Dienst, `verbessern()` = J + kosten). Der Solver (`mipModell()`) ist
@@ -23,6 +23,14 @@ optimiert der Solver still eine veraltete Regel.
 4. **Thermometer/Details**, falls gewünscht: `zufriedenheit()`, `detailHtml()`.
 5. `PLAN_VERSION` +0.01, CLAUDE.md-Eintrag (eine Zeile, Version + Kernaussage).
 6. **Abnahme** (Pflicht vor dem Push), siehe unten. Erst bei „Alles OK“ pushen.
+
+## Einstellbare Gewichte (seit 2.24)
+
+Punkte, die der Admin ändern darf, stehen in `GEW_STD` und werden **nur** über `gw('name')` gelesen – in `bewerte()`
+(als `gw(..)/3` im score) und in `mipModell()` (direkt als Punkte). Neues einstellbares Gewicht: Eintrag in
+`GEW_STD`/`GEW_MIN`/`GEW_MAX`, Zeile in `regelnRender()` mit `wert('name')`, beide Stellen über `gw()`.
+Feste Regeln dort mit `fest('…')` aufführen, damit die Übersicht vollständig bleibt.
+Test mit geänderten Gewichten: `GEWICHTE='{"nogo":200,"weGrenze":3}' node pruefen.mjs <backup>`.
 
 ## Bausteine in `mipModell()`
 

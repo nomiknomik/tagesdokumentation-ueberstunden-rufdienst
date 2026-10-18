@@ -10,6 +10,8 @@ import { starten, loesen, VORBEREITEN } from './harness.mjs';
 const [backup, monArg, nArg] = process.argv.slice(2);
 if(!backup){ console.error('Aufruf: node pruefen.mjs <backup.json> [Monate] [Zufallsfaelle]'); process.exit(2); }
 const h = await starten(backup, '2026-01');
+/* GEWICHTE='{"nogo":200,...}' testet geänderte Regel-Gewichte (cfg.gewichte, s. GEW_STD in plan/index.html) */
+if(process.env.GEWICHTE) h.files['plan/config.json'].gewichte = JSON.parse(process.env.GEWICHTE);
 const MON = monArg ? monArg.split(',') : [...new Set(Object.keys(h.files).map(p => (p.match(/^plan\/dienst\/(\d{4}-\d{2})\.json$/) || [])[1]).filter(Boolean))].sort().slice(-5);
 const N = +(nArg ?? 3);
 let fehler = 0; const zeilen = [];
