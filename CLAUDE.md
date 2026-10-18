@@ -156,6 +156,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   gutgeschrieben, 1 = alles). Unter jedem einstellbaren Wert für alle sichtbar „min–max, Standard“ (`wert2()`).
   2.29: `darfRegeln()` = Admin-Gerät UND angemeldet als Admin-Person (`adminK()`, Gerät `planung_admin_k`, beim ersten Aufruf
   die angemeldete Person; Knopf „… als Admin festlegen“ in der Regel-Karte) – andere Planer, auch in der Ansicht, nur lesen.
+  2.30: Thermometer-Abzug für eigene weiche Verstöße = Solver-Punkte ÷ 6 (`tagPunkte()`, `THERMO_TEILER`; No-Go 15, Regel 10,
+  3. WE 20/Diensttag, 75er-Regeln 13, 3×2. Tag 5) – folgt den Gewichten. Wunsch nicht erfüllt bleibt 8/20, Bilanz eigener Maßstab.
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).

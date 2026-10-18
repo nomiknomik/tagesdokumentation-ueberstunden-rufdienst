@@ -793,7 +793,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
       </div>
       <div class="card frei">
         <h3><span data-icon="sliders"></span>Regeln der automatischen Verteilung</h3>
-        <div class="hint">Der Solver sucht den Plan mit den wenigsten Strafpunkten. Erfüllte Wünsche bringen Pluspunkte – sie werden von den Strafpunkten abgezogen. Punkte haben keine Einheit, nur das Verhältnis zählt (90 = halb so schlimm wie 180). Gilt für das ganze Team.</div>
+        <div class="hint">Der Solver sucht den Plan mit den wenigsten Strafpunkten. Erfüllte Wünsche bringen Pluspunkte – sie werden von den Strafpunkten abgezogen. Punkte haben keine Einheit, nur das Verhältnis zählt (90 = halb so schlimm wie 180). Das Thermometer zieht für eigene Verstöße dieselben Punkte ÷ 6 ab (No-Go 90 → 15). Gilt für das ganze Team.</div>
         <div id="regelInfo"></div>
       </div>
       <div class="card">
@@ -844,7 +844,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.29';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.30';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -2120,6 +2120,12 @@ function ziele(){
    Abzuege: Abweichung vom Ziel (Dienste/WE, beide Richtungen; mit Wunsch nach mehr zaehlt nur zu wenig), weiche/harte
    Verstoesse der eigenen Dienste, nicht erfuellte Dienstwuensche, max. ueberschritten. Team-Themen (Besetzung) nicht. */
 const TEAM_TAGS = /^Folgetag/;
+/* 2.30: Thermometer-Abzug fuer eigene weiche Verstoesse = Strafpunkte des Solvers ÷ 6 (No-Go 90 → 15, Wochentagsregel
+   60 → 10 wie bisher; 3. WE 120 → 20 je Diensttag). Nicht erfuellte Wuensche bleiben 8/20 (fuehlt sich milder an als ein
+   gebrochenes No-Go), Fairness-Bilanz bleibt eigener Massstab. */
+const THERMO_TEILER = 6;
+const tagPunkte = txt => /No-Go/.test(txt) ? gw('nogo') : /^kein /.test(txt) ? gw('kein') : /WE im Monat/.test(txt) ? gw('weDrei')
+  : /jeden 2\. Tag/.test(txt) ? 30 : /nach freiem WE/.test(txt) ? 60 : 75;   // 75: vor Abwesenheit, WE an Fortbildung, WE in Folge
 function zufriedenheit(p, z){
   const t = [], ab = (txt, pkt) => { if(pkt >= 0.5) t.push([txt, Math.round(pkt)]); };
   const n = diensteIm(p.k, ym), we = weLast(p.k, ym), max = maxDienste(p);
@@ -2152,7 +2158,7 @@ function zufriedenheit(p, z){
     const s = ds(+ym.slice(0, 4), +ym.slice(5, 7), i), e = eintrag(p.k, s);
     if(dienstVon(s) === p.k) for(const [f, txt] of bewerte(p, s).tags){
       if(f === 'g' || TEAM_TAGS.test(txt) || txt === 'Dienst am Vortag' || /^max\./.test(txt)) continue;   // Folge-Dienste nur einmal zaehlen
-      ab(`${kurzDat(s)} ${txt}`, f === 'r' ? 40 : /No-Go/.test(txt) ? 15 : /jeden 2\. Tag/.test(txt) ? 7 : 10);   // 2.08: 3× jeden 2. Tag 30 % weniger
+      ab(`${kurzDat(s)} ${txt}`, f === 'r' ? 40 : tagPunkte(txt) / THERMO_TEILER);   // 2.30: wie der Solver gewichtet (÷ 6)
     }
     else if(e && e.typ === 'wunsch') ab(`${kurzDat(s)} Dienstwunsch nicht erfüllt`, e.stufe === 'hart' ? 20 : 8);
   }
