@@ -152,6 +152,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   angemeldet – in der Ansicht als Kollege nicht (wie 1.63).
   2.27: F2 Feiertag Mo–Do = ½ oder 1 WE (`ftWe` 50|100, `ftF()` in `weLast()`, `erwartung()`, `mipModell()`); F4/F5 in Klartext
   mit Beispielen; Zahlenfelder zeigen erlaubten Bereich (Tooltip).
+  2.28: F4 Schwelle `urlSchwelle` (1–10, Std. 2; in `vorherAlle()` `ab()`: ab Schwelle über Soll wird der Teil darüber
+  gutgeschrieben, 1 = alles). Unter jedem einstellbaren Wert für alle sichtbar „min–max, Standard“ (`wert2()`).
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
