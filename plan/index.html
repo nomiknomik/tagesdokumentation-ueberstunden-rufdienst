@@ -793,7 +793,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
       </div>
       <div class="card frei">
         <h3><span data-icon="sliders"></span>Regeln der automatischen Verteilung</h3>
-        <div class="hint">Der Solver sucht den Plan mit den wenigsten Strafpunkten. Erfüllte Wünsche bringen Pluspunkte – sie werden von den Strafpunkten abgezogen. Gilt für das ganze Team.</div>
+        <div class="hint">Der Solver sucht den Plan mit den wenigsten Strafpunkten. Erfüllte Wünsche bringen Pluspunkte – sie werden von den Strafpunkten abgezogen. Punkte haben keine Einheit, nur das Verhältnis zählt (90 = halb so schlimm wie 180). Gilt für das ganze Team.</div>
         <div id="regelInfo"></div>
       </div>
       <div class="card">
@@ -844,7 +844,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.26';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.27';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1641,7 +1641,7 @@ function renderPlan(){
     /* 2.04: Thermometer Zufriedenheit unter dem Balken (erst, wenn der Monat Dienste hat) */
     const zf = geplant ? zufriedenheit(p, ZL[p.k]) : null;
     const zfTip = zf && `Zufriedenheit ${zf.wert} %` + (zf.t.length ? '\n' + zf.t.map(([x, n]) => `−${n}  ${x}`).join('\n') : '\nZiel getroffen, Wünsche und Regeln eingehalten');
-    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' % · ' : ''}<span data-tip="Wochenenden im Monat (Fr+So oder Sa = 1, Feiertag unter der Woche = ½)">${zahlG(weLast(p.k, ym))} WE</span></small></div>`
+    z += `<div class="prow ${markK === p.k ? 'on' : ''}" data-k="${esc(p.k)}">${pk(p)}<div class="nm">${esc(p.name || p.k)}<small>${p.quote && p.quote < 100 ? 'Teilzeit ' + p.quote + ' % · ' : ''}<span data-tip="Wochenenden im Monat (Fr+So oder Sa = 1, Feiertag unter der Woche = ${ftTxt()})">${zahlG(weLast(p.k, ym))} WE</span></small></div>`
       + `<div class="zahl"${w ? ` data-tip="gewünscht (anteilig nach Abwesenheit), max. ${max}"` : ''}>${n2}<small> / ${w || max}${w ? ' ♡' : ''}</small></div></div><div class="balken"><i class="${n2 >= max ? 'voll' : ''}" style="width:${Math.min(100, n2 / Math.max(1, w || max) * 100)}%"></i></div>`
       + (zf ? `<div class="thermo" data-tip="${esc(zfTip)}"><i class="${zf.wert >= 80 ? 'gut' : zf.wert >= 50 ? 'mittel' : 'schlecht'}" style="width:${Math.max(4, zf.wert)}%"></i></div>` : '');
     if(markK === p.k && adminGeraet()) z += detailHtml(p, ZL[p.k], zf);
@@ -1998,7 +1998,7 @@ const weTag = s => wt(s) >= 6 || !!feiertag(s);
 const ftWT = s => wt(s) < 5 && !!feiertag(s);
 const weLast = (k, m) => { let n = weImMonat(k, m).size;
   for(let i = 1; i <= tageIm(m); i++){ const s = ds(+m.slice(0, 4), +m.slice(5, 7), i);
-    if(dienstVon(s) === k && (ftWT(s) || (wt(s) === 5 && feiertag(s) && dienstVon(plus(s, 2)) !== k))) n += 0.5; }
+    if(dienstVon(s) === k && (ftWT(s) || (wt(s) === 5 && feiertag(s) && dienstVon(plus(s, 2)) !== k))) n += ftF(); }
   return n; };
 /* Erwartete Dienste je Person und Monat: an jedem Tag teilen sich die Anwesenden den
    einen Dienst (Gewicht = Arbeitsquote, bei Teilzeit-Muster 1, da die freien Tage
@@ -2020,7 +2020,7 @@ function erwartung(m, nurBelegte){
     /* 1.95: Wochenenden als Block (Fr+So + Sa = 2 Einsaetze je WE), nach Arbeitsquote geteilt. 2.00: gezaehlt wie
        weImMonat() - Sa im Monat = 1 Einsatz, Fr oder So im Monat = 1 Einsatz (WE am Monatswechsel zaehlt in beiden) */
     if(wt(s) === 6 || wt(s) === 5 || (wt(s) === 7 && i <= 2)){ const Q = da.reduce((a, p) => a + quote(p), 0); if(Q) da.forEach(p => r[p.k].expWeB += quote(p) / Q); }
-    if(ftWT(s)){ const Q = da.reduce((a, p) => a + quote(p), 0); if(Q) da.forEach(p => { r[p.k].expWeB += 0.5 * quote(p) / Q; r[p.k].expFt += 0.5 * quote(p) / Q; }); }   // 2.09
+    if(ftWT(s)){ const Q = da.reduce((a, p) => a + quote(p), 0); if(Q) da.forEach(p => { r[p.k].expWeB += ftF() * quote(p) / Q; r[p.k].expFt += ftF() * quote(p) / Q; }); }   // 2.09
   }
   /* 2.01: gewuenschte Dienstmenge - die Person bekommt ihren Wunsch als Erwartung (gilt damit als ausgeglichen,
      auch im Rueckstand der Folgemonate), die uebrigen teilen sich den Rest nach ihrem Anteil */
@@ -2054,11 +2054,14 @@ function mengeWunsch(p, m, feld, e){
 const weRund = (we, ft = 0) => Math.round(we - ft) + Math.round(ft * 2) / 2;
 /* 2.24: Gewichte der automatischen Verteilung als Team-Einstellung (cfg.gewichte, nur Admin aendert, alle sehen sie).
    Punkte = Strafpunkte im Plan (bewerte(): score = −Punkte/3, kosten = −3·score). Nur ganze Zahlen (Zufall im Solver < 0,25). */
-const GEW_STD = {nogo: 90, kein: 60, weDrei: 120, weGrenze: 2, frSo: 105, vormonate: 6, band1: 5, band2: 100, weGew: 2};
-const GEW_MIN = {nogo: 0, kein: 0, weDrei: 0, weGrenze: 1, frSo: 0, vormonate: 1, band1: 0, band2: 0, weGew: 0};
-const GEW_MAX = {nogo: 1000, kein: 1000, weDrei: 1000, weGrenze: 5, frSo: 500, vormonate: 12, band1: 100, band2: 1000, weGew: 5};
+const GEW_STD = {ftWe: 50, nogo: 90, kein: 60, weDrei: 120, weGrenze: 2, frSo: 105, vormonate: 6, band1: 5, band2: 100, weGew: 2};
+const GEW_MIN = {ftWe: 50, nogo: 0, kein: 0, weDrei: 0, weGrenze: 1, frSo: 0, vormonate: 1, band1: 0, band2: 0, weGew: 0};
+const GEW_MAX = {ftWe: 100, nogo: 1000, kein: 1000, weDrei: 1000, weGrenze: 5, frSo: 500, vormonate: 12, band1: 100, band2: 1000, weGew: 5};
 const gw = k => { const v = cfg.gewichte && cfg.gewichte[k]; return Number.isFinite(+v) && v !== '' && v !== null ? Math.min(GEW_MAX[k], Math.max(GEW_MIN[k], Math.round(+v))) : GEW_STD[k]; };
-const vormonate = () => gw('vormonate');   // 2.06: Bilanz ueber 6 Monate (WE-Monate mit 4 oder 5 WE, Teilzeit ohne Bruchteile gleichen sich aus)
+const vormonate = () => gw('vormonate');
+/* 2.27: Feiertag Mo–Do zaehlt als ½ oder ganzes WE (ftWe 50|100 %) */
+const ftF = () => gw('ftWe') >= 75 ? 1 : 0.5;
+const ftTxt = () => ftF() === 1 ? '1' : '½';   // 2.06: Bilanz ueber 6 Monate (WE-Monate mit 4 oder 5 WE, Teilzeit ohne Bruchteile gleichen sich aus)
 /* Toleranzband: Abweichung d vom Soll; band1 je d², band2 je (|d|−1)² – ±1 fast gratis, darueber steil */
 const bandWert = d => Math.max(0, Math.abs(d) - 1) ** 2 * gw('band2') + d * d * gw('band1');
 function vorherAlle(){
@@ -2477,8 +2480,8 @@ function mipModell(frei, ps, ziel, zielWe, mehr, rausch = 0){
     /* weLast: Bloecke + ½ je Feiertag Mo–Do bzw. Feiertags-Freitag ohne den Sonntag */
     let weL = Wsum;
     for(const s of alle){
-      if(ftWT(s)) weL = add([1, weL], [0.5, X(k, s)]);
-      else if(wt(s) === 5 && feiertag(s)) weL = add([1, weL], [0.5, X(k, s)], [-0.5, paar(k, s)]);
+      if(ftWT(s)) weL = add([1, weL], [ftF(), X(k, s)]);
+      else if(wt(s) === 5 && feiertag(s)) weL = add([1, weL], [ftF(), X(k, s)], [-ftF(), paar(k, s)]);
     }
     /* J: Toleranzband (exakt, da d ganzzahlig bzw. in halben) + Unterschreitung des Mengen-Wunschs */
     const band = bandWert;
@@ -3497,7 +3500,7 @@ const personAendern = (k, was, fn) => cfgAendern(`${k}: ${was}`, d => { const q 
 function regelnRender(){
   const ed = darfRegeln(), eig = cfg.gewichte && Object.keys(cfg.gewichte).length;
   const wert = (k, txt = '') => ed
-    ? `<input type="number" class="gw" data-g="${k}" value="${gw(k)}" min="${GEW_MIN[k]}" max="${GEW_MAX[k]}" step="1" style="width:76px">${txt}`
+    ? `<input type="number" class="gw" data-g="${k}" value="${gw(k)}" min="${GEW_MIN[k]}" max="${GEW_MAX[k]}" step="1" style="width:76px" title="erlaubt ${GEW_MIN[k]}–${GEW_MAX[k]}, Standard ${GEW_STD[k]}">${txt}`
     : `<b>${gw(k)}</b>${txt}${gw(k) !== GEW_STD[k] ? ` <span class="hint">(Standard ${GEW_STD[k]})</span>` : ''}`;
   const fest = t => `<span class="hint">${t}</span>`;
   const zeile = (nr, txt, w) => `<tr><td class="hint">${nr}</td><td>${txt}</td><td>${w}</td></tr>`;
@@ -3528,16 +3531,18 @@ function regelnRender(){
       zeile('B4', 'Freitag und Sonntag dieselbe Person – je Tag', wert('frSo'))])
     + teil('Fairness', [
       zeile('F1', 'Soll Dienste: an jedem Tag teilen sich die Anwesenden den Dienst nach Arbeitsquote, Monat auf ganze Dienste gerundet', fest('–')),
-      zeile('F2', 'Soll Wochenenden: je WE 2 Einsätze (Fr+So, Sa) nach Arbeitsquote, Feiertag Mo–Do = ½ WE', fest('–')),
+      zeile('F2', 'Soll Wochenenden: je WE 2 Einsätze (Fr+So, Sa) nach Arbeitsquote. Ein Dienst an einem Feiertag Mo–Do zählt als',
+        ed ? `<select class="gw" data-g="ftWe"><option value="50" ${ftF() === 0.5 ? 'selected' : ''}>½ WE</option><option value="100" ${ftF() === 1 ? 'selected' : ''}>1 WE</option></select>`
+          : `<b>${ftTxt()} WE</b>`),
       zeile('F3', 'Rückblick: Bilanz über die Vormonate (relativ zum Team), Ausgleich höchstens ±1 je Monat', wert('vormonate', ' Monate')),
-      zeile('F4', 'Urlaubsmonat: Mehr als Soll wird abgeschlossen, ausgeglichen erst ab 2 darüber', fest('2')),
-      zeile('F5', `Strafe für Abweichung vom Soll: Grundwert je (Abweichung)² + Zuschlag je (Abweichung − 1)² – ergibt ±1: ${bsp(1)}, ±2: ${bsp(2)}, ±3: ${bsp(3)}`,
+      zeile('F4', 'Monat mit eigenem Urlaub, Fortbildung oder FZA: Wer dort mehr Dienste als sein Soll hatte, bekommt das später nicht gutgeschrieben (die Abwesenheit war gewollt, die übrigen Tage sind dadurch dichter). Ausnahme bei starker Belastung: ab 2 über Soll wird alles über 1 gutgeschrieben. Beispiel Soll 4: Ist 5 → 0, Ist 6 → 1, Ist 7 → 2 gutgeschrieben.', fest('Schwelle 2')),
+      zeile('F5', `Wie teuer es ist, wenn jemand im Monat mehr oder weniger Dienste als sein Ziel bekommt. Kleine Abweichungen sind erlaubt, große werden schnell teuer. „Grundwert“ bestimmt, was schon 1 Dienst daneben kostet, „Zuschlag“ macht 2 und mehr daneben teuer. Heute: 1 daneben ${bsp(1)}, 2 daneben ${bsp(2)}, 3 daneben ${bsp(3)} Punkte (zum Vergleich: weiches No-Go ${gw('nogo')}).`,
         wert('band1') + ' &nbsp;Zuschlag ' + wert('band2')),
       zeile('F6', 'Abweichung bei Wochenenden zählt mehr – Faktor', wert('weGew')),
       zeile('F7', 'Gewünschte Mindestmenge unterschritten – je fehlendem Dienst', fest('30'))])
     + (ed ? `<div class="reihe" style="margin-top:10px"><button class="btn out" id="gwStd" ${eig ? '' : 'disabled'}>Standardwerte</button>
         <span class="hint">Nur ganze Zahlen. Änderungen gelten ab dem nächsten „Automatisch verteilen“.</span></div>` : '');
-  $('regelInfo').querySelectorAll('input.gw').forEach(i => i.onchange = ()=> {
+  $('regelInfo').querySelectorAll('.gw').forEach(i => i.onchange = ()=> {
     if(!darfRegeln()) return regelnRender();
     const k = i.dataset.g, v = Math.min(GEW_MAX[k], Math.max(GEW_MIN[k], Math.round(+i.value)));
     if(!Number.isFinite(v)) return regelnRender();
