@@ -787,9 +787,8 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <label class="f">max. Wochenenden in Folge<input type="number" id="gWe" min="1" style="width:90px"></label>
           <label class="f">Urlaubsanspruch / Jahr<input type="number" id="gUa" min="0" style="width:90px"></label>
           <label class="f">davon zu verplanen<input type="number" id="gUp" min="0" style="width:90px"></label>
-          <label class="f">Automatisch verteilen<select id="gVerf"><option value="mip">Solver (exakt)</option><option value="heuristik">Heuristik (alt)</option></select></label>
         </div>
-        <div class="hint" style="margin-top:6px">Bei Teilzeit: max. Dienste × Arbeitsquote, abgerundet. Wochenende = Sa- oder So-Dienst. Solver = rechnerisch bester Plan; Heuristik = altes Verfahren (Vergleich).</div>
+        <div class="hint" style="margin-top:6px">Bei Teilzeit: max. Dienste × Arbeitsquote, abgerundet. Wochenende = Sa- oder So-Dienst.</div>
       </div>
       <div class="card frei">
         <h3><span data-icon="sliders"></span>Regeln der automatischen Verteilung</h3>
@@ -844,7 +843,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.31';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.32';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -3514,7 +3513,12 @@ function regelnRender(){
   const zeile = (nr, txt, w) => `<tr><td class="hint">${nr}</td><td>${txt}</td><td>${w}</td></tr>`;
   const teil = (titel, z) => `<h4 style="margin:14px 0 4px">${titel}</h4><table class="regel-tab">${z.join('')}</table>`;
   const bsp = d => Math.round(bandWert(d));
-  $('regelInfo').innerHTML = teil('Harte Regeln – werden nie gebrochen', [
+  const verf = cfg.verfahren === 'heuristik' ? 'heuristik' : 'mip', VERF = {mip: 'Solver (exakt)', heuristik: 'Heuristik (alt)'};
+  /* 2.32: Rechenverfahren hier statt in „Grenzen“ - gleiche Rechte wie die Gewichte (Admin aendert, alle sehen) */
+  $('regelInfo').innerHTML = `<div class="reihe" style="margin-top:10px"><span>Verfahren:</span> ${ed
+      ? `<select id="gVerf">${Object.entries(VERF).map(([v, t]) => `<option value="${v}" ${v === verf ? 'selected' : ''}>${t}</option>`).join('')}</select>`
+      : `<b>${VERF[verf]}</b>`}<span class="hint">Solver = rechnerisch bester Plan; Heuristik = altes Verfahren (Vergleich).</span></div>`
+    + teil('Harte Regeln – werden nie gebrochen', [
       zeile('H1', 'Kein Dienst bei Abwesenheit (Urlaub, Fortbildung, FZA, frei, krank, Teilzeit-frei)', fest('immer')),
       zeile('H2', 'Kein Dienst an einem harten No-Go', fest('immer')),
       zeile('H3', 'Harte persönliche Regeln (z. B. „nie samstags“)', fest('je Person in Wünsche')),
@@ -3548,7 +3552,6 @@ function regelnRender(){
         'Grundwert ' + wert2('band1') + 'Zuschlag ' + wert2('band2')),
       zeile('F6', 'Abweichung bei Wochenenden zählt mehr – Faktor', wert2('weGew')),
       zeile('F7', 'Gewünschte Mindestmenge unterschritten – je fehlendem Dienst', fest('30'))])
-    + (ed ? '' : `<div class="hint" style="margin-top:10px">Ändern kann nur der Admin.</div>`)
     + (ed ? `<div class="reihe" style="margin-top:10px"><button class="btn out" id="gwStd" ${eig ? '' : 'disabled'}>Standardwerte</button>
         <span class="hint">Nur ganze Zahlen. Änderungen gelten ab dem nächsten „Automatisch verteilen“.</span></div>` : '');
   $('regelInfo').querySelectorAll('.gw').forEach(i => i.onchange = ()=> {
@@ -3557,6 +3560,7 @@ function regelnRender(){
     if(!Number.isFinite(v)) return regelnRender();
     cfgAendern('Regel-Gewicht', d => { d.gewichte = {...(d.gewichte || {}), [k]: v}; if(v === GEW_STD[k]) delete d.gewichte[k]; });
   });
+  if(ed) $('gVerf').onchange = ()=> darfRegeln() && cfgAendern('Rechenverfahren', d => { d.verfahren = $('gVerf').value; });
   if(ed && $('gwStd')) $('gwStd').onclick = ()=> { if(confirm('Alle Regel-Gewichte auf Standard zurücksetzen?')) cfgAendern('Regel-Gewichte Standard', d => { delete d.gewichte; }); };
 }
 function renderCfg(){
@@ -3616,7 +3620,7 @@ function renderCfg(){
   // Feiertage
   const y = +ym.slice(0,4);
   $('ftListe').innerHTML = `<b>BW ${y}:</b> ` + Object.entries(feiertageBW(y)).sort().map(([s, n]) => `${kurzDat(s)} ${esc(n)}`).join(' · ');
-  $('gMax').value = cfg.maxDienste; $('gVerf').value = cfg.verfahren || 'mip'; $('gWe').value = cfg.maxWeFolge; $('gUa').value = cfg.urlaubAnspruch; $('gUp').value = cfg.urlaubPlan;
+  $('gMax').value = cfg.maxDienste; $('gWe').value = cfg.maxWeFolge; $('gUa').value = cfg.urlaubAnspruch; $('gUp').value = cfg.urlaubPlan;
   // Zugang
   const z = zugang();
   $('zugInfo').innerHTML = (ich() ? `Angemeldet als <b>${esc(ich().name || ich().k)}</b> (${esc(ich().k)})<br>` : '') + (z ? `Repo <b>${esc(z.repo)}</b> · Token aus ${esc(z.quelle || 'Einladung')}` : 'Kein Zugang.');
@@ -3642,7 +3646,6 @@ $('hwAdd').onclick = ()=>{
   $('hwName').value = '';
 };
 $('gMax').onchange = ()=> cfgAendern('Grenzen', d => { d.maxDienste = Math.max(1, +$('gMax').value || 13); });
-$('gVerf').onchange = ()=> darfRegeln() && cfgAendern('Rechenverfahren', d => { d.verfahren = $('gVerf').value; });
 $('gWe').onchange = ()=> cfgAendern('Grenzen', d => { d.maxWeFolge = Math.max(1, +$('gWe').value || 2); });
 $('gUa').onchange = ()=> cfgAendern('Urlaubsanspruch', d => { d.urlaubAnspruch = Math.max(0, +$('gUa').value || 0); });
 $('gUp').onchange = ()=> cfgAendern('Urlaub zu verplanen', d => { d.urlaubPlan = Math.max(0, +$('gUp').value || 0); });
@@ -3723,7 +3726,6 @@ function cfgSperren(){
   $('cfgHinweis').classList.add('hidden');
   $('tab-cfg').querySelectorAll('.cfggrid > .card:not(.frei)').forEach(c => c.classList.toggle('hidden', ro));   // 1.62: Nutzer sehen nur „Zugang“
   $('tab-cfg').querySelectorAll('.card:not(.frei) :is(input,select,button,textarea)').forEach(x => { if(x.id !== 'bakDown') x.disabled = ro; });
-  $('gVerf').disabled = !darfRegeln(); $('gVerf').title = darfRegeln() ? '' : 'Nur Admin';   // 2.25
 }
 
 /* =================== Anmeldung =================== */
