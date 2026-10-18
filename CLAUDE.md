@@ -161,6 +161,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   2.33: `darfRegeln()` = Admin-Gerät UND (ohne Person oder als Admin-Person `cfg.adminK`; ohne `adminK` als Planer) – die
   Personenansicht gilt auch für die Regeln. `adminK` wählt nur das Admin-Gerät in der Karte Zugang (`#adminK`),
   seit 2.34 nur in der Ansicht der Admin-Person selbst (`darfAdminK()`), in fremder Ansicht unsichtbar.
+  2.35: Einstellungs-Karten (`.cfggrid > .card`) als Akkordeon wie in der PWA (`karteAuf()`, Klasse `offen`): Start alle zu,
+  immer nur eine offen. Wer per Code dorthin springt, öffnet die Karte mit `karteAuf(el)`.
   2.30: Thermometer-Abzug für eigene weiche Verstöße = Solver-Punkte ÷ 6 (`tagPunkte()`, `THERMO_TEILER`; No-Go 15, Regel 10,
   3. WE 20/Diensttag, 75er-Regeln 13, 3×2. Tag 5) – folgt den Gewichten. Wunsch nicht erfüllt bleibt 8/20, Bilanz eigener Maßstab.
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch

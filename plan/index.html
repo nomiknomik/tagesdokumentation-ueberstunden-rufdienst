@@ -102,6 +102,12 @@ main{max-width:1320px;margin:0 auto;padding:18px 20px 60px}
   padding:16px;margin-bottom:14px;box-shadow:0 4px 16px rgba(43,36,32,.06)}
 .card h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
 .card h3 .ic{color:var(--primary)}
+/* 2.35: Einstellungen als Akkordeon - alle zu, immer nur eine offen (karteAuf()) */
+.cfggrid > .card{margin:0} .cfggrid > .card > h3{cursor:pointer;user-select:none;margin:0}
+.cfggrid > .card > h3::after{content:'';margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted,#888);border-bottom:2px solid var(--muted,#888);transform:rotate(45deg);transition:transform .15s}
+.cfggrid > .card.offen > h3{margin-bottom:12px} .cfggrid > .card.offen > h3::after{transform:rotate(-135deg)}
+.cfggrid > .card:not(.offen) > :not(h3){display:none !important}
+.cfggrid{grid-template-columns:minmax(0,1fr) !important}   /* eine Spalte: offene Karte reisst keine Luecken */
 .hint{color:var(--text2);font-size:12.5px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;padding:9px 16px;
   font-weight:600;cursor:pointer;background:linear-gradient(135deg,#0A7480,var(--primary));color:#fff;box-shadow:0 6px 14px rgba(0,99,110,.2)}
@@ -844,7 +850,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.34';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.35';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -3729,6 +3735,12 @@ $('abmelden').onclick = ()=>{
 };
 
 /* Einstellungen: ohne Planer-/Admin-Recht nur lesen (Zugang und Backup-Download bleiben) */
+/* 2.35: Akkordeon - Klick auf die Ueberschrift oeffnet die Karte und schliesst alle anderen */
+function karteAuf(c){
+  const auf = !c.classList.contains('offen');
+  $('tab-cfg').querySelectorAll('.cfggrid > .card').forEach(x => x.classList.toggle('offen', auf && x === c));
+}
+$('tab-cfg').querySelectorAll('.cfggrid > .card > h3').forEach(h => h.onclick = ()=> karteAuf(h.parentElement));
 function cfgSperren(){
   const ro = !darfVerwalten();
   $('cfgHinweis').classList.add('hidden');
