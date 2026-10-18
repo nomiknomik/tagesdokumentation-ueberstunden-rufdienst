@@ -158,6 +158,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   ihren Geräten nur lesen. (2.29 merkte sich eine Admin-Person je Gerät – beim Update als Planer angemeldet → falsch.)
   2.32: Rechenverfahren (`#gVerf`) jetzt in der Karte „Regeln der automatischen Verteilung“ (`regelnRender()`), nicht mehr in
   „Grenzen“ (die hing an der Personenansicht) – Admin-Gerät ändert, alle anderen lesen; kein „Nur Admin“-Hinweis.
+  2.33: `darfRegeln()` = Admin-Gerät UND (ohne Person oder als Admin-Person `cfg.adminK`; ohne `adminK` als Planer) – die
+  Personenansicht gilt auch für die Regeln. `adminK` wählt nur das Admin-Gerät in der Karte Zugang (`#adminK`).
   2.30: Thermometer-Abzug für eigene weiche Verstöße = Solver-Punkte ÷ 6 (`tagPunkte()`, `THERMO_TEILER`; No-Go 15, Regel 10,
   3. WE 20/Diensttag, 75er-Regeln 13, 3×2. Tag 5) – folgt den Gewichten. Wunsch nicht erfüllt bleibt 8/20, Bilanz eigener Maßstab.
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
