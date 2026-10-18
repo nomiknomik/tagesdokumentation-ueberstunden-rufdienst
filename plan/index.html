@@ -844,7 +844,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.24';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.25';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1522,6 +1522,9 @@ const istAdmin = () => adminGeraet() && !ich();
    alle anderen tragen nur fuer sich selbst ein. Ist niemand Planer, duerfen alle. */
 const darfVerwalten = () => !istLeser() && (!cfg.personen.some(p => p.planer) || !!(ich() && ich().planer) || istAdmin());
 const darfVeroeffentlichen = () => !!(ich() && ich().planer) || istAdmin();   // Signieren: nur Planer/Admin
+/* 2.25: Regeln der Verteilung (Gewichte, Verfahren) nur der Admin selbst - Admin-Geraet UND als Planer bzw. ohne Person
+   angemeldet; sieht der Admin die App als Kollege, gelten dessen Rechte (wie 1.63) */
+const darfRegeln = () => adminGeraet() && (!ich() || !!ich().planer);
 const darfFuer = k => !istLeser() || (ich().rolle === 'sek' && (person(k) || {}).rolle === 'chef');   // 1.67: jede:r fuer alle (alles im Protokoll), Genehmigtes beim Planer; 1.86: Sekretariat nur Chefarzt, PA nichts
 /* Freigabepflichtig (Antrag -> Planer genehmigt, ok:{von,am}): Urlaub, Fortbildung, FZA */
 const FREIGABE = ['urlaub', 'fb', 'fza'], pflicht = t => FREIGABE.includes(t);
@@ -3492,7 +3495,7 @@ const personAendern = (k, was, fn) => cfgAendern(`${k}: ${was}`, d => { const q 
 
 /* 2.24: alle Regeln der Verteilung zur Information; die Gewichte (cfg.gewichte, s. GEW_STD) aendert nur das Admin-Geraet */
 function regelnRender(){
-  const ed = adminGeraet(), eig = cfg.gewichte && Object.keys(cfg.gewichte).length;
+  const ed = darfRegeln(), eig = cfg.gewichte && Object.keys(cfg.gewichte).length;
   const wert = (k, txt = '') => ed
     ? `<input type="number" class="gw" data-g="${k}" value="${gw(k)}" min="${GEW_MIN[k]}" max="${GEW_MAX[k]}" step="1" style="width:76px">${txt}`
     : `<b>${gw(k)}</b>${txt}${gw(k) !== GEW_STD[k] ? ` <span class="hint">(Standard ${GEW_STD[k]})</span>` : ''}`;
@@ -3535,6 +3538,7 @@ function regelnRender(){
     + (ed ? `<div class="reihe" style="margin-top:10px"><button class="btn out" id="gwStd" ${eig ? '' : 'disabled'}>Standardwerte</button>
         <span class="hint">Nur ganze Zahlen. Änderungen gelten ab dem nächsten „Automatisch verteilen“.</span></div>` : '');
   $('regelInfo').querySelectorAll('input.gw').forEach(i => i.onchange = ()=> {
+    if(!darfRegeln()) return regelnRender();
     const k = i.dataset.g, v = Math.min(GEW_MAX[k], Math.max(GEW_MIN[k], Math.round(+i.value)));
     if(!Number.isFinite(v)) return regelnRender();
     cfgAendern('Regel-Gewicht', d => { d.gewichte = {...(d.gewichte || {}), [k]: v}; if(v === GEW_STD[k]) delete d.gewichte[k]; });
@@ -3624,7 +3628,7 @@ $('hwAdd').onclick = ()=>{
   $('hwName').value = '';
 };
 $('gMax').onchange = ()=> cfgAendern('Grenzen', d => { d.maxDienste = Math.max(1, +$('gMax').value || 13); });
-$('gVerf').onchange = ()=> cfgAendern('Rechenverfahren', d => { d.verfahren = $('gVerf').value; });
+$('gVerf').onchange = ()=> darfRegeln() && cfgAendern('Rechenverfahren', d => { d.verfahren = $('gVerf').value; });
 $('gWe').onchange = ()=> cfgAendern('Grenzen', d => { d.maxWeFolge = Math.max(1, +$('gWe').value || 2); });
 $('gUa').onchange = ()=> cfgAendern('Urlaubsanspruch', d => { d.urlaubAnspruch = Math.max(0, +$('gUa').value || 0); });
 $('gUp').onchange = ()=> cfgAendern('Urlaub zu verplanen', d => { d.urlaubPlan = Math.max(0, +$('gUp').value || 0); });
@@ -3705,6 +3709,7 @@ function cfgSperren(){
   $('cfgHinweis').classList.add('hidden');
   $('tab-cfg').querySelectorAll('.cfggrid > .card:not(.frei)').forEach(c => c.classList.toggle('hidden', ro));   // 1.62: Nutzer sehen nur „Zugang“
   $('tab-cfg').querySelectorAll('.card:not(.frei) :is(input,select,button,textarea)').forEach(x => { if(x.id !== 'bakDown') x.disabled = ro; });
+  $('gVerf').disabled = !darfRegeln(); $('gVerf').title = darfRegeln() ? '' : 'Nur Admin';   // 2.25
 }
 
 /* =================== Anmeldung =================== */

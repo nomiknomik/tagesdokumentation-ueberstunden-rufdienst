@@ -148,6 +148,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   lädt −n…+1), F5 `band1` 5 / `band2` 100 (`bandWert()`), F6 `weGew` 2. Karte „Regeln der automatischen Verteilung“
   (`.frei`, `regelnRender()`): alle Regeln H/W/B/F für alle lesbar, Zahlenfelder nur `adminGeraet()`. Fest bleiben W3–W5,
   W7 (über `maxWeFolge`), W8, B1–B3, F4, F7. `bewerte()` und `mipModell()` lesen dieselben `gw()`.
+  2.25: Bearbeiten der Gewichte und des Verfahrens (`#gVerf`) nur `darfRegeln()` = Admin-Gerät UND als Planer bzw. ohne Person
+  angemeldet – in der Ansicht als Kollege nicht (wie 1.63).
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
