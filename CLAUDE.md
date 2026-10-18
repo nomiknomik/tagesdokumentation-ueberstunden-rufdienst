@@ -154,6 +154,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   mit Beispielen; Zahlenfelder zeigen erlaubten Bereich (Tooltip).
   2.28: F4 Schwelle `urlSchwelle` (1–10, Std. 2; in `vorherAlle()` `ab()`: ab Schwelle über Soll wird der Teil darüber
   gutgeschrieben, 1 = alles). Unter jedem einstellbaren Wert für alle sichtbar „min–max, Standard“ (`wert2()`).
+  2.29: `darfRegeln()` = Admin-Gerät UND angemeldet als Admin-Person (`adminK()`, Gerät `planung_admin_k`, beim ersten Aufruf
+  die angemeldete Person; Knopf „… als Admin festlegen“ in der Regel-Karte) – andere Planer, auch in der Ansicht, nur lesen.
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
   wenn nicht über normal und während der Monat noch offen ist): „gewünschte Mindestmenge: n von m“ −10 (+20/Dienst, +15/WE).
   Typ `krank` (1.93, abwesend, keine Freigabe, TDA „KA*“).
