@@ -844,7 +844,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.33';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.34';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1527,6 +1527,8 @@ const darfVeroeffentlichen = () => !!(ich() && ich().planer) || istAdmin();   //
 /* 2.31: wie Thermometer-Details - nur das Admin-Geraet, unabhaengig von der angemeldeten Person; Planer auf ihren Geraeten nur lesen */
 /* 2.33: Personenansicht gilt auch hier - aendern nur Admin-Geraet UND als Admin-Person (cfg.adminK, Wahl in Karte Zugang, nur
    Admin-Geraet) bzw. ohne Person; ohne festgelegte Admin-Person wie 2.25 (Planer). Alle anderen nur lesen. */
+/* 2.34: Admin-Person festlegen nur in ihrer eigenen Ansicht (ohne festgelegte: Planer-Ansicht), nie aus fremder Ansicht */
+const darfAdminK = () => adminGeraet() && (!ich() || (cfg.adminK ? ich().k === cfg.adminK : !!ich().planer));
 const darfRegeln = () => adminGeraet() && (!ich() || (cfg.adminK ? ich().k === cfg.adminK : !!ich().planer));
 const darfFuer = k => !istLeser() || (ich().rolle === 'sek' && (person(k) || {}).rolle === 'chef');   // 1.67: jede:r fuer alle (alles im Protokoll), Genehmigtes beim Planer; 1.86: Sekretariat nur Chefarzt, PA nichts
 /* Freigabepflichtig (Antrag -> Planer genehmigt, ok:{von,am}): Urlaub, Fortbildung, FZA */
@@ -3627,10 +3629,10 @@ function renderCfg(){
   // Zugang
   const z = zugang();
   $('zugInfo').innerHTML = (ich() ? `Angemeldet als <b>${esc(ich().name || ich().k)}</b> (${esc(ich().k)})<br>` : '') + (z ? `Repo <b>${esc(z.repo)}</b> · Token aus ${esc(z.quelle || 'Einladung')}` : 'Kein Zugang.');
-  $('adminKWahl').classList.toggle('hidden', !adminGeraet());
+  $('adminKWahl').classList.toggle('hidden', !darfAdminK());   // 2.34: nur in der Ansicht der Admin-Person selbst
   $('adminK').innerHTML = `<option value="">– (Planer)</option>` + personen().map(p => `<option value="${esc(p.k)}" ${p.k === cfg.adminK ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('');
 }
-$('adminK').onchange = ()=> adminGeraet() && cfgAendern('Admin-Person', d => { if($('adminK').value) d.adminK = $('adminK').value; else delete d.adminK; });
+$('adminK').onchange = ()=> darfAdminK() && cfgAendern('Admin-Person', d => { if($('adminK').value) d.adminK = $('adminK').value; else delete d.adminK; });
 $('nAdd').onclick = ()=>{
   const k = $('nK').value.trim().toUpperCase().replace(/[^A-ZÄÖÜ0-9]/g, '');
   if(!k) return toast('Bitte Kürzel eingeben.');
