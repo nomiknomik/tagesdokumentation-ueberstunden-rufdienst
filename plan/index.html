@@ -844,7 +844,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.30';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.31';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1524,9 +1524,8 @@ const darfVerwalten = () => !istLeser() && (!cfg.personen.some(p => p.planer) ||
 const darfVeroeffentlichen = () => !!(ich() && ich().planer) || istAdmin();   // Signieren: nur Planer/Admin
 /* 2.25: Regeln der Verteilung (Gewichte, Verfahren) nur der Admin selbst - Admin-Geraet UND als Planer bzw. ohne Person
    angemeldet; sieht der Admin die App als Kollege, gelten dessen Rechte (wie 1.63) */
-/* 2.29: nicht jeder Planer - nur die Admin-Person dieses Admin-Geraets (planung_admin_k, beim ersten Aufruf = angemeldete Person) */
-const adminK = () => { let k = load('planung_admin_k', ''); if(!k && adminGeraet() && ichK){ k = ichK; merken('planung_admin_k', k); } return k; };
-const darfRegeln = () => adminGeraet() && (!ich() || ich().k === adminK());
+/* 2.31: wie Thermometer-Details - nur das Admin-Geraet, unabhaengig von der angemeldeten Person; Planer auf ihren Geraeten nur lesen */
+const darfRegeln = () => adminGeraet();
 const darfFuer = k => !istLeser() || (ich().rolle === 'sek' && (person(k) || {}).rolle === 'chef');   // 1.67: jede:r fuer alle (alles im Protokoll), Genehmigtes beim Planer; 1.86: Sekretariat nur Chefarzt, PA nichts
 /* Freigabepflichtig (Antrag -> Planer genehmigt, ok:{von,am}): Urlaub, Fortbildung, FZA */
 const FREIGABE = ['urlaub', 'fb', 'fza'], pflicht = t => FREIGABE.includes(t);
@@ -3549,8 +3548,7 @@ function regelnRender(){
         'Grundwert ' + wert2('band1') + 'Zuschlag ' + wert2('band2')),
       zeile('F6', 'Abweichung bei Wochenenden zählt mehr – Faktor', wert2('weGew')),
       zeile('F7', 'Gewünschte Mindestmenge unterschritten – je fehlendem Dienst', fest('30'))])
-    + (adminGeraet() ? `<div class="hint" style="margin-top:10px">Ändern darf nur der Admin: <b>${esc(adminK() || '–')}</b> auf diesem Gerät${ichK && ichK !== adminK()
-        ? ` – gerade angemeldet als ${esc(ichK)}, daher nur lesen. <button class="btn out" id="gwAdminK" style="padding:2px 8px">${esc(ichK)} als Admin festlegen</button>` : '.'}</div>` : '')
+    + (ed ? '' : `<div class="hint" style="margin-top:10px">Ändern kann nur der Admin.</div>`)
     + (ed ? `<div class="reihe" style="margin-top:10px"><button class="btn out" id="gwStd" ${eig ? '' : 'disabled'}>Standardwerte</button>
         <span class="hint">Nur ganze Zahlen. Änderungen gelten ab dem nächsten „Automatisch verteilen“.</span></div>` : '');
   $('regelInfo').querySelectorAll('.gw').forEach(i => i.onchange = ()=> {
@@ -3559,7 +3557,6 @@ function regelnRender(){
     if(!Number.isFinite(v)) return regelnRender();
     cfgAendern('Regel-Gewicht', d => { d.gewichte = {...(d.gewichte || {}), [k]: v}; if(v === GEW_STD[k]) delete d.gewichte[k]; });
   });
-  if($('gwAdminK')) $('gwAdminK').onclick = ()=> { if(confirm(`${ichK} als Admin für die Regeln festlegen? Andere Personen können sie dann auf diesem Gerät nicht mehr ändern.`)){ merken('planung_admin_k', ichK); renderCfg(); cfgSperren(); } };
   if(ed && $('gwStd')) $('gwStd').onclick = ()=> { if(confirm('Alle Regel-Gewichte auf Standard zurücksetzen?')) cfgAendern('Regel-Gewichte Standard', d => { delete d.gewichte; }); };
 }
 function renderCfg(){

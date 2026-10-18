@@ -154,8 +154,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   mit Beispielen; Zahlenfelder zeigen erlaubten Bereich (Tooltip).
   2.28: F4 Schwelle `urlSchwelle` (1–10, Std. 2; in `vorherAlle()` `ab()`: ab Schwelle über Soll wird der Teil darüber
   gutgeschrieben, 1 = alles). Unter jedem einstellbaren Wert für alle sichtbar „min–max, Standard“ (`wert2()`).
-  2.29: `darfRegeln()` = Admin-Gerät UND angemeldet als Admin-Person (`adminK()`, Gerät `planung_admin_k`, beim ersten Aufruf
-  die angemeldete Person; Knopf „… als Admin festlegen“ in der Regel-Karte) – andere Planer, auch in der Ansicht, nur lesen.
+  2.31: `darfRegeln()` = nur `adminGeraet()` (wie Thermometer-Details), unabhängig von der angemeldeten Person; Planer auf
+  ihren Geräten nur lesen. (2.29 merkte sich eine Admin-Person je Gerät – beim Update als Planer angemeldet → falsch.)
   2.30: Thermometer-Abzug für eigene weiche Verstöße = Solver-Punkte ÷ 6 (`tagPunkte()`, `THERMO_TEILER`; No-Go 15, Regel 10,
   3. WE 20/Diensttag, 75er-Regeln 13, 3×2. Tag 5) – folgt den Gewichten. Wunsch nicht erfüllt bleibt 8/20, Bilanz eigener Maßstab.
   2.11: Thermometer prüft die eingetragene Menge immer als Mindestmenge des Monats (anteilig nach Abwesenheit, auch
