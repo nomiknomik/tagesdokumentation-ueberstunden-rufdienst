@@ -272,6 +272,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Leser ausgeblendet. Start: `body.vorab` verbirgt Inhalte/Reiter, bis `render()` mit geladener Konfiguration lief (zuerst aus
   `LS_CACHE`, dann frisch) – bei der Erstanmeldung bleibt der Hintergrund leer.
   2.43: Wochenplan ohne „0“ (Excel-Artefakt): abwesend/nicht gewählt = leeres Feld (Stationen, Funktionen, CA).
+  2.44 Assistenten-Karte: Sortierung aktiv > Abteilung (VCH, INA, UCH) > Nachname, inaktive blass; Löschen (Papierkorb, Rückfrage).
+  Angezeigtes Kürzel `kuerzel(p)` = `p.kurz || p.k` (`pk()`, Tipp-Schnellwahl); Namensänderung setzt `kurz` neu (`kuerzelAus()`),
+  `k` bleibt feste Kennung (Wochenplan-Einträge, `planung_ich`).
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
   `gistsAufraeumen()`): PIN-verschlüsselt wie Tagesdoku mit
   `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`, sonst `#zugang2=`. QR aus `../app/qrcode.js`.

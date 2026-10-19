@@ -873,7 +873,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.43';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.44';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1026,7 +1026,15 @@ const zugangKonten = () => konten().filter(p => p.rolle !== 'ass');   // Zugang 
 const istLeser = () => !!(ich() && LESER[ich().rolle]);
 const rollenOpt = r => Object.entries(ROLLEN).filter(([k]) => !ASS_ROLLEN.includes(k)).map(([k, n]) => `<option value="${k}" ${(r || 'oa') === k ? 'selected' : ''}>${n}</option>`).join('');
 const farbe = p => p ? (p.farbe || FARBEN[cfg.personen.indexOf(p) % FARBEN.length]) : '#999';
-const pk = (p, cls = 'pk') => `<span class="${cls}" style="background:${farbe(p)}">${esc(p ? p.k : '?')}</span>`;
+/* angezeigtes Kuerzel (2.44): Assistenten fuehren nach Umbenennen 'kurz'; 'k' bleibt als feste Kennung (Wochenplan, Geraet) */
+const kuerzel = p => p.kurz || p.k;
+const kuerzelAus = (name, ohne) => {   // 3 Buchstaben des Nachnamens, bei Gleichheit mit Ziffer
+  const basis = (String(name).trim().split(/\s+/).pop().toUpperCase().replace(/[^A-ZÄÖÜ]/g, '') + 'XXX').slice(0, 3);
+  const belegt = new Set(cfg.personen.filter(p => p.k !== ohne).flatMap(p => [p.k, kuerzel(p)]));
+  let k = basis; for(let i = 2; belegt.has(k); i++) k = basis + i;
+  return k;
+};
+const pk = (p, cls = 'pk') => `<span class="${cls}" style="background:${farbe(p)}">${esc(p ? kuerzel(p) : '?')}</span>`;
 const pfadCfg = 'plan/config.json';
 const pfadDienst = m => `plan/dienst/${m}.json`;
 const pfadWunsch = (k, m) => `plan/wuensche/${k}/${m}.json`;
@@ -2132,7 +2140,7 @@ function kandTasten(el, leeren){
   const nachname = p => norm(p.name ? p.name.trim().split(/\s+/).pop() : p.k);
   const knoepfe = [...el.querySelectorAll('.kand[data-k]')];
   const passt = (p, t) => { const nn = nachname(p), w = norm(p.name || '').split(/\s+/), vn = w.length > 1 ? w[0] : '';
-    return nn.startsWith(t) || (t.length > 1 && (norm(p.k).startsWith(t) || (nn[0] + (vn[0] || '')).startsWith(t))); };
+    return nn.startsWith(t) || (t.length > 1 && (norm(kuerzel(p)).startsWith(t) || (nn[0] + (vn[0] || '')).startsWith(t))); };
   const treffer = ()=> knoepfe.filter(b => passt(person(b.dataset.k), tipp));
   const zeigen = ()=>{
     const t = treffer();
@@ -3840,15 +3848,26 @@ function renderCfg(){
     const k = el.closest('tr').dataset.k, f = el.dataset.f, v = el.type === 'checkbox' ? el.checked : el.value;
     personAendern(k, f, q => { q[f] = v; });
   });
-  $('assTab').innerHTML = `<tr><th>Kürzel</th><th>Name</th><th>Abteilung</th><th>Rolle</th><th>aktiv</th></tr>` + cfg.personen.filter(p => ASS_ROLLEN.includes(p.rolle))
-    .sort((a, b) => nachn(a).localeCompare(nachn(b), 'de')).map(p => `<tr data-k="${esc(p.k)}"><td><b>${esc(p.k)}</b></td>
+  /* 2.44: aktiv vor inaktiv, dann VCH > INA > UCH, dann Nachname */
+  const abtRang = p => ({VCH: 0, INA: 1, UCH: 2})[abtVon(p)] ?? 3;
+  $('assTab').innerHTML = `<tr><th>Kürzel</th><th>Name</th><th>Abteilung</th><th>Rolle</th><th>aktiv</th><th></th></tr>` + cfg.personen.filter(p => ASS_ROLLEN.includes(p.rolle))
+    .sort((a, b) => (a.aktiv === false) - (b.aktiv === false) || abtRang(a) - abtRang(b) || nachn(a).localeCompare(nachn(b), 'de'))
+    .map(p => `<tr data-k="${esc(p.k)}" style="${p.aktiv === false ? 'opacity:.5' : ''}"><td><b>${esc(kuerzel(p))}</b></td>
       <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td>
       <td><select data-f="abt">${ABTEILUNGEN.map(a => `<option ${abtVon(p) === a ? 'selected' : ''}>${a}</option>`).join('')}</select></td>
       <td><select data-f="rolle" title="Wochenplan: Zugang zur App, darf den Wochenplan pflegen"><option value="ass">Assistent</option><option value="pa" ${p.rolle === 'pa' ? 'selected' : ''}>Wochenplan</option></select></td>
-      <td><input type="checkbox" data-f="aktiv" ${p.aktiv !== false ? 'checked' : ''}></td></tr>`).join('');
+      <td><input type="checkbox" data-f="aktiv" ${p.aktiv !== false ? 'checked' : ''}></td>
+      <td><button class="x" data-weg title="löschen">${icon('trash')}</button></td></tr>`).join('');
   $('assTab').querySelectorAll('[data-f]').forEach(el => el.onchange = ()=>{
-    const k = el.closest('tr').dataset.k, f = el.dataset.f;
-    personAendern(k, f, q => { q[f] = el.type === 'checkbox' ? el.checked : el.value.trim(); });
+    const k = el.closest('tr').dataset.k, f = el.dataset.f, v = el.type === 'checkbox' ? el.checked : el.value.trim();
+    const kurz = f === 'name' && v ? kuerzelAus(v, k) : '';   // Name geaendert -> Kuerzel folgt
+    personAendern(k, f, q => { q[f] = v; if(kurz) q.kurz = kurz === q.k ? undefined : kurz; if(q.kurz === undefined) delete q.kurz; });
+  });
+  $('assTab').querySelectorAll('[data-weg]').forEach(b => b.onclick = ()=>{
+    const p = person(b.closest('tr').dataset.k);
+    if(!confirm(`${p.name || kuerzel(p)} löschen?` + (p.rolle === 'pa' ? '\nDie Person verliert damit den Zugang zur App.' : '')
+      + '\nEinträge in bisherigen Wochenplänen werden nicht mehr angezeigt. Nur ausblenden: Haken „aktiv“ entfernen.')) return;
+    cfgAendern(`Assistent:in ${kuerzel(p)} gelöscht`, d => { d.personen = d.personen.filter(q => q.k !== p.k); });
   });
   $('teamTab').querySelectorAll('[data-team]').forEach(el => el.onchange = ()=>{
     const k = el.closest('tr').dataset.k, t = el.dataset.team, an = el.checked;
@@ -3907,8 +3926,7 @@ $('nAdd').onclick = ()=>{
 /* Assistent:in (2.38): Kuerzel automatisch aus dem Nachnamen (3 Buchstaben, bei Gleichheit mit Ziffer) */
 $('assAdd').onclick = ()=>{
   const name = $('assName').value.trim(); if(!name) return toast('Bitte Namen eingeben.');
-  const basis = (name.split(/\s+/).pop().toUpperCase().replace(/[^A-ZÄÖÜ]/g, '') + 'XXX').slice(0, 3);
-  let k = basis; for(let i = 2; person(k); i++) k = basis + i;
+  const k = kuerzelAus(name);
   cfgAendern(`Assistent:in ${k}`, d => { if(!d.personen.some(p => p.k === k)) d.personen.push({k, name, rolle: 'ass', abt: $('assAbt').value, teams: [], aktiv: true, farbe: FARBEN[d.personen.length % FARBEN.length]}); });
   $('assName').value = '';
 };
