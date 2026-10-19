@@ -244,8 +244,13 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Seit 1.88 je Monat ein Abschnitt (`.wo-monat`, Wochen am Monatswechsel geteilt, Trennlinie), Kopf mit Monat +
   Wochentagen bleibt beim Scrollen oben (sticky unter dem App-Kopf über `--kopfH`, per ResizeObserver gemessen);
   keine KW-Zeilen, Kachel nur Tageszahl (am Handy „Mo 9.“, Wochentagszeile dort ausgeblendet).
-  Wochenpläne drucken (1.45, `#wochenBtn`): alle Wochen des Monats, je Seite A4 quer (`wochenplanHtml()`,
-  `body.wochendruck` blendet beim Druck alles außer `#wochendruck` aus).
+  Wochenplan (2.36, `#wochenBtn`, ersetzt den Personen-Wochendruck von 1.45): Layout der Excel-Vorlage (`WP_ZEILEN`,
+  Bänder blau/grau/orange/gelb, WE hellblau), Editor `#wpEdit` (Vollbild, Woche ‹ ›, Standard nächste Woche), Druck 1 Seite
+  A4 quer (`wpTabelle(true)` in `#wochendruck`, `body.wochendruck`). Klick = Mehrauswahl + Freitext (`wpWahl()`: OA-Stationen,
+  Apotheke – nur gedruckt, wenn belegt –, Prämed, Prokto, Adipositas); Station: je gewählter Person eine Zeile, sonst/abwesend „0“.
+  Assistenten-Zeilen = Eingabefelder (später Dropdown). Aus dem System: OA Dienst, CA (`rolle` chef), Fortbildung, Abwesend
+  (krank/FZA/frei/½ Tag), Urlaub (je OA eine Zeile). Ablage `plan/wochenplan/<Montag>.json` = `{z:{zeile:{tag: {k,t}|text}}}`.
+  Zeilentitel änderbar (`cfg.wpTitel`, nur `darfVerwalten()`); bearbeiten `darfWp()` = alle außer Sekretariat (PA ja).
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
   `gistsAufraeumen()`): PIN-verschlüsselt wie Tagesdoku mit
   `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`, sonst `#zugang2=`. QR aus `../app/qrcode.js`.

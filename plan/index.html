@@ -545,26 +545,43 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 }
 #tab-urlaub .werkzeug .hint.mobil{display:none}
 #wochendruck{display:none}
+/* Wochenplan (2.36): Layout wie die Excel-Vorlage, editierbar vor dem Druck */
+#wpEdit{position:fixed;inset:0;z-index:40;background:#fff;overflow:auto;padding:0 12px 24px}
+#wpEdit .wp-leiste{position:sticky;top:0;left:0;z-index:2;background:#fff;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0}
+#wpEdit .wp-leiste b{font-size:16px}
+table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px;font:12px/1.2 Calibri,Carlito,Arial,sans-serif;color:#000;background:#fff}
+.wpx td{border:1px solid #000;text-align:center;vertical-align:middle;padding:0 3px;height:20px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.wpx td.lbl{white-space:normal;font-size:1.05em}
+.wpx tr.kopf td.wt{background:#a9d08e;font-weight:700}
+.wpx tr.band td{height:9px;padding:0}
+.wpx tr.blau td,.wpx tr.b-blau td{background:#b4c6e7}
+.wpx tr.blau td{font-weight:700}
+.wpx tr.b-grau td{background:#bfbfbf}
+.wpx tr.b-orange td{background:#f8cbad}
+.wpx tr.b-gelb td{background:#ffe699}
+.wpx tr.apo td{background:#f00;color:#fff;font-weight:700}
+.wpx td.we{background:#dae3f3}
+.wpx tr.url td.we{background:#fff}
+.wpx input{border:0;width:100%;padding:0;text-align:center;font:inherit;color:inherit;background:transparent;outline:none}
+.wpx input:focus{background:#fff7d6}
+.wpx td.w{cursor:pointer}
+.wpx td.w:hover,.wpx td.lbl.edit:hover{outline:2px solid var(--primary);outline-offset:-2px}
+.wpx td.lbl.edit{cursor:pointer}
+.wpx .auto{color:#555}
+.wpx .wp-auto{display:flex;gap:4px;align-items:center;justify-content:center}
+.wpx .wp-auto input{flex:1;min-width:24px;text-align:left}
+.wpx col.wp-l{width:16%}
+#wpEdit .wp-hilfe{font-size:12px;color:var(--muted);margin:8px 0 0}
+.wp-wahl label{display:flex;gap:8px;align-items:center;padding:4px 0}
+.wp-wahl label small{color:var(--muted)}
 @media print{
   body.wochendruck > *:not(#wochendruck){display:none !important}
   body.wochendruck #wochendruck{display:block}
   @page{size:A4 landscape;margin:12mm}
-  .wp-seite{page-break-after:always;break-after:page;font-size:11pt;color:#000}
-  .wp-seite:last-child{page-break-after:auto;break-after:auto}
-  .wp-kopf{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
-  .wp-kopf b{font-size:16pt} .wp-kopf small{margin-left:auto;color:#555}
-  table.wp{width:100%;border-collapse:collapse;table-layout:fixed}
-  .wp col.wp-n{width:19%} .wp col.wp-we{width:7%}
-  .wp th,.wp td{border:1px solid #999;padding:5px 6px;text-align:center;vertical-align:middle}
-  .wp th{background:#eee;font-size:10pt} .wp th small{display:block;font-weight:400;font-size:8pt}
-  .wp td.wp-name{text-align:left;font-weight:600}
-  .wp td.dienst{font-weight:800;background:#d9d9d9}
-  .wp td.abw{background:repeating-linear-gradient(135deg,#eee 0 4px,#fff 4px 8px);font-style:italic}
-  .wp td.gef{color:#555;font-size:9.5pt}
-  .wp td.da{color:#333}
-  .wp .we{background:#f4f4f4}
-  .wp tr.wp-summe td{font-weight:700;background:#f4f4f4} .wp tr.wp-summe td:first-child{text-align:left;font-weight:600}
-  .wp-fuss{margin-top:6px;font-size:9.5pt}
+  .wpx{min-width:0;font-size:8.5pt}
+  .wpx td{height:4.9mm;padding:0 2px}
+  .wpx tr.band td{height:2.6mm}
+  .wpx tr{break-inside:avoid}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   header,.seite,.werkzeug,.banner{display:none !important}
   .planwrap{grid-template-columns:1fr} body{background:#fff}
@@ -605,7 +622,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
           <span class="pill entwurf" id="pubPill">Entwurf</span>
           <span class="hint" id="pubInfo"></span>
           <span style="flex:1"></span>
-          <button class="btn out" id="wochenBtn" title="Je Woche eine Seite A4 quer: wer ist wann da, wer fehlt"><span data-icon="printer"></span>Wochenpläne</button>
+          <button class="btn out" id="wochenBtn" title="Wochenplan wie die Excel-Vorlage: Woche wählen, belegen, A4 quer drucken"><span data-icon="printer"></span>Wochenplan</button>
           <button class="btn out" id="druckBtn"><span data-icon="printer"></span>Drucken</button>
           <button class="btn out" id="autoBtn" title="Leere Tage automatisch belegen"><span data-icon="activity"></span>Automatisch verteilen</button>
           <button class="btn gh hidden" id="autoWegBtn" title="Automatisch verteilte Dienste entfernen"><span data-icon="x"></span>Vorschlag verwerfen</button>
@@ -837,6 +854,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
 
 <div id="dlg"></div>
 <div id="wochendruck"></div>
+<div id="wpEdit" class="hidden"></div>
 <style id="druckSeite"></style>
 <div id="tip" class="tip hidden"></div>
 
@@ -850,7 +868,7 @@ button.ur-gen.fertig:hover{border-color:var(--border)}
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.35';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.36';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1455,40 +1473,179 @@ $('druckBtn').onclick = ()=>{
     + ' .tda{font-size:8.5pt;table-layout:fixed;width:100%} .tda th,.tda td{min-width:0;padding:3px 0} .tda .tda-n{min-width:0;width:175px;position:static;padding:3px 4px;overflow:hidden}' : '';
   window.print();
 };
-/* Wochenplaene drucken: alle Wochen des Monats, je Seite A4 quer, Zeilen = Personen,
-   Spalten = Mo-So, Fuss = sicher anwesend vorm./nachm. */
-function wochenStatus(p, s){
-  const dh = dienstVon(s) === p.k, a = abwesend(p, s), e = eintrag(p.k, s);
-  if(dh) return ['dienst', 'Dienst'];
-  if(a === 'urlaub') return ['abw', urlOk(e) ? 'Urlaub' : 'Urlaub (beantr.)'];
-  if(a) return ['abw', {fb:'Fortbildung', fza:'FZA', frei:'frei', tz:'frei (TZ)'}[a] + (pflicht(a) && !urlOk(e) ? ' (beantr.)' : '')];
-  if(!werktag(s)) return ['', ''];
-  if(gefaehrdet(p, s)) return ['gef', 'nach Dienst'];
-  if(halbWeg(p, s)) return ['da', halbWeg(p, s) === 'vm' ? 'nur nachm.' : 'nur vorm.'];
-  return ['da', 'da'];
-}
-function wochenplanHtml(){
-  const erster = ym + '-01', letzter = ym + '-' + pad(tageIm(ym));
-  let h = '';
-  for(let w0 = plus(erster, 1 - wt(erster)); w0 <= letzter; w0 = plus(w0, 7)){
-    const tage = Array.from({length: 7}, (_, i) => plus(w0, i));
-    h += `<section class="wp-seite"><div class="wp-kopf"><b>Wochenplan KW ${kw(tage[3])}</b><span>${kurzDat(tage[0])} – ${kurzDat(tage[6])}${tage[6].slice(0, 4)}</span>`
-      + `<small>Stand ${new Date().toLocaleDateString('de-DE')}${dienstDaten(ymVon(tage[3])) && dienstDaten(ymVon(tage[3])).veroeffentlicht ? '' : ' · Entwurf'}</small></div>`
-      + `<table class="wp"><colgroup><col class="wp-n">${tage.map(s => `<col class="${werktag(s) ? '' : 'wp-we'}">`).join('')}</colgroup>`
-      + `<tr><th></th>${tage.map(s => `<th class="${werktag(s) ? '' : 'we'}">${WT[wt(s)]} ${kurzDat(s)}${feiertag(s) ? `<small>${esc(feiertag(s))}</small>` : ''}</th>`).join('')}</tr>`;
-    for(const p of personen()) h += `<tr><td class="wp-name">${esc(p.name || p.k)}</td>${tage.map(s => { const [c, t] = wochenStatus(p, s); return `<td class="${c} ${werktag(s) ? '' : 'we'}">${t}</td>`; }).join('')}</tr>`;
-    h += `<tr class="wp-summe"><td>sicher anwesend<br><small>vorm. | nachm.</small></td>${tage.map(s => { const b = besetzung(s); return `<td class="${werktag(s) ? '' : 'we'}">${b ? b.w.join(' | ') : ''}</td>`; }).join('')}</tr>`;
-    const tm = [...new Set(tage.flatMap(s => termineAm(s).filter(t => t.art !== 'ferien').map(t => t.name)))];
-    h += `</table>${tm.length ? `<div class="wp-fuss">Termine: ${tm.map(esc).join(' · ')}</div>` : ''}</section>`;
+/* Wochenplan (2.36): eine Woche Mo-So im Layout der Excel-Vorlage, A4 quer. Vor dem Druck per Maus belegbar
+   (Stationen, Apotheke, Prämed, Sprechstunden: Mehrauswahl + Freitext), Assistenten-Zeilen als Eingabefeld.
+   Aus dem System: OA Dienst, CA, Fortbildung, Abwesend, Urlaub. Ablage je Woche: plan/wochenplan/<Montag>.json
+   = {z: {zeile: {tag: wert}}} - Auswahl {k: [Kuerzel], t: Freitext}, Eingabefeld = Text (Zeilen mit n > 1: 'id.i'). */
+const pfadWp = mo => `plan/wochenplan/${mo}.json`;
+const WP_ZEILEN = [
+  {band: 'blau'},
+  {id: 'a1', l: 'st1', art: 'text', n: 3},
+  {band: 'grau'},
+  {id: 'a2', l: 'st2', art: 'text', n: 4},
+  {id: 'apo', l: 'apo', art: 'wahl', kl: 'apo', nurBelegt: true},
+  {id: 'praemed', l: 'praemed', art: 'wahl', kl: 'blau'},
+  {id: 'o1', l: 'st1', art: 'station', n: 3},
+  {id: 'o2', l: 'st2', art: 'station', n: 2},
+  {id: 'ca', l: 'ca', art: 'chef'},
+  {band: 'orange'},
+  {id: 'inaF', l: 'inaF', art: 'text'},
+  {id: 'inaS', l: 'inaS', art: 'text'},
+  {id: 'nacht', l: 'nacht', art: 'text'},
+  {id: 'haus', l: 'haus', art: 'text'},
+  {id: 'flex', l: 'flex', art: 'text'},
+  {id: 'ruf', l: 'ruf', art: 'text'},
+  {id: 'oa', l: 'oa', art: 'oadienst'},
+  {band: 'gelb'},
+  {id: 'prokto', l: 'prokto', art: 'wahl'},
+  {id: 'adipo', l: 'adipo', art: 'wahl'},
+  {id: 'fb', l: 'fb', art: 'auto'},
+  {id: 'abw', l: 'abw', art: 'auto'},
+  {id: 'frei', l: 'frei', art: 'text'},
+  {id: 'url', l: 'url', art: 'urlaub', n: 4}
+];
+const WP_TITEL = {st1: '3.69-3.56 +WL', st2: '3.63-3.68 +Außenlieger', apo: 'Apotheke', praemed: 'Prämed', ca: 'CA',
+  inaF: 'INA früh', inaS: 'INA spät/ WE Tagdienst', nacht: 'Nachtdienst', haus: 'Hausdienst/ Spätdienst Station', flex: 'Flexdienst',
+  ruf: 'Rufdienst', oa: 'OA Dienst', prokto: 'Prokto 8:30-12h', adipo: 'Adipositas 09:00-11:30h', fb: 'Fortbildung', abw: 'Abwesend',
+  frei: 'Frei (nach Dienst)', url: 'Urlaub'};
+const wpTitel = l => (cfg.wpTitel || {})[l] || WP_TITEL[l];
+const darfWp = () => !nurLesen && (!istLeser() || ich().rolle === 'pa');   // PA darf den Wochenplan pflegen
+let wpMo = '', wpOffen = false;
+const wpDaten = () => ((files[pfadWp(wpMo)] || {}).data || {}).z || {};
+const wpWert = (z, s) => (wpDaten()[z] || {})[s];
+const wpSort = ps => ps.slice().sort((a, b) => nachn(a).localeCompare(nachn(b), 'de'));
+/* anwesende Haelfte bei halbem Tag: vormittags weg -> „(nachm.)“ */
+const wpName = (p, s) => nachn(p) + (halbWeg(p, s) ? (halbWeg(p, s) === 'vm' ? ' (nachm.)' : ' (vorm.)') : '');
+function wpAuto(id, s){
+  const out = [];
+  for(const p of wpSort(personen())){
+    const a = abwesend(p, s);
+    if(id === 'fb' && a === 'fb') out.push(nachn(p));
+    if(id === 'abw' && werktag(s)){
+      if(['krank', 'fza', 'frei'].includes(a)) out.push(nachn(p) + (a === 'krank' ? '' : ' (' + (a === 'fza' ? 'FZA' : 'frei') + ')'));
+      else if(!a && halbWeg(p, s)) out.push(nachn(p) + (halbWeg(p, s) === 'vm' ? ' (vorm.)' : ' (nachm.)'));
+    }
   }
-  return h;
+  return out.join('/ ');
 }
-$('wochenBtn').onclick = ()=>{
-  $('wochendruck').innerHTML = wochenplanHtml();
+function wpTabelle(druck){
+  const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), d = wpDaten(), edit = !druck && darfWp();
+  const we = s => werktag(s) ? '' : 'we';
+  const lbl = (z, rs = 1) => `<td class="lbl ${edit && darfVerwalten() ? 'edit' : ''}" data-l="${z.l}" ${rs > 1 ? `rowspan="${rs}"` : ''}>${esc(wpTitel(z.l))}</td>`;
+  const eing = (key, s, auto) => { const v = (d[key] || {})[s] || '';
+    if(!edit) return esc([auto, v].filter(Boolean).join('/ '));
+    const inp = `<input data-z="${key}" data-s="${s}" value="${esc(v)}" ${auto ? 'placeholder="+"' : ''}>`;
+    return auto ? `<div class="wp-auto"><span class="auto">${esc(auto)}</span>${inp}</div>` : inp; };
+  const wahlTxt = (w, s) => [...((w && w.k) || []).map(person).filter(Boolean).map(p => abwesend(p, s) ? '0' : wpName(p, s)), ...(w && w.t ? [w.t] : [])].join('/ ');
+  let h = `<table class="wpx"><colgroup><col class="wp-l">${tage.map(() => '<col>').join('')}</colgroup><tr class="kopf"><td rowspan="2">Datum</td>${tage.map(s => `<td>${pad(+s.slice(8))}.${s.slice(5, 7)}.${s.slice(0, 4)}</td>`).join('')}</tr>`
+    + `<tr class="kopf">${tage.map(s => `<td class="wt">${['', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][wt(s)]}${feiertag(s) ? `<span style="font-weight:400"> · ${esc(feiertag(s))}</span>` : ''}</td>`).join('')}</tr>`;
+  for(const z of WP_ZEILEN){
+    if(z.band){ h += `<tr class="band b-${z.band}"><td></td>${tage.map(() => '<td></td>').join('')}</tr>`; continue; }
+    const n = z.n || 1;
+    if(z.art === 'text'){
+      for(let i = 0; i < n; i++){ const key = n > 1 ? z.id + '.' + i : z.id;
+        h += `<tr>${i ? '' : lbl(z, n)}${tage.map(s => `<td class="${we(s)}">${eing(key, s)}</td>`).join('')}</tr>`; }
+    }else if(z.art === 'wahl'){
+      if(druck && z.nurBelegt && !tage.some(s => wahlTxt((d[z.id] || {})[s], s))) continue;
+      h += `<tr class="${z.kl || ''}">${lbl(z)}${tage.map(s => `<td class="${we(s)} ${edit ? 'w' : ''}" data-w="${z.id}" data-s="${s}">${esc(wahlTxt((d[z.id] || {})[s], s))}</td>`).join('')}</tr>`;
+    }else if(z.art === 'station'){
+      /* je ausgewaehlter Person eine Zeile (wie Excel); an Tagen ohne Auswahl bzw. abwesend „0“ */
+      const ks = [], txt = tage.map(s => ((d[z.id] || {})[s] || {}).t || '');
+      tage.forEach(s => (((d[z.id] || {})[s] || {}).k || []).forEach(k => { if(!ks.includes(k) && person(k)) ks.push(k); }));
+      const zeilen = [...ks, ...(txt.some(Boolean) ? ['#t'] : [])], m = Math.max(n, zeilen.length);
+      for(let i = 0; i < m; i++){ const k = zeilen[i];
+        h += `<tr>${i ? '' : lbl(z, m)}${tage.map(s => { const w = (d[z.id] || {})[s] || {};
+          const v = k === '#t' ? txt[tage.indexOf(s)] : k ? ((w.k || []).includes(k) && !abwesend(person(k), s) ? wpName(person(k), s) : werktag(s) ? '0' : '') : '';
+          return `<td class="${we(s)} ${edit ? 'w' : ''}" data-w="${z.id}" data-s="${s}">${esc(v)}</td>`; }).join('')}</tr>`; }
+    }else if(z.art === 'chef'){
+      const chefs = wpSort(personen().filter(p => p.rolle === 'chef'));
+      h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${werktag(s) ? esc(chefs.map(p => abwesend(p, s) ? '0' : wpName(p, s)).join('/ ')) : ''}</td>`).join('')}</tr>`;
+    }else if(z.art === 'oadienst'){
+      h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${person(dienstVon(s)) ? esc(nachn(person(dienstVon(s)))) : ''}</td>`).join('')}</tr>`;
+    }else if(z.art === 'auto'){
+      h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${eing(z.id, s, wpAuto(z.id, s))}</td>`).join('')}</tr>`;
+    }else if(z.art === 'urlaub'){
+      /* OA mit Urlaub in dieser Woche je eine Zeile, restliche Zeilen frei (Assistenten) */
+      const ps = wpSort(personen().filter(p => tage.some(s => abwesend(p, s) === 'urlaub'))), m = Math.max(n, ps.length + (edit ? 1 : 0));
+      for(let i = 0; i < m; i++){ const p = ps[i];
+        h += `<tr class="url">${lbl(z)}${tage.map(s => `<td class="${we(s)}">${p ? (abwesend(p, s) === 'urlaub' ? esc(nachn(p)) : '') : eing('url.' + (i - ps.length), s)}</td>`).join('')}</tr>`; }
+    }
+  }
+  return h + '</table>';
+}
+function wpRender(){
+  if(!wpOffen) return;
+  const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i));
+  $('wpEdit').innerHTML = `<div class="wp-leiste"><button class="btn out" id="wpZur" title="Vorwoche">‹</button><b>KW ${kw(plus(wpMo, 3))}</b>`
+    + `<span>${kurzDat(tage[0])} – ${kurzDat(tage[6])}${tage[6].slice(0, 4)}</span><button class="btn out" id="wpVor" title="Folgewoche">›</button>`
+    + `<span style="flex:1"></span><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
+    + wpTabelle(false)
+    + `<p class="wp-hilfe">${darfWp() ? 'Klick auf Station, Apotheke, Prämed, Prokto oder Adipositas: Personen wählen (mehrere möglich). Graue Namen kommen aus dem Plan; Eingabefelder für Assistenten. ' : 'Nur ansehen und drucken. '}`
+    + `OA Dienst, CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende erscheinen in ihrer Stationszeile als „0“.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
+  icons($('wpEdit'));
+  $('wpZur').onclick = ()=> wpWoche(-7);
+  $('wpVor').onclick = ()=> wpWoche(7);
+  $('wpZu').onclick = wpZu;
+  $('wpDruck').onclick = wpDrucken;
+}
+async function wpLaden(){
+  const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), ms = [...new Set(tage.map(ymVon))];
+  const pf = [pfadWp(wpMo), ...ms.map(pfadDienst), ...ms.flatMap(m => personen().map(p => pfadWunsch(p.k, m)))];
+  try{ await Promise.all(pf.map(x => x === pfadWp(wpMo) || !files[x] ? lesen(x) : null)); }catch(e){ toast(e.message); }
+  wpRender();
+}
+function wpWoche(n){ wpMo = plus(wpMo, n); wpRender(); wpLaden(); }
+function wpZu(){ wpOffen = false; $('wpEdit').classList.add('hidden'); $('wpEdit').innerHTML = ''; }
+function wpDrucken(){
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();   // offenes Eingabefeld speichern
+  $('wochendruck').innerHTML = wpTabelle(true);
+  $('druckSeite').textContent = '@page{size:A4 landscape;margin:8mm}';
   document.body.classList.add('wochendruck');
   setTimeout(()=> window.print(), 50);
+}
+function wpSetzen(key, s, v){
+  aendern(pfadWp(wpMo), {z: {}}, 'Wochenplan', d => {
+    d.z = d.z || {}; const z = d.z[key] || (d.z[key] = {});
+    if(v === '' || v == null || (typeof v === 'object' && !v.k.length && !v.t)) delete z[s]; else z[s] = v;
+    if(!Object.keys(z).length) delete d.z[key];
+  });
+}
+function wpWahl(id, s){
+  const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), w = wpWert(id, s) || {k: [], t: ''};
+  const z = WP_ZEILEN.find(x => x.id === id);
+  dialog(`<h3 style="margin:0 0 4px">${esc(wpTitel(z.l))}</h3><p class="hint" style="margin:0 0 8px">${WT[wt(s)]} ${kurzDat(s)}${s.slice(0, 4)}</p>`
+    + `<div class="wp-wahl">${wpSort(personen()).map(p => { const a = abwesend(p, s);
+        return `<label><input type="checkbox" value="${esc(p.k)}" ${(w.k || []).includes(p.k) ? 'checked' : ''}>${esc(p.name || p.k)}${a ? ` <small>${esc(ABW_NAME[a] || a)}</small>` : halbWeg(p, s) ? ` <small>${HALB_TXT[halbWeg(p, s)]}</small>` : ''}</label>`; }).join('')}</div>`
+    + `<label class="f" style="display:block;margin-top:8px">Weitere (Freitext)<input id="wpT" value="${esc(w.t || '')}" style="width:100%"></label>`
+    + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="wpOk">Übernehmen</button>`
+    + `<button class="btn out" id="wpWoche" title="Gleiche Auswahl für alle Werktage dieser Woche">Für Mo–Fr</button><button class="btn gh" id="wpLeer">Leeren</button></div>`,
+    dlg => {
+      const wert = () => ({k: [...dlg.querySelectorAll('.wp-wahl input:checked')].map(x => x.value), t: dlg.querySelector('#wpT').value.trim()});
+      dlg.querySelector('#wpOk').onclick = ()=>{ wpSetzen(id, s, wert()); zu(); wpRender(); };
+      dlg.querySelector('#wpWoche').onclick = ()=>{ const v = wert(); tage.filter(werktag).forEach(x => wpSetzen(id, x, clone(v))); zu(); wpRender(); };
+      dlg.querySelector('#wpLeer').onclick = ()=>{ wpSetzen(id, s, ''); zu(); wpRender(); };
+    }, true);
+}
+$('wpEdit').addEventListener('change', e => { const x = e.target.closest('input[data-z]'); if(x) wpSetzen(x.dataset.z, x.dataset.s, x.value.trim()); });
+$('wpEdit').addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.matches('input[data-z]')) e.target.blur(); });
+$('wpEdit').addEventListener('click', e => {
+  const c = e.target.closest('td.w');
+  if(c && darfWp()) return wpWahl(c.dataset.w, c.dataset.s);
+  const l = e.target.closest('td.lbl.edit');
+  if(l){ const v = prompt('Bezeichnung der Zeile (gilt für alle Wochen, leer = Standard):', wpTitel(l.dataset.l));
+    if(v === null) return;
+    cfgAendern('Wochenplan-Zeile', c => { c.wpTitel = c.wpTitel || {}; if(v.trim()) c.wpTitel[l.dataset.l] = v.trim(); else delete c.wpTitel[l.dataset.l]; });
+    wpRender(); }
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && wpOffen && !$('dlg').innerHTML) wpZu(); }, true);
+$('wochenBtn').onclick = ()=>{
+  const h = heute();
+  wpMo = plus(h, 8 - wt(h));   // Standard: naechste Woche
+  wpOffen = true; planHover = '';
+  $('wpEdit').classList.remove('hidden');
+  wpRender(); wpLaden();
 };
-window.addEventListener('afterprint', ()=>{ document.body.classList.remove('wochendruck'); $('wochendruck').innerHTML = ''; });
+window.addEventListener('afterprint', ()=>{ document.body.classList.remove('wochendruck'); $('wochendruck').innerHTML = ''; $('druckSeite').textContent = ''; });
 
 function render(){
   undoKnoepfe();
