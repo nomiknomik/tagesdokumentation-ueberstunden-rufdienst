@@ -561,6 +561,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
 .wpx tr.b-gelb td{background:#ffe699}
 .wpx tr.apo td{background:#f00;color:#fff;font-weight:700}
 .wpx td.we{background:#dae3f3}
+.wpx b.vd{color:#e00000}
 .wpx tr.url td.we{background:#fff}
 .wpx td.w{cursor:pointer}
 .wpx td.w:hover,.wpx td.lbl.edit:hover{outline:2px solid var(--primary);outline-offset:-2px}
@@ -870,7 +871,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.39';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.40';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1489,7 +1490,7 @@ const WP_ZEILEN = [
   {id: 'a1', l: 'st1', art: 'station', n: 3, liste: 'vch', oben: true},
   {band: 'grau'},
   {id: 'a2', l: 'st2', art: 'station', n: 4, liste: 'vch', oben: true},
-  {id: 'apo', l: 'apo', art: 'wahl', kl: 'apo', nurBelegt: true, liste: 'vch', oben: true},
+  {id: 'apo', l: 'apo', art: 'wahl', kl: 'apo', nurBelegt: true, liste: 'vch', ein: true, oben: true},
   {id: 'praemed', l: 'praemed', art: 'wahl', kl: 'blau', liste: 'vch', ein: true, oben: true},
   {id: 'o1', l: 'st1', art: 'station', n: 3, liste: 'oa', oben: true},
   {id: 'o2', l: 'st2', art: 'station', n: 2, liste: 'oa', oben: true},
@@ -1530,7 +1531,15 @@ const wpUnten = s => new Set(Object.entries(wpDaten()).filter(([key]) => /^(fb|a
 const wpWeg = (p, s) => !!((werktag(s) && abwesend(p, s)) || wpUnten(s).has(p.k));
 const wpSort = ps => ps.slice().sort((a, b) => nachn(a).localeCompare(nachn(b), 'de'));
 /* anwesende Haelfte bei halbem Tag: vormittags weg -> „(nachm.)“ */
-const wpName = (p, s) => nachn(p) + (halbWeg(p, s) ? (halbWeg(p, s) === 'vm' ? ' (nachm.)' : ' (vorm.)') : '');
+/* Wert eines beliebigen Tages (auch Vorwoche, z. B. Rufdienst am Sonntag davor) */
+const wpWertAm = (key, s) => { const f = files[pfadWp(plus(s, 1 - wt(s)))]; return wpW((((f && f.data) || {}).z || {})[key]?.[s]); };
+/* 2.40: am Vortag Dienst (OA-Dienst bzw. Rufdienst als Assistent) -> rot und fett */
+const wpNachDienst = (p, s) => p.rolle === 'ass' ? ((wpWertAm('ruf', plus(s, -1)) || {}).k || []).includes(p.k) : dienstVon(plus(s, -1)) === p.k;
+/* VCH-Assistent im Spaetdienst (INA spaet bzw. Haus-/Spaetdienst) ist auf der Station erst ab Nachmittag da */
+const wpSpaet = (p, s) => p.rolle === 'ass' && abtVon(p) === 'VCH' && ['inaS', 'haus'].some(z => ((wpWert(z, s) || {}).k || []).includes(p.k));
+/* Name als HTML: anwesende Haelfte bei halbem Tag („(nachm.)“ = vormittags weg), auf der Station auch beim Spaetdienst */
+const wpName = (p, s, station) => { const zus = halbWeg(p, s) ? (halbWeg(p, s) === 'vm' ? ' (nachm.)' : ' (vorm.)') : station && wpSpaet(p, s) ? ' (nachm.)' : '';
+  return wpNachDienst(p, s) ? `<b class="vd" title="am Vortag Dienst">${esc(nachn(p) + zus)}</b>` : esc(nachn(p) + zus); };
 function wpAuto(id, s){
   const out = [];
   for(const p of wpSort(personen())){
@@ -1548,7 +1557,7 @@ function wpTabelle(druck){
   const we = s => werktag(s) ? '' : 'we';
   const lbl = (z, rs = 1) => `<td class="lbl ${edit && darfVerwalten() ? 'edit' : ''}" data-l="${z.l}" ${rs > 1 ? `rowspan="${rs}"` : ''}>${esc(wpTitel(z.l))}</td>`;
   const zelle = (key, s, inhalt, k) => `<td class="${we(s)} ${edit ? 'w' : ''}" data-w="${key}" data-s="${s}" ${k ? `data-k="${esc(k)}"` : ''}>${inhalt}</td>`;
-  const wahlTxt = (w, s, oben) => [...((w && w.k) || []).map(person).filter(Boolean).map(p => oben && wpWeg(p, s) ? '0' : wpName(p, s)), ...(w && w.t ? [w.t] : [])].join('/ ');
+  const wahlTxt = (w, s, oben) => [...((w && w.k) || []).map(person).filter(Boolean).map(p => oben && wpWeg(p, s) ? '0' : wpName(p, s)), ...(w && w.t ? [esc(w.t)] : [])].join('/ ');   // HTML
   /* je ausgewaehlter Person eine Zeile (wie Excel); an Werktagen ohne Auswahl bzw. abwesend „0“ (nullen) */
   const stationZeilen = (key, min, nullen) => {   // min: Zahl oder Funktion der belegten Zeilen
     const ks = [], txt = tage.map(s => (wpWert(key, s) || {}).t || '');
@@ -1556,23 +1565,23 @@ function wpTabelle(druck){
     const zeilen = [...ks, ...(txt.some(Boolean) ? ['#t'] : [])];
     return Array.from({length: Math.max(typeof min === 'function' ? min(zeilen.length) : min, zeilen.length)}, (_, i) => { const k = zeilen[i];
       return tage.map(s => { const w = wpWert(key, s) || {};
-        const v = k === '#t' ? txt[tage.indexOf(s)] : k ? ((w.k || []).includes(k) && !wpWeg(person(k), s) ? wpName(person(k), s) : nullen && werktag(s) ? '0' : '') : '';
-        return zelle(key, s, esc(v), k && k !== '#t' && (w.k || []).includes(k) ? k : ''); }).join(''); });
+        const v = k === '#t' ? esc(txt[tage.indexOf(s)]) : k ? ((w.k || []).includes(k) && !wpWeg(person(k), s) ? wpName(person(k), s, true) : nullen && werktag(s) ? '0' : '') : '';
+        return zelle(key, s, v, k && k !== '#t' && (w.k || []).includes(k) ? k : ''); }).join(''); });
   };
   let h = `<table class="wpx"><colgroup><col class="wp-l">${tage.map(() => '<col>').join('')}</colgroup><tr class="kopf"><td rowspan="2">Datum</td>${tage.map(s => `<td>${pad(+s.slice(8))}.${s.slice(5, 7)}.${s.slice(0, 4)}</td>`).join('')}</tr>`
     + `<tr class="kopf">${tage.map(s => `<td class="wt">${['', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][wt(s)]}${feiertag(s) ? `<span style="font-weight:400"> · ${esc(feiertag(s))}</span>` : ''}</td>`).join('')}</tr>`;
   for(const z of WP_ZEILEN){
     if(z.band){ h += `<tr class="band b-${z.band}"><td></td>${tage.map(() => '<td></td>').join('')}</tr>`; continue; }
     if(z.art === 'wahl'){
-      const txt = s => [z.auto ? wpAuto(z.id, s) : '', wahlTxt(wpWert(z.id, s), s, z.oben)].filter(Boolean).join('/ ');
+      const txt = s => [z.auto ? esc(wpAuto(z.id, s)) : '', wahlTxt(wpWert(z.id, s), s, z.oben)].filter(Boolean).join('/ ');
       if(druck && z.nurBelegt && !tage.some(s => txt(s))) continue;
-      h += `<tr class="${z.kl || ''}">${lbl(z)}${tage.map(s => zelle(z.id, s, esc(txt(s)))).join('')}</tr>`;
+      h += `<tr class="${z.kl || ''}">${lbl(z)}${tage.map(s => zelle(z.id, s, txt(s))).join('')}</tr>`;
     }else if(z.art === 'station'){
       const rz = stationZeilen(z.id, z.n, true);
       rz.forEach((r, i) => { h += `<tr>${i ? '' : lbl(z, rz.length)}${r}</tr>`; });
     }else if(z.art === 'chef'){
       const chefs = wpSort(personen().filter(p => p.rolle === 'chef'));
-      h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${werktag(s) ? esc(chefs.map(p => abwesend(p, s) ? '0' : wpName(p, s)).join('/ ')) : ''}</td>`).join('')}</tr>`;
+      h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${werktag(s) ? chefs.map(p => abwesend(p, s) ? '0' : wpName(p, s)).join('/ ') : ''}</td>`).join('')}</tr>`;
     }else if(z.art === 'oadienst'){
       h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${person(dienstVon(s)) ? esc(nachn(person(dienstVon(s)))) : ''}</td>`).join('')}</tr>`;
     }else if(z.art === 'urlaub'){
@@ -1581,7 +1590,7 @@ function wpTabelle(druck){
       ps.forEach(p => { h += `<tr class="url">${lbl(z)}${tage.map(s => `<td class="${we(s)}">${werktag(s) && abwesend(p, s) === 'urlaub' ? esc(nachn(p)) : ''}</td>`).join('')}</tr>`; });
       const belegt = Object.keys(wpDaten()).filter(key => key.startsWith('url.')).reduce((m, key) => Math.max(m, +key.slice(4) + 1), 0);
       for(let i = 0; i < Math.max(z.n - ps.length, belegt + (edit ? 1 : 0)); i++)   // im Editor immer eine freie Zeile
-        h += `<tr class="url">${lbl(z)}${tage.map(s => zelle('url.' + i, s, esc(wahlTxt(wpWert('url.' + i, s), s)))).join('')}</tr>`;
+        h += `<tr class="url">${lbl(z)}${tage.map(s => zelle('url.' + i, s, wahlTxt(wpWert('url.' + i, s), s))).join('')}</tr>`;
     }
   }
   return h + '</table>';
@@ -1594,7 +1603,7 @@ function wpRender(){
     + `<span style="flex:1"></span><button class="btn out" id="wpUndo" title="Rückgängig (Strg+Z), bis 10 Schritte" ${undoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="undo"></span></button>`
     + `<button class="btn out" id="wpRedo" title="Wiederholen (Strg+Y)" ${redoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="redo"></span></button><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
     + wpTabelle(false)
-    + `<p class="wp-hilfe">${darfWp() ? 'Klick auf ein Feld wählt aus (Stationen und Apotheke: mehrere). Maus über dem Feld + Anfangsbuchstabe = Schnellwahl, + Entf = löschen. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat (nicht Flex- und Rufdienst). Wer unten eingetragen oder abwesend ist, steht oben nicht zur Wahl. ' : 'Nur ansehen und drucken. '}`
+    + `<p class="wp-hilfe">${darfWp() ? 'Klick auf ein Feld wählt aus (Stationen: mehrere). Maus über dem Feld + Anfangsbuchstabe = Schnellwahl, + Entf = löschen. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat (nicht Flex- und Rufdienst). Wer unten eingetragen oder abwesend ist, steht oben nicht zur Wahl. Rot und fett: am Vortag Dienst (OA-Dienst bzw. Rufdienst). ' : 'Nur ansehen und drucken. '}`
     + `OA Dienst, CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende erscheinen in ihrer Stationszeile als „0“.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
   icons($('wpEdit'));
   $('wpZur').onclick = ()=> wpWoche(-7);
@@ -1606,8 +1615,8 @@ function wpRender(){
 }
 async function wpLaden(){
   const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), ms = [...new Set(tage.map(ymVon))];
-  const pf = [pfadWp(wpMo), ...ms.map(pfadDienst), ...ms.flatMap(m => personen().map(p => pfadWunsch(p.k, m)))];
-  try{ await Promise.all(pf.map(x => x === pfadWp(wpMo) || !files[x] ? lesen(x) : null)); }catch(e){ toast(e.message); }
+  const pf = [pfadWp(wpMo), pfadWp(plus(wpMo, -7)), pfadDienst(ymVon(plus(wpMo, -1))), ...ms.map(pfadDienst), ...ms.flatMap(m => personen().map(p => pfadWunsch(p.k, m)))];   // Vorwoche/Vortag: „nach Dienst“
+  try{ await Promise.all([...new Set(pf)].map(x => x === pfadWp(wpMo) || !files[x] ? lesen(x) : null)); }catch(e){ toast(e.message); }
   wpRender();
 }
 function wpWoche(n){ wpMo = plus(wpMo, n); wpRender(); wpLaden(); }

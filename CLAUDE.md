@@ -262,6 +262,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Flex/Ruf `fort:false`. Assistenten mit Abteilung `abt` (VCH|UCH|INA, leer = VCH, `abtVon()`): Apotheke/Prämed/Stationen nur VCH
   (`liste` 'vch'), ab INA alle. Wer unten steht (`wpUnten()`: fb/abw/frei/`url.i`) oder als OA abwesend ist (`wpWeg()`), fehlt oben
   in der Auswahl (`oben`) und erscheint dort als „0“. OA-Abwesenheit am WE nicht eingetragen. Urlaub-Assistenten je Zeile `url.i`.
+  2.40: Apotheke Einzelauswahl. Am Vortag Dienst (OA: `dienstVon`, Assistent: Rufdienst `ruf`, auch Sonntag der Vorwoche über
+  `wpWertAm()`; `wpLaden()` lädt Vorwoche + Vortags-Monat) → Name rot/fett (`wpNachDienst()`, `b.vd`). VCH-Assistent in INA spät oder
+  Haus-/Spätdienst → auf der Station „(nachm.)“ (`wpSpaet()`). `wpName()` liefert HTML.
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
   `gistsAufraeumen()`): PIN-verschlüsselt wie Tagesdoku mit
   `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`, sonst `#zugang2=`. QR aus `../app/qrcode.js`.
