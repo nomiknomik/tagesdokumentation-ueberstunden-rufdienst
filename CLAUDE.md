@@ -217,7 +217,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `tagesdoku_admin`) und „Repo und Token direkt“ im Erstlogin seit 1.71 nur über `…/plan/#admin` (`ADMIN_TUER`) oder
   seit 1.72 7 schnelle Tipps (4 s) auf das Kopf-Logo bzw. den Erstlogin-Titel (`fuenfTipps()`, auch für installierte App) –
   Notausgang: neuen GitHub-Token erzeugen; Nicht-Verwalter sehen in den Einstellungen nur die Karte `.frei` (Zugang).
-  Lese-Zugänge (1.86, Rolle `sek` = Sekretariat, `pa` = PA, `LESER`/`istLeser()`): Konten in `cfg.personen`, aber
+  Lese-Zugänge (1.86, Rolle `sek` = Sekretariat, `pa` = Wochenplan (früher PA), `LESER`/`istLeser()`): Konten in `cfg.personen`, aber
   nicht in `personen()` (keine Dienste/Besetzung; `konten()` für Personenwahl/Einladung). Nur Plan als Matrix/Woche
   (+ Zugang in Einstellungen), kein Urlaub-Reiter, kein Protokoll, `darfEinteilen()`/`darfVerwalten()` false;
   Sekretariat zusätzlich Wünsche, dort nur Chefarzt wählbar und `darfFuer()` nur für Rolle `chef`.
@@ -266,6 +266,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `wpWertAm()`; `wpLaden()` lädt Vorwoche + Vortags-Monat) → Name rot/fett (`wpNachDienst()`, `b.vd`). VCH-Assistent in INA spät oder
   Haus-/Spätdienst → auf der Station „(nachm.)“ (`wpSpaet()`, nur Werktage). `wpName()` liefert HTML.
   2.41: Apotheke nur Mo/Mi/Fr (`tage` in `WP_ZEILEN`: andere Tage leer, nicht wählbar, Fortschreiben überspringt sie).
+  2.42 Rollen: `pa` heißt in der Oberfläche „Wochenplan“ und steht mit `ass` in der Assistenten-Karte (`ASS_ROLLEN`, Spalte Rolle
+  Assistent/Wochenplan), nicht mehr im Team (`rollenOpt()` ohne beide). Zugang nur mit Rolle (`zugangKonten()` ohne `ass`:
+  Einladung, Personenwahl – diese gruppiert nach Rolle); `darfWp()` = Nicht-Leser oder `pa`. Regeln-Karte (`#regelKarte`) für
+  Leser ausgeblendet. Start: `body.vorab` verbirgt Inhalte/Reiter, bis `render()` mit geladener Konfiguration lief (zuerst aus
+  `LS_CACHE`, dann frisch) – bei der Erstanmeldung bleibt der Hintergrund leer.
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
   `gistsAufraeumen()`): PIN-verschlüsselt wie Tagesdoku mit
   `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`, sonst `#zugang2=`. QR aus `../app/qrcode.js`.

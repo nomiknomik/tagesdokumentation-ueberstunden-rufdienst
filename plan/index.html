@@ -29,6 +29,8 @@ body{margin:0;min-height:100dvh;background:var(--bg);color:var(--text);
 button,input,select{font:inherit;color:inherit}
 .ic{width:18px;height:18px;flex:0 0 auto}
 .hidden{display:none !important}
+/* 2.42: bis Konfiguration und Person bekannt sind, nur Kopf mit Logo/Status - keine Inhalte im Hintergrund der Anmeldung */
+body.vorab main,body.vorab nav.tabs,body.vorab .monat,body.vorab .zoom,body.vorab #hilfeBtn,body.vorab #protoBtn{visibility:hidden}
 
 /* ---------- Kopf ---------- */
 header{position:sticky;top:0;z-index:20;background:rgba(250,245,236,.94);backdrop-filter:blur(8px);
@@ -586,7 +588,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
 }
 </style>
 </head>
-<body>
+<body class="vorab">
 <header>
   <div class="hd">
     <div class="logo"><img class="mark" src="logo.svg" alt=""><div>Dienstplanung <button class="version" id="verBtn" title="Auf Update prüfen und neu laden"></button><small>Oberärzte · Allgemein- und Viszeralchirurgie</small></div></div>
@@ -766,7 +768,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
         <div class="reihe" style="margin-top:10px">
           <label class="f">Kürzel<input type="text" id="nK" maxlength="6" style="width:80px"></label>
           <label class="f">Name<input type="text" id="nName" style="width:180px"></label>
-          <label class="f">Rolle<select id="nRolle"><option value="oa">Oberarzt/-ärztin</option><option value="chef">Chefarzt (keine Dienste)</option><option value="sek">Sekretariat (Ansicht + Chefarzt-Wünsche)</option><option value="pa">PA (nur Ansicht)</option></select></label>
+          <label class="f">Rolle<select id="nRolle"><option value="oa">Oberarzt/-ärztin</option><option value="chef">Chefarzt (keine Dienste)</option><option value="sek">Sekretariat (Ansicht + Chefarzt-Wünsche)</option></select></label>
           <button class="btn out" id="nAdd"><span data-icon="plus"></span>Person</button>
         </div>
         <div class="hint" style="margin-top:8px">Das Kürzel ist der Dateiname der Wünsche und lässt sich nachträglich nicht ändern.
@@ -776,7 +778,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
         <h3><span data-icon="users"></span>Assistenzärzte</h3>
         <div style="overflow-x:auto"><table class="raster" id="assTab"></table></div>
         <div class="reihe" style="margin-top:10px"><input type="text" id="assName" placeholder="Vorname Nachname"><select id="assAbt"><option>VCH</option><option>UCH</option><option>INA</option></select><button class="btn out" id="assAdd"><span data-icon="plus"></span>Assistent:in</button></div>
-        <div class="hint" style="margin-top:8px">Auswahl im Wochenplan (Apotheke, Prämed und Stationen nur VCH). Rechte wie PA: Plan ansehen, Wochenplan pflegen; Einladung über die Karte Zugang.</div>
+        <div class="hint" style="margin-top:8px">Auswahl im Wochenplan (Apotheke, Prämed und Stationen nur VCH). Zugang zur App nur mit Rolle „Wochenplan“: Plan ansehen und Wochenplan pflegen, Einladung über die Karte Zugang. Doppelt geführte Person: eine Zeile behalten (die mit Zugang), die andere auf „aktiv“ aus.</div>
       </div>
       <div class="card">
         <h3><span data-icon="layers"></span>Teams</h3>
@@ -816,7 +818,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
         </div>
         <div class="hint" style="margin-top:6px">Bei Teilzeit: max. Dienste × Arbeitsquote, abgerundet. Wochenende = Sa- oder So-Dienst.</div>
       </div>
-      <div class="card frei">
+      <div class="card frei" id="regelKarte">
         <h3><span data-icon="sliders"></span>Regeln der automatischen Verteilung</h3>
         <div class="hint">Der Solver sucht den Plan mit den wenigsten Strafpunkten. Erfüllte Wünsche bringen Pluspunkte – sie werden von den Strafpunkten abgezogen. Punkte haben keine Einheit, nur das Verhältnis zählt (90 = halb so schlimm wie 180). Das Thermometer zieht für eigene Verstöße dieselben Punkte ÷ 6 ab (No-Go 90 → 15). Gilt für das ganze Team.</div>
         <div id="regelInfo"></div>
@@ -871,7 +873,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.41';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.42';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1011,16 +1013,18 @@ let nurLesen = false;
 
 /* Lese-Zugaenge (1.86): Sekretariat und PA sind Konten, aber keine Planungspersonen (keine Dienste,
    keine Besetzung) - nur Matrix/Woche; Sekretariat traegt zusaetzlich Wuensche fuer den Chefarzt ein */
-const LESER = {sek: 'Sekretariat', pa: 'PA', ass: 'Assistenzarzt/-ärztin'};   // 2.38: Assistenten = Konten mit Rechten wie PA
+const LESER = {sek: 'Sekretariat', pa: 'Wochenplan', ass: 'Assistent:in'};   // 2.42: 'pa' heisst „Wochenplan“; Assistenten ('ass') ohne Zugang
 const ROLLEN = {oa: 'Oberarzt/-ärztin', chef: 'Chefarzt', ...LESER};
 const konten = () => cfg.personen.filter(p => p.aktiv !== false);
 const personen = () => konten().filter(p => !LESER[p.rolle]);
 const person = k => cfg.personen.find(p => p.k === k);
 const diensttauglich = () => personen().filter(p => p.rolle !== 'chef');
 const ich = () => person(ichK);
-const assistenten = () => konten().filter(p => p.rolle === 'ass');
+const ASS_ROLLEN = ['ass', 'pa'];   // Assistentenliste: ohne Zugang ('ass') bzw. mit Rolle Wochenplan ('pa')
+const assistenten = () => konten().filter(p => ASS_ROLLEN.includes(p.rolle));
+const zugangKonten = () => konten().filter(p => p.rolle !== 'ass');   // Zugang nur mit Rolle
 const istLeser = () => !!(ich() && LESER[ich().rolle]);
-const rollenOpt = r => Object.entries(ROLLEN).map(([k, n]) => `<option value="${k}" ${(r || 'oa') === k ? 'selected' : ''}>${n}</option>`).join('');
+const rollenOpt = r => Object.entries(ROLLEN).filter(([k]) => !ASS_ROLLEN.includes(k)).map(([k, n]) => `<option value="${k}" ${(r || 'oa') === k ? 'selected' : ''}>${n}</option>`).join('');
 const farbe = p => p ? (p.farbe || FARBEN[cfg.personen.indexOf(p) % FARBEN.length]) : '#999';
 const pk = (p, cls = 'pk') => `<span class="${cls}" style="background:${farbe(p)}">${esc(p ? p.k : '?')}</span>`;
 const pfadCfg = 'plan/config.json';
@@ -1516,7 +1520,7 @@ const WP_TITEL = {st1: '3.69-3.56 +WL', st2: '3.63-3.68 +Außenlieger', apo: 'Ap
   ruf: 'Rufdienst', oa: 'OA Dienst', prokto: 'Prokto 8:30-12h', adipo: 'Adipositas 09:00-11:30h', fb: 'Fortbildung', abw: 'Abwesend',
   frei: 'Frei (nach Dienst)', url: 'Urlaub'};
 const wpTitel = l => (cfg.wpTitel || {})[l] || WP_TITEL[l];
-const darfWp = () => !nurLesen && (!istLeser() || ich().rolle !== 'sek');   // PA und Assistenten duerfen den Wochenplan pflegen
+const darfWp = () => !nurLesen && (!istLeser() || ich().rolle === 'pa');   // Rolle Wochenplan darf ihn pflegen
 let wpMo = '', wpOffen = false;
 const wpDaten = () => ((files[pfadWp(wpMo)] || {}).data || {}).z || {};
 const wpW = w => typeof w === 'string' ? (w ? {k: [], t: w} : null) : w;   // 2.36 speicherte Eingabefelder als Text
@@ -1742,7 +1746,7 @@ function render(){
   $('ichWechsel').classList.toggle('hidden', !!ich() && !adminGeraet());   // Person wechseln nur Admin
   $('adminLogin').classList.toggle('hidden', adminGeraet() || !ADMIN_TUER);
   todoBadge(); hilfeBadge();
-  /* Lese-Zugaenge (1.86): Sekretariat Plan + Wuensche, PA nur Plan (+ Zugang in Einstellungen) */
+  /* Lese-Zugaenge (1.86): Sekretariat Plan + Wuensche, Wochenplan (pa) nur Plan (+ Zugang in Einstellungen) */
   const ohne = istLeser() ? ['urlaub', ...(ich().rolle !== 'sek' ? ['meine'] : [])] : [];
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('hidden', ohne.includes(b.dataset.tab)));
   $('protoBtn').classList.toggle('hidden', istLeser());
@@ -1751,6 +1755,7 @@ function render(){
   if(tab === 'meine') renderMeine();
   if(tab === 'cfg') renderCfg();
   if(tab === 'urlaub') renderUrlaub();
+  if((files[pfadCfg] || {}).data) document.body.classList.remove('vorab');   // 2.42: erst jetzt sind die Rechte bekannt
 }
 
 /* =================== Plan =================== */
@@ -3819,11 +3824,11 @@ function regelnRender(){
 function renderCfg(){
   regelnRender();
   const einAlt = $('einPers').value;
-  $('einPers').innerHTML = konten().map(p => `<option value="${esc(p.k)}" ${p.k === einAlt ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('');
+  $('einPers').innerHTML = zugangKonten().map(p => `<option value="${esc(p.k)}" ${p.k === einAlt ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('');
   setTimeout(cfgSperren);
   // Team
   $('teamTab').innerHTML = `<tr><th></th><th>Kürzel</th><th>Name</th><th>Pers.-Nr.</th><th>Rolle</th><th>Teams</th><th>Planer</th><th>aktiv</th></tr>` +
-    cfg.personen.filter(p => p.rolle !== 'ass').map(p => `<tr data-k="${esc(p.k)}"><td><input type="color" class="farbe" value="${farbe(p)}" data-f="farbe"></td>
+    cfg.personen.filter(p => !ASS_ROLLEN.includes(p.rolle)).map(p => `<tr data-k="${esc(p.k)}"><td><input type="color" class="farbe" value="${farbe(p)}" data-f="farbe"></td>
       <td><b>${esc(p.k)}</b>${p.k === ichK ? ' <span class="tag n">ich</span>' : ''}</td>
       <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td>
       <td><input type="text" value="${esc(p.pnr || '')}" data-f="pnr" style="width:80px" inputmode="numeric" title="Personalnummer wie in TDA (für die Kompaktansicht)"></td>
@@ -3835,10 +3840,11 @@ function renderCfg(){
     const k = el.closest('tr').dataset.k, f = el.dataset.f, v = el.type === 'checkbox' ? el.checked : el.value;
     personAendern(k, f, q => { q[f] = v; });
   });
-  $('assTab').innerHTML = `<tr><th>Kürzel</th><th>Name</th><th>Abteilung</th><th>aktiv</th></tr>` + cfg.personen.filter(p => p.rolle === 'ass')
+  $('assTab').innerHTML = `<tr><th>Kürzel</th><th>Name</th><th>Abteilung</th><th>Rolle</th><th>aktiv</th></tr>` + cfg.personen.filter(p => ASS_ROLLEN.includes(p.rolle))
     .sort((a, b) => nachn(a).localeCompare(nachn(b), 'de')).map(p => `<tr data-k="${esc(p.k)}"><td><b>${esc(p.k)}</b></td>
       <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td>
       <td><select data-f="abt">${ABTEILUNGEN.map(a => `<option ${abtVon(p) === a ? 'selected' : ''}>${a}</option>`).join('')}</select></td>
+      <td><select data-f="rolle" title="Wochenplan: Zugang zur App, darf den Wochenplan pflegen"><option value="ass">Assistent</option><option value="pa" ${p.rolle === 'pa' ? 'selected' : ''}>Wochenplan</option></select></td>
       <td><input type="checkbox" data-f="aktiv" ${p.aktiv !== false ? 'checked' : ''}></td></tr>`).join('');
   $('assTab').querySelectorAll('[data-f]').forEach(el => el.onchange = ()=>{
     const k = el.closest('tr').dataset.k, f = el.dataset.f;
@@ -4004,6 +4010,7 @@ function cfgSperren(){
   const ro = !darfVerwalten();
   $('cfgHinweis').classList.add('hidden');
   $('tab-cfg').querySelectorAll('.cfggrid > .card:not(.frei)').forEach(c => c.classList.toggle('hidden', ro));   // 1.62: Nutzer sehen nur „Zugang“
+  $('regelKarte').classList.toggle('hidden', istLeser());   // 2.42: Sekretariat/Wochenplan sehen die Regeln nicht
   $('tab-cfg').querySelectorAll('.card:not(.frei) :is(input,select,button,textarea)').forEach(x => { if(x.id !== 'bakDown') x.disabled = ro; });
 }
 
@@ -4134,7 +4141,8 @@ function ichWaehlen(){
       ? 'Nur auf diesem Admin-Gerät. Du siehst und darfst genau das, was die gewählte Person sieht und darf; Einträge werden mit ihrem Kürzel protokolliert.'
       : 'Einmalig auf diesem Gerät. Einträge werden mit deinem Kürzel protokolliert.'}</div>
 
-    ${konten().map(p => `<button class="kand ${p.k === ichK ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b><span class="hint">${ROLLEN[p.rolle] || ROLLEN.oa}</span></span></button>`).join('')}
+    ${Object.keys(ROLLEN).filter(r => r !== 'ass').map(r => { const ps = zugangKonten().filter(p => (p.rolle || 'oa') === r);
+      return ps.length ? `<p class="hint" style="margin:10px 0 4px"><b>${ROLLEN[r]}</b></p>` + ps.map(p => `<button class="kand ${p.k === ichK ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b><span class="hint">${ROLLEN[p.rolle] || ROLLEN.oa}</span></span></button>`).join('') : ''; }).join('')}
     ${neuErlaubt ? `<div class="hint" style="margin-top:10px">Nicht in der Liste? Unten neu anlegen.</div>
     <div class="reihe" style="margin-top:8px"><label class="f">Kürzel<input type="text" id="iK" maxlength="6" style="width:80px"></label>
       <label class="f" style="flex:1">Name<input type="text" id="iName"></label>
@@ -4158,6 +4166,8 @@ async function start(){
   const h = location.hash;
   if(/zugang2=|einladung=/.test(h)){ anmelden(h.slice(1)); return; }   // auch bei bestehendem Zugang: Einladung legt die Person fest
   if(!zugang()){ anmelden(''); return; }
+  { const c = load(LS_CACHE, null);   // 2.42: letzter Stand sofort (Rechte bekannt), frisch per ETag danach
+    if(c && c[pfadCfg] && c[pfadCfg].data){ Object.assign(files, c); render(); } }
   try{ await ladeAlles(); }
   catch(e){ status('err', 'Fehler'); toast(e.message); if(/Token|Repo/.test(e.message)) anmelden(''); return; }
   render();
