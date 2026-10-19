@@ -871,7 +871,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.40';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.41';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1490,7 +1490,7 @@ const WP_ZEILEN = [
   {id: 'a1', l: 'st1', art: 'station', n: 3, liste: 'vch', oben: true},
   {band: 'grau'},
   {id: 'a2', l: 'st2', art: 'station', n: 4, liste: 'vch', oben: true},
-  {id: 'apo', l: 'apo', art: 'wahl', kl: 'apo', nurBelegt: true, liste: 'vch', ein: true, oben: true},
+  {id: 'apo', l: 'apo', art: 'wahl', kl: 'apo', nurBelegt: true, liste: 'vch', ein: true, oben: true, tage: [1, 3, 5]},   // nur Mo, Mi, Fr
   {id: 'praemed', l: 'praemed', art: 'wahl', kl: 'blau', liste: 'vch', ein: true, oben: true},
   {id: 'o1', l: 'st1', art: 'station', n: 3, liste: 'oa', oben: true},
   {id: 'o2', l: 'st2', art: 'station', n: 2, liste: 'oa', oben: true},
@@ -1535,8 +1535,8 @@ const wpSort = ps => ps.slice().sort((a, b) => nachn(a).localeCompare(nachn(b), 
 const wpWertAm = (key, s) => { const f = files[pfadWp(plus(s, 1 - wt(s)))]; return wpW((((f && f.data) || {}).z || {})[key]?.[s]); };
 /* 2.40: am Vortag Dienst (OA-Dienst bzw. Rufdienst als Assistent) -> rot und fett */
 const wpNachDienst = (p, s) => p.rolle === 'ass' ? ((wpWertAm('ruf', plus(s, -1)) || {}).k || []).includes(p.k) : dienstVon(plus(s, -1)) === p.k;
-/* VCH-Assistent im Spaetdienst (INA spaet bzw. Haus-/Spaetdienst) ist auf der Station erst ab Nachmittag da */
-const wpSpaet = (p, s) => p.rolle === 'ass' && abtVon(p) === 'VCH' && ['inaS', 'haus'].some(z => ((wpWert(z, s) || {}).k || []).includes(p.k));
+/* VCH-Assistent im Spaetdienst (INA spaet bzw. Haus-/Spaetdienst) ist auf der Station erst ab Nachmittag da - am Wochenende ganztags */
+const wpSpaet = (p, s) => werktag(s) && p.rolle === 'ass' && abtVon(p) === 'VCH' && ['inaS', 'haus'].some(z => ((wpWert(z, s) || {}).k || []).includes(p.k));
 /* Name als HTML: anwesende Haelfte bei halbem Tag („(nachm.)“ = vormittags weg), auf der Station auch beim Spaetdienst */
 const wpName = (p, s, station) => { const zus = halbWeg(p, s) ? (halbWeg(p, s) === 'vm' ? ' (nachm.)' : ' (vorm.)') : station && wpSpaet(p, s) ? ' (nachm.)' : '';
   return wpNachDienst(p, s) ? `<b class="vd" title="am Vortag Dienst">${esc(nachn(p) + zus)}</b>` : esc(nachn(p) + zus); };
@@ -1574,8 +1574,8 @@ function wpTabelle(druck){
     if(z.band){ h += `<tr class="band b-${z.band}"><td></td>${tage.map(() => '<td></td>').join('')}</tr>`; continue; }
     if(z.art === 'wahl'){
       const txt = s => [z.auto ? esc(wpAuto(z.id, s)) : '', wahlTxt(wpWert(z.id, s), s, z.oben)].filter(Boolean).join('/ ');
-      if(druck && z.nurBelegt && !tage.some(s => txt(s))) continue;
-      h += `<tr class="${z.kl || ''}">${lbl(z)}${tage.map(s => zelle(z.id, s, txt(s))).join('')}</tr>`;
+      if(druck && z.nurBelegt && !tage.some(s => (!z.tage || z.tage.includes(wt(s))) && txt(s))) continue;
+      h += `<tr class="${z.kl || ''}">${lbl(z)}${tage.map(s => z.tage && !z.tage.includes(wt(s)) ? `<td class="${we(s)}"></td>` : zelle(z.id, s, txt(s))).join('')}</tr>`;
     }else if(z.art === 'station'){
       const rz = stationZeilen(z.id, z.n, true);
       rz.forEach((r, i) => { h += `<tr>${i ? '' : lbl(z, rz.length)}${r}</tr>`; });
@@ -1641,7 +1641,7 @@ function wpFortschreiben(key, s, v){   // auch fuer Mehrfachauswahl; Zeilen mit 
   const alt = JSON.stringify(wpWert(key, s) ?? ''), leer = x => x == null || x === '' || (typeof x === 'object' && !(x.k || []).length && !x.t);
   const mit = [];
   if(werktag(s) && !leer(v) && wpZeile(key).fort !== false) for(let x = plus(s, 1); x < plus(wpMo, 7); x = plus(x, 1)){
-    if(!werktag(x)) continue;
+    if(!werktag(x) || (wpZeile(key).tage && !wpZeile(key).tage.includes(wt(x)))) continue;
     const w = wpWert(key, x);
     if(!leer(w) && JSON.stringify(w) !== alt) break;
     mit.push(x);
@@ -1667,7 +1667,7 @@ function wpWahl(id, s){   // Mehrfachauswahl (Stationen, Apotheke)
     dlg => {
       const wert = () => ({k: [...dlg.querySelectorAll('.wp-wahl input:checked')].map(x => x.value), t: dlg.querySelector('#wpT').value.trim()});
       dlg.querySelector('#wpOk').onclick = ()=>{ wpFortschreiben(id, s, wert()); zu(); wpRender(); };
-      dlg.querySelector('#wpWoche').onclick = ()=>{ const v = wert(); tage.filter(werktag).forEach(x => wpSetzen(id, x, clone(v))); zu(); wpRender(); };
+      dlg.querySelector('#wpWoche').onclick = ()=>{ const v = wert(); tage.filter(x => werktag(x) && (!z.tage || z.tage.includes(wt(x)))).forEach(x => wpSetzen(id, x, clone(v))); zu(); wpRender(); };
       dlg.querySelector('#wpLeer').onclick = ()=>{ wpSetzen(id, s, ''); zu(); wpRender(); };
     }, true);
 }
