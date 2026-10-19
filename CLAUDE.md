@@ -247,7 +247,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Wochenplan (2.36, `#wochenBtn`, ersetzt den Personen-Wochendruck von 1.45): Layout der Excel-Vorlage (`WP_ZEILEN`,
   Bänder blau/grau/orange/gelb, WE hellblau), Editor `#wpEdit` (Vollbild, Woche ‹ ›, Standard nächste Woche), Druck 1 Seite
   A4 quer (`wpTabelle(true)` in `#wochendruck`, `body.wochendruck`). Klick = Mehrauswahl + Freitext (`wpWahl()`: OA-Stationen,
-  Apotheke – nur gedruckt, wenn belegt –, Prämed, Prokto, Adipositas); Station: je gewählter Person eine Zeile, sonst/abwesend „0“.
+  Apotheke – nur gedruckt, wenn belegt –, Prämed, Prokto, Adipositas); Station: je gewählter Person eine Zeile, sonst/abwesend leer (bis 2.42 „0“).
   Aus dem System: OA Dienst, CA (`rolle` chef), Fortbildung, Abwesend
   (krank/FZA/frei/½ Tag), Urlaub (je OA eine Zeile). Ablage `plan/wochenplan/<Montag>.json` = `{z:{zeile:{tag: {k,t}|text}}}`.
   Zeilentitel änderbar (`cfg.wpTitel`, nur `darfVerwalten()`); bearbeiten `darfWp()` = alle außer Sekretariat (PA ja).
@@ -261,7 +261,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Baustein `kandTasten()` (auch `waehlen()`), Maus über Zelle + Buchstabe/Entf (`wpHover`; bei Stationen löscht Entf nur die Person).
   Flex/Ruf `fort:false`. Assistenten mit Abteilung `abt` (VCH|UCH|INA, leer = VCH, `abtVon()`): Apotheke/Prämed/Stationen nur VCH
   (`liste` 'vch'), ab INA alle. Wer unten steht (`wpUnten()`: fb/abw/frei/`url.i`) oder als OA abwesend ist (`wpWeg()`), fehlt oben
-  in der Auswahl (`oben`) und erscheint dort als „0“. OA-Abwesenheit am WE nicht eingetragen. Urlaub-Assistenten je Zeile `url.i`.
+  in der Auswahl (`oben`); dort eingetragen bleibt das Feld leer. OA-Abwesenheit am WE nicht eingetragen. Urlaub-Assistenten je Zeile `url.i`.
   2.40: Apotheke Einzelauswahl. Am Vortag Dienst (OA: `dienstVon`, Assistent: Rufdienst `ruf`, auch Sonntag der Vorwoche über
   `wpWertAm()`; `wpLaden()` lädt Vorwoche + Vortags-Monat) → Name rot/fett (`wpNachDienst()`, `b.vd`). VCH-Assistent in INA spät oder
   Haus-/Spätdienst → auf der Station „(nachm.)“ (`wpSpaet()`, nur Werktage). `wpName()` liefert HTML.
@@ -271,6 +271,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Einladung, Personenwahl – diese gruppiert nach Rolle); `darfWp()` = Nicht-Leser oder `pa`. Regeln-Karte (`#regelKarte`) für
   Leser ausgeblendet. Start: `body.vorab` verbirgt Inhalte/Reiter, bis `render()` mit geladener Konfiguration lief (zuerst aus
   `LS_CACHE`, dann frisch) – bei der Erstanmeldung bleibt der Hintergrund leer.
+  2.43: Wochenplan ohne „0“ (Excel-Artefakt): abwesend/nicht gewählt = leeres Feld (Stationen, Funktionen, CA).
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
   `gistsAufraeumen()`): PIN-verschlüsselt wie Tagesdoku mit
   `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`, sonst `#zugang2=`. QR aus `../app/qrcode.js`.

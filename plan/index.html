@@ -873,7 +873,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.42';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.43';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1561,15 +1561,15 @@ function wpTabelle(druck){
   const we = s => werktag(s) ? '' : 'we';
   const lbl = (z, rs = 1) => `<td class="lbl ${edit && darfVerwalten() ? 'edit' : ''}" data-l="${z.l}" ${rs > 1 ? `rowspan="${rs}"` : ''}>${esc(wpTitel(z.l))}</td>`;
   const zelle = (key, s, inhalt, k) => `<td class="${we(s)} ${edit ? 'w' : ''}" data-w="${key}" data-s="${s}" ${k ? `data-k="${esc(k)}"` : ''}>${inhalt}</td>`;
-  const wahlTxt = (w, s, oben) => [...((w && w.k) || []).map(person).filter(Boolean).map(p => oben && wpWeg(p, s) ? '0' : wpName(p, s)), ...(w && w.t ? [esc(w.t)] : [])].join('/ ');   // HTML
-  /* je ausgewaehlter Person eine Zeile (wie Excel); an Werktagen ohne Auswahl bzw. abwesend „0“ (nullen) */
-  const stationZeilen = (key, min, nullen) => {   // min: Zahl oder Funktion der belegten Zeilen
+  const wahlTxt = (w, s, oben) => [...((w && w.k) || []).map(person).filter(p => p && !(oben && wpWeg(p, s))).map(p => wpName(p, s)), ...(w && w.t ? [esc(w.t)] : [])].join('/ ');   // HTML
+  /* je ausgewaehlter Person eine Zeile (wie Excel); ohne Auswahl bzw. abwesend bleibt das Feld leer (2.43: keine „0“ mehr) */
+  const stationZeilen = (key, min) => {   // min: Zahl oder Funktion der belegten Zeilen
     const ks = [], txt = tage.map(s => (wpWert(key, s) || {}).t || '');
     tage.forEach(s => ((wpWert(key, s) || {}).k || []).forEach(k => { if(!ks.includes(k) && person(k)) ks.push(k); }));
     const zeilen = [...ks, ...(txt.some(Boolean) ? ['#t'] : [])];
     return Array.from({length: Math.max(typeof min === 'function' ? min(zeilen.length) : min, zeilen.length)}, (_, i) => { const k = zeilen[i];
       return tage.map(s => { const w = wpWert(key, s) || {};
-        const v = k === '#t' ? esc(txt[tage.indexOf(s)]) : k ? ((w.k || []).includes(k) && !wpWeg(person(k), s) ? wpName(person(k), s, true) : nullen && werktag(s) ? '0' : '') : '';
+        const v = k === '#t' ? esc(txt[tage.indexOf(s)]) : k ? ((w.k || []).includes(k) && !wpWeg(person(k), s) ? wpName(person(k), s, true) : '') : '';
         return zelle(key, s, v, k && k !== '#t' && (w.k || []).includes(k) ? k : ''); }).join(''); });
   };
   let h = `<table class="wpx"><colgroup><col class="wp-l">${tage.map(() => '<col>').join('')}</colgroup><tr class="kopf"><td rowspan="2">Datum</td>${tage.map(s => `<td>${pad(+s.slice(8))}.${s.slice(5, 7)}.${s.slice(0, 4)}</td>`).join('')}</tr>`
@@ -1581,11 +1581,11 @@ function wpTabelle(druck){
       if(druck && z.nurBelegt && !tage.some(s => (!z.tage || z.tage.includes(wt(s))) && txt(s))) continue;
       h += `<tr class="${z.kl || ''}">${lbl(z)}${tage.map(s => z.tage && !z.tage.includes(wt(s)) ? `<td class="${we(s)}"></td>` : zelle(z.id, s, txt(s))).join('')}</tr>`;
     }else if(z.art === 'station'){
-      const rz = stationZeilen(z.id, z.n, true);
+      const rz = stationZeilen(z.id, z.n);
       rz.forEach((r, i) => { h += `<tr>${i ? '' : lbl(z, rz.length)}${r}</tr>`; });
     }else if(z.art === 'chef'){
       const chefs = wpSort(personen().filter(p => p.rolle === 'chef'));
-      h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${werktag(s) ? chefs.map(p => abwesend(p, s) ? '0' : wpName(p, s)).join('/ ') : ''}</td>`).join('')}</tr>`;
+      h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${werktag(s) ? chefs.filter(p => !abwesend(p, s)).map(p => wpName(p, s)).join('/ ') : ''}</td>`).join('')}</tr>`;
     }else if(z.art === 'oadienst'){
       h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${person(dienstVon(s)) ? esc(nachn(person(dienstVon(s)))) : ''}</td>`).join('')}</tr>`;
     }else if(z.art === 'urlaub'){
@@ -1608,7 +1608,7 @@ function wpRender(){
     + `<button class="btn out" id="wpRedo" title="Wiederholen (Strg+Y)" ${redoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="redo"></span></button><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
     + wpTabelle(false)
     + `<p class="wp-hilfe">${darfWp() ? 'Klick auf ein Feld wählt aus (Stationen: mehrere). Maus über dem Feld + Anfangsbuchstabe = Schnellwahl, + Entf = löschen. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat (nicht Flex- und Rufdienst). Wer unten eingetragen oder abwesend ist, steht oben nicht zur Wahl. Rot und fett: am Vortag Dienst (OA-Dienst bzw. Rufdienst). ' : 'Nur ansehen und drucken. '}`
-    + `OA Dienst, CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende erscheinen in ihrer Stationszeile als „0“.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
+    + `OA Dienst, CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende bleiben in ihrer Stationszeile leer.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
   icons($('wpEdit'));
   $('wpZur').onclick = ()=> wpWoche(-7);
   $('wpVor').onclick = ()=> wpWoche(7);
