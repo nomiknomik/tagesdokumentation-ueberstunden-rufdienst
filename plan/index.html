@@ -868,7 +868,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.36';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.37';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1580,7 +1580,7 @@ function wpRender(){
     + `<span>${kurzDat(tage[0])} – ${kurzDat(tage[6])}${tage[6].slice(0, 4)}</span><button class="btn out" id="wpVor" title="Folgewoche">›</button>`
     + `<span style="flex:1"></span><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
     + wpTabelle(false)
-    + `<p class="wp-hilfe">${darfWp() ? 'Klick auf Station, Apotheke, Prämed, Prokto oder Adipositas: Personen wählen (mehrere möglich). Graue Namen kommen aus dem Plan; Eingabefelder für Assistenten. ' : 'Nur ansehen und drucken. '}`
+    + `<p class="wp-hilfe">${darfWp() ? 'Klick auf Station, Apotheke, Prämed, Prokto oder Adipositas: Personen wählen (mehrere möglich). Graue Namen kommen aus dem Plan; Eingabefelder für Assistenten. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat. ' : 'Nur ansehen und drucken. '}`
     + `OA Dienst, CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende erscheinen in ihrer Stationszeile als „0“.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
   icons($('wpEdit'));
   $('wpZur').onclick = ()=> wpWoche(-7);
@@ -1610,6 +1610,21 @@ function wpSetzen(key, s, v){
     if(!Object.keys(z).length) delete d.z[key];
   });
 }
+/* Fortschreiben (Wunsch): neuer Wert gilt auch fuer die folgenden Werktage der Woche, solange diese leer sind oder noch
+   den alten Wert dieses Tages tragen - der erste abweichende Tag beendet die Kette. Liefert die mitgeaenderten Tage. */
+function wpFortschreiben(key, s, v){
+  const alt = JSON.stringify(wpWert(key, s) ?? ''), leer = x => x == null || x === '' || (typeof x === 'object' && !(x.k || []).length && !x.t);
+  const mit = [];
+  if(werktag(s) && !leer(v)) for(let x = plus(s, 1); x < plus(wpMo, 7); x = plus(x, 1)){
+    if(!werktag(x)) continue;
+    const w = wpWert(key, x);
+    if(!leer(w) && JSON.stringify(w) !== alt) break;
+    mit.push(x);
+  }
+  wpSetzen(key, s, v);
+  mit.forEach(x => wpSetzen(key, x, clone(v)));
+  return mit;
+}
 function wpWahl(id, s){
   const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), w = wpWert(id, s) || {k: [], t: ''};
   const z = WP_ZEILEN.find(x => x.id === id);
@@ -1618,15 +1633,17 @@ function wpWahl(id, s){
         return `<label><input type="checkbox" value="${esc(p.k)}" ${(w.k || []).includes(p.k) ? 'checked' : ''}>${esc(p.name || p.k)}${a ? ` <small>${esc(ABW_NAME[a] || a)}</small>` : halbWeg(p, s) ? ` <small>${HALB_TXT[halbWeg(p, s)]}</small>` : ''}</label>`; }).join('')}</div>`
     + `<label class="f" style="display:block;margin-top:8px">Weitere (Freitext)<input id="wpT" value="${esc(w.t || '')}" style="width:100%"></label>`
     + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="wpOk">Übernehmen</button>`
-    + `<button class="btn out" id="wpWoche" title="Gleiche Auswahl für alle Werktage dieser Woche">Für Mo–Fr</button><button class="btn gh" id="wpLeer">Leeren</button></div>`,
+    + `<button class="btn out" id="wpWoche" title="Gleiche Auswahl für alle Werktage dieser Woche (überschreibt)">Für Mo–Fr</button><button class="btn gh" id="wpLeer">Leeren</button></div>`,
     dlg => {
       const wert = () => ({k: [...dlg.querySelectorAll('.wp-wahl input:checked')].map(x => x.value), t: dlg.querySelector('#wpT').value.trim()});
-      dlg.querySelector('#wpOk').onclick = ()=>{ wpSetzen(id, s, wert()); zu(); wpRender(); };
+      dlg.querySelector('#wpOk').onclick = ()=>{ wpFortschreiben(id, s, wert()); zu(); wpRender(); };
       dlg.querySelector('#wpWoche').onclick = ()=>{ const v = wert(); tage.filter(werktag).forEach(x => wpSetzen(id, x, clone(v))); zu(); wpRender(); };
       dlg.querySelector('#wpLeer').onclick = ()=>{ wpSetzen(id, s, ''); zu(); wpRender(); };
     }, true);
 }
-$('wpEdit').addEventListener('change', e => { const x = e.target.closest('input[data-z]'); if(x) wpSetzen(x.dataset.z, x.dataset.s, x.value.trim()); });
+$('wpEdit').addEventListener('change', e => { const x = e.target.closest('input[data-z]'); if(!x) return;
+  const v = x.value.trim();
+  wpFortschreiben(x.dataset.z, x.dataset.s, v).forEach(t => { const y = $('wpEdit').querySelector(`input[data-z="${x.dataset.z}"][data-s="${t}"]`); if(y) y.value = v; }); });
 $('wpEdit').addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.matches('input[data-z]')) e.target.blur(); });
 $('wpEdit').addEventListener('click', e => {
   const c = e.target.closest('td.w');
