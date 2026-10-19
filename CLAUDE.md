@@ -257,6 +257,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   eigene Karte „Assistenzärzte“ (`#assTab`, Kürzel automatisch aus dem Nachnamen), nicht in der Team-Tabelle; `assistenten()`.
   Wochenplan: alle Zeilen Auswahl (`WP_ZEILEN.liste` 'oa'|'ass'|'alle', Freitext bleibt), Assistenten-Stationen wie OA-Stationen,
   Urlaub = OA aus dem System + gewählte Assistenten; alte Text-Werte über `wpW()`. ↶/↷ in der Leiste (gemeinsamer Verlauf, 10 Schritte).
+  2.39: Prämed und alles ab INA früh Einzelauswahl (`ein`, `wpEinzel()`) wie beim OA-Dienst – Tipp-Schnellwahl als gemeinsamer
+  Baustein `kandTasten()` (auch `waehlen()`), Maus über Zelle + Buchstabe/Entf (`wpHover`; bei Stationen löscht Entf nur die Person).
+  Flex/Ruf `fort:false`. Assistenten mit Abteilung `abt` (VCH|UCH|INA, leer = VCH, `abtVon()`): Apotheke/Prämed/Stationen nur VCH
+  (`liste` 'vch'), ab INA alle. Wer unten steht (`wpUnten()`: fb/abw/frei/`url.i`) oder als OA abwesend ist (`wpWeg()`), fehlt oben
+  in der Auswahl (`oben`) und erscheint dort als „0“. OA-Abwesenheit am WE nicht eingetragen. Urlaub-Assistenten je Zeile `url.i`.
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
   `gistsAufraeumen()`): PIN-verschlüsselt wie Tagesdoku mit
   `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`, sonst `#zugang2=`. QR aus `../app/qrcode.js`.

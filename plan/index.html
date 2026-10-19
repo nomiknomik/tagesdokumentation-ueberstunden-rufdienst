@@ -774,8 +774,8 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
       <div class="card">
         <h3><span data-icon="users"></span>Assistenzärzte</h3>
         <div style="overflow-x:auto"><table class="raster" id="assTab"></table></div>
-        <div class="reihe" style="margin-top:10px"><input type="text" id="assName" placeholder="Vorname Nachname"><button class="btn out" id="assAdd"><span data-icon="plus"></span>Assistent:in</button></div>
-        <div class="hint" style="margin-top:8px">Auswahl im Wochenplan. Rechte wie PA: Plan ansehen, Wochenplan pflegen; Einladung über die Karte Zugang.</div>
+        <div class="reihe" style="margin-top:10px"><input type="text" id="assName" placeholder="Vorname Nachname"><select id="assAbt"><option>VCH</option><option>UCH</option><option>INA</option></select><button class="btn out" id="assAdd"><span data-icon="plus"></span>Assistent:in</button></div>
+        <div class="hint" style="margin-top:8px">Auswahl im Wochenplan (Apotheke, Prämed und Stationen nur VCH). Rechte wie PA: Plan ansehen, Wochenplan pflegen; Einladung über die Karte Zugang.</div>
       </div>
       <div class="card">
         <h3><span data-icon="layers"></span>Teams</h3>
@@ -870,7 +870,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.38';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.39';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1481,31 +1481,34 @@ $('druckBtn').onclick = ()=>{
    Aus dem System: OA Dienst, CA, Fortbildung, Abwesend, Urlaub. Ablage je Woche: plan/wochenplan/<Montag>.json
    = {z: {zeile: {tag: wert}}} - Auswahl {k: [Kuerzel], t: Freitext}, Eingabefeld = Text (Zeilen mit n > 1: 'id.i'). */
 const pfadWp = mo => `plan/wochenplan/${mo}.json`;
-const WP_ZEILEN = [   // liste: Auswahl aus 'oa' (Team), 'ass' (Assistenten) oder 'alle'
+/* liste: Auswahl aus 'oa' (Team), 'vch' (Assistenten der VCH), 'ass' (alle Assistenten) oder 'alle';
+   ein: Einzelauswahl wie beim OA-Dienst (Tippen, Maus + Buchstabe/Entf); fort:false = nicht fortschreiben;
+   oben: Funktion - wer unten (Fortbildung, Abwesend, Frei, Urlaub) steht oder abwesend ist, steht nicht zur Wahl */
+const WP_ZEILEN = [
   {band: 'blau'},
-  {id: 'a1', l: 'st1', art: 'station', n: 3, liste: 'ass'},
+  {id: 'a1', l: 'st1', art: 'station', n: 3, liste: 'vch', oben: true},
   {band: 'grau'},
-  {id: 'a2', l: 'st2', art: 'station', n: 4, liste: 'ass'},
-  {id: 'apo', l: 'apo', art: 'wahl', kl: 'apo', nurBelegt: true, liste: 'alle'},
-  {id: 'praemed', l: 'praemed', art: 'wahl', kl: 'blau', liste: 'alle'},
-  {id: 'o1', l: 'st1', art: 'station', n: 3, liste: 'oa'},
-  {id: 'o2', l: 'st2', art: 'station', n: 2, liste: 'oa'},
+  {id: 'a2', l: 'st2', art: 'station', n: 4, liste: 'vch', oben: true},
+  {id: 'apo', l: 'apo', art: 'wahl', kl: 'apo', nurBelegt: true, liste: 'vch', oben: true},
+  {id: 'praemed', l: 'praemed', art: 'wahl', kl: 'blau', liste: 'vch', ein: true, oben: true},
+  {id: 'o1', l: 'st1', art: 'station', n: 3, liste: 'oa', oben: true},
+  {id: 'o2', l: 'st2', art: 'station', n: 2, liste: 'oa', oben: true},
   {id: 'ca', l: 'ca', art: 'chef'},
   {band: 'orange'},
-  {id: 'inaF', l: 'inaF', art: 'wahl', liste: 'ass'},
-  {id: 'inaS', l: 'inaS', art: 'wahl', liste: 'ass'},
-  {id: 'nacht', l: 'nacht', art: 'wahl', liste: 'ass'},
-  {id: 'haus', l: 'haus', art: 'wahl', liste: 'ass'},
-  {id: 'flex', l: 'flex', art: 'wahl', liste: 'ass'},
-  {id: 'ruf', l: 'ruf', art: 'wahl', liste: 'ass'},
+  {id: 'inaF', l: 'inaF', art: 'wahl', liste: 'ass', ein: true, oben: true},
+  {id: 'inaS', l: 'inaS', art: 'wahl', liste: 'ass', ein: true, oben: true},
+  {id: 'nacht', l: 'nacht', art: 'wahl', liste: 'ass', ein: true, oben: true},
+  {id: 'haus', l: 'haus', art: 'wahl', liste: 'ass', ein: true, oben: true},
+  {id: 'flex', l: 'flex', art: 'wahl', liste: 'ass', ein: true, oben: true, fort: false},
+  {id: 'ruf', l: 'ruf', art: 'wahl', liste: 'ass', ein: true, oben: true, fort: false},
   {id: 'oa', l: 'oa', art: 'oadienst'},
   {band: 'gelb'},
-  {id: 'prokto', l: 'prokto', art: 'wahl', liste: 'alle'},
-  {id: 'adipo', l: 'adipo', art: 'wahl', liste: 'alle'},
-  {id: 'fb', l: 'fb', art: 'wahl', auto: true, liste: 'ass'},
-  {id: 'abw', l: 'abw', art: 'wahl', auto: true, liste: 'ass'},
-  {id: 'frei', l: 'frei', art: 'wahl', liste: 'ass'},
-  {id: 'url', l: 'url', art: 'urlaub', n: 4, liste: 'ass'}
+  {id: 'prokto', l: 'prokto', art: 'wahl', liste: 'ass', ein: true, oben: true},
+  {id: 'adipo', l: 'adipo', art: 'wahl', liste: 'ass', ein: true, oben: true},
+  {id: 'fb', l: 'fb', art: 'wahl', auto: true, liste: 'ass', ein: true},
+  {id: 'abw', l: 'abw', art: 'wahl', auto: true, liste: 'ass', ein: true},
+  {id: 'frei', l: 'frei', art: 'wahl', liste: 'ass', ein: true},
+  {id: 'url', l: 'url', art: 'urlaub', n: 4, liste: 'ass', ein: true}   // Assistenten je Zeile: Schluessel 'url.0', 'url.1' …
 ];
 const WP_TITEL = {st1: '3.69-3.56 +WL', st2: '3.63-3.68 +Außenlieger', apo: 'Apotheke', praemed: 'Prämed', ca: 'CA',
   inaF: 'INA früh', inaS: 'INA spät/ WE Tagdienst', nacht: 'Nachtdienst', haus: 'Hausdienst/ Spätdienst Station', flex: 'Flexdienst',
@@ -1517,7 +1520,14 @@ let wpMo = '', wpOffen = false;
 const wpDaten = () => ((files[pfadWp(wpMo)] || {}).data || {}).z || {};
 const wpW = w => typeof w === 'string' ? (w ? {k: [], t: w} : null) : w;   // 2.36 speicherte Eingabefelder als Text
 const wpWert = (z, s) => wpW((wpDaten()[z] || {})[s]);
-const wpListe = l => l === 'oa' ? personen() : l === 'ass' ? assistenten() : [...personen(), ...assistenten()];
+const ABTEILUNGEN = ['VCH', 'UCH', 'INA'];   // Assistenten (2.39), ohne Angabe = VCH
+const abtVon = p => p.abt || 'VCH';
+const wpListe = l => l === 'oa' ? personen() : l === 'ass' ? assistenten() : l === 'vch' ? assistenten().filter(p => abtVon(p) === 'VCH') : [...personen(), ...assistenten()];
+const wpZeile = key => WP_ZEILEN.find(z => z.id === key.split('.')[0]);
+/* unten eingetragen (Fortbildung, Abwesend, Frei, Urlaub): Kuerzel des Tages */
+const wpUnten = s => new Set(Object.entries(wpDaten()).filter(([key]) => /^(fb|abw|frei|url\.\d+)$/.test(key)).flatMap(([, t]) => (wpW(t[s]) || {}).k || []));
+/* nicht verfuegbar fuer Funktionen: OA laut System abwesend (nur Werktage) oder unten eingetragen */
+const wpWeg = (p, s) => !!((werktag(s) && abwesend(p, s)) || wpUnten(s).has(p.k));
 const wpSort = ps => ps.slice().sort((a, b) => nachn(a).localeCompare(nachn(b), 'de'));
 /* anwesende Haelfte bei halbem Tag: vormittags weg -> „(nachm.)“ */
 const wpName = (p, s) => nachn(p) + (halbWeg(p, s) ? (halbWeg(p, s) === 'vm' ? ' (nachm.)' : ' (vorm.)') : '');
@@ -1525,7 +1535,7 @@ function wpAuto(id, s){
   const out = [];
   for(const p of wpSort(personen())){
     const a = abwesend(p, s);
-    if(id === 'fb' && a === 'fb') out.push(nachn(p));
+    if(id === 'fb' && a === 'fb' && werktag(s)) out.push(nachn(p));   // Wochenende: OA-Abwesenheit nicht eintragen
     if(id === 'abw' && werktag(s)){
       if(['krank', 'fza', 'frei'].includes(a)) out.push(nachn(p) + (a === 'krank' ? '' : ' (' + (a === 'fza' ? 'FZA' : 'frei') + ')'));
       else if(!a && halbWeg(p, s)) out.push(nachn(p) + (halbWeg(p, s) === 'vm' ? ' (vorm.)' : ' (nachm.)'));
@@ -1537,8 +1547,8 @@ function wpTabelle(druck){
   const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), edit = !druck && darfWp();
   const we = s => werktag(s) ? '' : 'we';
   const lbl = (z, rs = 1) => `<td class="lbl ${edit && darfVerwalten() ? 'edit' : ''}" data-l="${z.l}" ${rs > 1 ? `rowspan="${rs}"` : ''}>${esc(wpTitel(z.l))}</td>`;
-  const zelle = (key, s, inhalt) => `<td class="${we(s)} ${edit ? 'w' : ''}" data-w="${key}" data-s="${s}">${inhalt}</td>`;
-  const wahlTxt = (w, s) => [...((w && w.k) || []).map(person).filter(Boolean).map(p => abwesend(p, s) ? '0' : wpName(p, s)), ...(w && w.t ? [w.t] : [])].join('/ ');
+  const zelle = (key, s, inhalt, k) => `<td class="${we(s)} ${edit ? 'w' : ''}" data-w="${key}" data-s="${s}" ${k ? `data-k="${esc(k)}"` : ''}>${inhalt}</td>`;
+  const wahlTxt = (w, s, oben) => [...((w && w.k) || []).map(person).filter(Boolean).map(p => oben && wpWeg(p, s) ? '0' : wpName(p, s)), ...(w && w.t ? [w.t] : [])].join('/ ');
   /* je ausgewaehlter Person eine Zeile (wie Excel); an Werktagen ohne Auswahl bzw. abwesend „0“ (nullen) */
   const stationZeilen = (key, min, nullen) => {   // min: Zahl oder Funktion der belegten Zeilen
     const ks = [], txt = tage.map(s => (wpWert(key, s) || {}).t || '');
@@ -1546,15 +1556,15 @@ function wpTabelle(druck){
     const zeilen = [...ks, ...(txt.some(Boolean) ? ['#t'] : [])];
     return Array.from({length: Math.max(typeof min === 'function' ? min(zeilen.length) : min, zeilen.length)}, (_, i) => { const k = zeilen[i];
       return tage.map(s => { const w = wpWert(key, s) || {};
-        const v = k === '#t' ? txt[tage.indexOf(s)] : k ? ((w.k || []).includes(k) && !abwesend(person(k), s) ? wpName(person(k), s) : nullen && werktag(s) ? '0' : '') : '';
-        return zelle(key, s, esc(v)); }).join(''); });
+        const v = k === '#t' ? txt[tage.indexOf(s)] : k ? ((w.k || []).includes(k) && !wpWeg(person(k), s) ? wpName(person(k), s) : nullen && werktag(s) ? '0' : '') : '';
+        return zelle(key, s, esc(v), k && k !== '#t' && (w.k || []).includes(k) ? k : ''); }).join(''); });
   };
   let h = `<table class="wpx"><colgroup><col class="wp-l">${tage.map(() => '<col>').join('')}</colgroup><tr class="kopf"><td rowspan="2">Datum</td>${tage.map(s => `<td>${pad(+s.slice(8))}.${s.slice(5, 7)}.${s.slice(0, 4)}</td>`).join('')}</tr>`
     + `<tr class="kopf">${tage.map(s => `<td class="wt">${['', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][wt(s)]}${feiertag(s) ? `<span style="font-weight:400"> · ${esc(feiertag(s))}</span>` : ''}</td>`).join('')}</tr>`;
   for(const z of WP_ZEILEN){
     if(z.band){ h += `<tr class="band b-${z.band}"><td></td>${tage.map(() => '<td></td>').join('')}</tr>`; continue; }
     if(z.art === 'wahl'){
-      const txt = s => [z.auto ? wpAuto(z.id, s) : '', wahlTxt(wpWert(z.id, s), s)].filter(Boolean).join('/ ');
+      const txt = s => [z.auto ? wpAuto(z.id, s) : '', wahlTxt(wpWert(z.id, s), s, z.oben)].filter(Boolean).join('/ ');
       if(druck && z.nurBelegt && !tage.some(s => txt(s))) continue;
       h += `<tr class="${z.kl || ''}">${lbl(z)}${tage.map(s => zelle(z.id, s, esc(txt(s)))).join('')}</tr>`;
     }else if(z.art === 'station'){
@@ -1567,9 +1577,11 @@ function wpTabelle(druck){
       h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${person(dienstVon(s)) ? esc(nachn(person(dienstVon(s)))) : ''}</td>`).join('')}</tr>`;
     }else if(z.art === 'urlaub'){
       /* OA mit Urlaub (aus dem System) je eine Zeile, darunter die Assistenten (Auswahl), zusammen mind. n Zeilen */
-      const ps = wpSort(personen().filter(p => tage.some(s => abwesend(p, s) === 'urlaub')));
-      ps.forEach(p => { h += `<tr class="url">${lbl(z)}${tage.map(s => `<td class="${we(s)}">${abwesend(p, s) === 'urlaub' ? esc(nachn(p)) : ''}</td>`).join('')}</tr>`; });
-      stationZeilen(z.id, c => Math.max(z.n - ps.length, edit ? c + 1 : 0), false).forEach(r => { h += `<tr class="url">${lbl(z)}${r}</tr>`; });   // im Editor immer eine freie Zeile
+      const ps = wpSort(personen().filter(p => tage.some(s => werktag(s) && abwesend(p, s) === 'urlaub')));   // Wochenende: nicht eintragen
+      ps.forEach(p => { h += `<tr class="url">${lbl(z)}${tage.map(s => `<td class="${we(s)}">${werktag(s) && abwesend(p, s) === 'urlaub' ? esc(nachn(p)) : ''}</td>`).join('')}</tr>`; });
+      const belegt = Object.keys(wpDaten()).filter(key => key.startsWith('url.')).reduce((m, key) => Math.max(m, +key.slice(4) + 1), 0);
+      for(let i = 0; i < Math.max(z.n - ps.length, belegt + (edit ? 1 : 0)); i++)   // im Editor immer eine freie Zeile
+        h += `<tr class="url">${lbl(z)}${tage.map(s => zelle('url.' + i, s, esc(wahlTxt(wpWert('url.' + i, s), s)))).join('')}</tr>`;
     }
   }
   return h + '</table>';
@@ -1582,7 +1594,7 @@ function wpRender(){
     + `<span style="flex:1"></span><button class="btn out" id="wpUndo" title="Rückgängig (Strg+Z), bis 10 Schritte" ${undoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="undo"></span></button>`
     + `<button class="btn out" id="wpRedo" title="Wiederholen (Strg+Y)" ${redoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="redo"></span></button><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
     + wpTabelle(false)
-    + `<p class="wp-hilfe">${darfWp() ? 'Klick auf Station, Apotheke, Prämed, Prokto oder Adipositas: Personen wählen (mehrere möglich). Assistenten kommen aus der Liste in den Einstellungen. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat. ' : 'Nur ansehen und drucken. '}`
+    + `<p class="wp-hilfe">${darfWp() ? 'Klick auf ein Feld wählt aus (Stationen und Apotheke: mehrere). Maus über dem Feld + Anfangsbuchstabe = Schnellwahl, + Entf = löschen. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat (nicht Flex- und Rufdienst). Wer unten eingetragen oder abwesend ist, steht oben nicht zur Wahl. ' : 'Nur ansehen und drucken. '}`
     + `OA Dienst, CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende erscheinen in ihrer Stationszeile als „0“.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
   icons($('wpEdit'));
   $('wpZur').onclick = ()=> wpWoche(-7);
@@ -1616,10 +1628,10 @@ function wpSetzen(key, s, v){
 }
 /* Fortschreiben (Wunsch): neuer Wert gilt auch fuer die folgenden Werktage der Woche, solange diese leer sind oder noch
    den alten Wert dieses Tages tragen - der erste abweichende Tag beendet die Kette. Liefert die mitgeaenderten Tage. */
-function wpFortschreiben(key, s, v){
+function wpFortschreiben(key, s, v){   // auch fuer Mehrfachauswahl; Zeilen mit fort:false nie
   const alt = JSON.stringify(wpWert(key, s) ?? ''), leer = x => x == null || x === '' || (typeof x === 'object' && !(x.k || []).length && !x.t);
   const mit = [];
-  if(werktag(s) && !leer(v)) for(let x = plus(s, 1); x < plus(wpMo, 7); x = plus(x, 1)){
+  if(werktag(s) && !leer(v) && wpZeile(key).fort !== false) for(let x = plus(s, 1); x < plus(wpMo, 7); x = plus(x, 1)){
     if(!werktag(x)) continue;
     const w = wpWert(key, x);
     if(!leer(w) && JSON.stringify(w) !== alt) break;
@@ -1629,15 +1641,17 @@ function wpFortschreiben(key, s, v){
   mit.forEach(x => wpSetzen(key, x, clone(v)));
   return mit;
 }
-function wpWahl(id, s){
-  const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), w = wpWert(id, s) || {k: [], t: ''};
-  const z = WP_ZEILEN.find(x => x.id === id);
+/* Personen, die in Zeile z am Tag s zur Wahl stehen (ausgewaehlte bleiben sichtbar) */
+const wpKandidaten = (z, l, s, gewaehlt = []) => wpSort([...new Set([...wpListe(l).filter(p => !z.oben || !wpWeg(p, s)),
+  ...gewaehlt.map(person).filter(p => p && (l === 'oa') === !LESER[p.rolle])])]);
+function wpWahl(id, s){   // Mehrfachauswahl (Stationen, Apotheke)
+  const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), w = wpWert(id, s) || {k: [], t: ''}, z = wpZeile(id);
   dialog(`<h3 style="margin:0 0 4px">${esc(wpTitel(z.l))}</h3><p class="hint" style="margin:0 0 8px">${WT[wt(s)]} ${kurzDat(s)}${s.slice(0, 4)}</p>`
-    + [['oa', 'Oberärzte'], ['ass', 'Assistenzärzte']].filter(([l]) => z.liste === 'alle' || z.liste === l).map(([l, titel]) => {
-        const ps = wpSort([...new Set([...wpListe(l), ...(w.k || []).map(person).filter(p => p && (l === 'ass') === (p.rolle === 'ass'))])]);
-        return (z.liste === 'alle' ? `<p class="hint" style="margin:8px 0 2px"><b>${titel}</b></p>` : '') + `<div class="wp-wahl">${ps.map(p => { const a = abwesend(p, s);
-          return `<label><input type="checkbox" value="${esc(p.k)}" ${(w.k || []).includes(p.k) ? 'checked' : ''}>${esc(p.name || p.k)}${a ? ` <small>${esc(ABW_NAME[a] || a)}</small>` : halbWeg(p, s) ? ` <small>${HALB_TXT[halbWeg(p, s)]}</small>` : ''}</label>`; }).join('')
-          || `<span class="hint">${l === 'ass' ? 'Noch keine Assistenzärzte – Einstellungen → Assistenzärzte.' : '–'}</span>`}</div>`; }).join('')
+    + (z.liste === 'alle' ? [['oa', 'Oberärzte'], ['ass', 'Assistenzärzte']] : [[z.liste, '']]).map(([l, titel]) => {
+        const ps = wpKandidaten(z, l, s, w.k || []);
+        return (titel ? `<p class="hint" style="margin:8px 0 2px"><b>${titel}</b></p>` : '') + `<div class="wp-wahl">${ps.map(p =>
+          `<label><input type="checkbox" value="${esc(p.k)}" ${(w.k || []).includes(p.k) ? 'checked' : ''}>${esc(p.name || p.k)}${halbWeg(p, s) ? ` <small>${HALB_TXT[halbWeg(p, s)]}</small>` : ''}</label>`).join('')
+          || `<span class="hint">${l === 'oa' ? 'niemand verfügbar' : 'Keine Assistenzärzte verfügbar (Einstellungen → Assistenzärzte).'}</span>`}</div>`; }).join('')
     + `<label class="f" style="display:block;margin-top:8px">Weitere (Freitext)<input id="wpT" value="${esc(w.t || '')}" style="width:100%"></label>`
     + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="wpOk">Übernehmen</button>`
     + `<button class="btn out" id="wpWoche" title="Gleiche Auswahl für alle Werktage dieser Woche (überschreibt)">Für Mo–Fr</button><button class="btn gh" id="wpLeer">Leeren</button></div>`,
@@ -1648,9 +1662,49 @@ function wpWahl(id, s){
       dlg.querySelector('#wpLeer').onclick = ()=>{ wpSetzen(id, s, ''); zu(); wpRender(); };
     }, true);
 }
+/* Einzelauswahl (2.39) wie beim OA-Dienst: Liste an der Maus, Anfangsbuchstaben waehlen, Entf leert */
+function wpEinzel(key, s){
+  const z = wpZeile(key), w = wpWert(key, s) || {}, akt = (w.k || [])[0] || '';
+  const setzen = v => { if(z.fort === false || !v) wpSetzen(key, s, v); else wpFortschreiben(key, s, v); zu(); wpRender(); };
+  const ps = wpKandidaten(z, z.liste, s, akt ? [akt] : []);
+  dialog(`<h3>${esc(wpTitel(z.l))} · ${WT[wt(s)]} ${kurzDat(s)}</h3>
+    <div class="unter"><b>Tippen:</b> Anfangsbuchstabe des Nachnamens <span id="tippAnz" class="tag n" style="display:none"></span></div>
+    ${ps.map(p => `<button class="kand ${p.k === akt ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b>`
+      + `<span class="tags">${p.rolle === 'ass' ? `<span class="tag n">${abtVon(p)}</span>` : ''}${halbWeg(p, s) ? `<span class="tag o">${HALB_TXT[halbWeg(p, s)]}</span>` : ''}</span></span></button>`).join('')
+      || '<div class="hint">Niemand verfügbar (Einstellungen → Assistenzärzte).</div>'}
+    <div class="fuss"><button class="btn out" id="wpFrei" title="z. B. NN">Freitext</button>${akt || w.t ? `<button class="btn out" id="wpLeer" title="Taste Entf">${icon('trash')}Leeren</button>` : ''}<button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
+    el => {
+      el.querySelectorAll('.kand[data-k]').forEach(b => b.onclick = ()=> setzen({k: [b.dataset.k], t: ''}));
+      $('dlgZu').onclick = zu;
+      $('wpFrei').onclick = ()=>{ const t = prompt('Freitext:', w.t || ''); if(t !== null) setzen(t.trim() ? {k: [], t: t.trim()} : ''); };
+      if($('wpLeer')) $('wpLeer').onclick = ()=> setzen('');
+      dialogTaste = kandTasten(el, akt || w.t ? ()=> setzen('') : null);
+    }, true);
+}
+/* Maus ueber einer Zelle + Buchstabe = Einzelauswahl mit diesem Buchstaben, + Entf/Ruecktaste = leeren */
+let wpHover = null;
+$('wpEdit').addEventListener('mouseover', e => { const c = e.target.closest('td.w'); wpHover = c ? {...c.dataset} : null; });
+$('wpEdit').addEventListener('mousemove', e => { mausXY = {x: e.clientX, y: e.clientY}; }, {passive: true});
+$('wpEdit').addEventListener('mouseleave', ()=>{ wpHover = null; });
+document.addEventListener('keydown', e => {
+  if(!wpOffen || !wpHover || $('dlg').innerHTML || !darfWp() || e.ctrlKey || e.metaKey || e.altKey) return;
+  const {w, s, k} = wpHover, z = wpZeile(w);
+  if(e.key === 'Delete' || e.key === 'Backspace'){
+    e.preventDefault();
+    if(k){ const v = wpWert(w, s) || {k: []}; wpSetzen(w, s, {k: (v.k || []).filter(x => x !== k), t: v.t || ''}); }   // Station: nur diese Person
+    else wpSetzen(w, s, '');
+    wpRender(); return;
+  }
+  if(z.ein && /^\p{L}$/u.test(e.key)){
+    e.preventDefault();
+    if(mausXY) klickXY = {...mausXY, t: Date.now()};
+    wpEinzel(w, s);
+    if(dialogTaste) dialogTaste(e);
+  }
+});
 $('wpEdit').addEventListener('click', e => {
   const c = e.target.closest('td.w');
-  if(c && darfWp()) return wpWahl(c.dataset.w, c.dataset.s);
+  if(c && darfWp()) return wpZeile(c.dataset.w).ein ? wpEinzel(c.dataset.w, c.dataset.s) : wpWahl(c.dataset.w, c.dataset.s);
   const l = e.target.closest('td.lbl.edit');
   if(l){ const v = prompt('Bezeichnung der Zeile (gilt für alle Wochen, leer = Standard):', wpTitel(l.dataset.l));
     if(v === null) return;
@@ -2054,6 +2108,41 @@ function matrixHtml(info){
   return h;
 }
 
+/* Nachname antippen (Auswahl-Dialog mit .kand-Knoepfen und #tippAnz): eindeutig -> sofort waehlen; mehrdeutig -> Liste
+   auf die Treffer reduzieren, weitere Buchstaben grenzen ein, Enter nimmt den markierten, Pfeile wechseln,
+   Rueckschritt nimmt Buchstaben zurueck, Entf = leeren. 1. Buchstabe: Anfang des Nachnamens; ab dem 2. auch
+   Nachname weiter, Initialen (Nachname + Vorname) oder Kuerzel. Liefert den Tasten-Handler fuer dialogTaste. */
+function kandTasten(el, leeren){
+  let tipp = '', wahl = 0;
+  const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const nachname = p => norm(p.name ? p.name.trim().split(/\s+/).pop() : p.k);
+  const knoepfe = [...el.querySelectorAll('.kand[data-k]')];
+  const passt = (p, t) => { const nn = nachname(p), w = norm(p.name || '').split(/\s+/), vn = w.length > 1 ? w[0] : '';
+    return nn.startsWith(t) || (t.length > 1 && (norm(p.k).startsWith(t) || (nn[0] + (vn[0] || '')).startsWith(t))); };
+  const treffer = ()=> knoepfe.filter(b => passt(person(b.dataset.k), tipp));
+  const zeigen = ()=>{
+    const t = treffer();
+    knoepfe.forEach(b => { b.style.display = !tipp || t.includes(b) ? '' : 'none'; b.style.outline = ''; });
+    if(tipp && t[wahl]) t[wahl].style.outline = '2px solid var(--primary)';
+    $('tippAnz').style.display = tipp ? '' : 'none'; $('tippAnz').textContent = tipp.toUpperCase() + '…';
+  };
+  return e => {
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    if(e.key === 'Delete' && leeren){ e.preventDefault(); leeren(); return; }
+    const t = treffer();
+    if(e.key === 'Enter' && tipp && t[wahl]){ e.preventDefault(); t[wahl].click(); return; }
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); if(t.length) wahl = (wahl + (e.key === 'ArrowDown' ? 1 : -1) + t.length) % t.length; zeigen(); return; }
+    if(e.key === 'Backspace'){ e.preventDefault(); tipp = tipp.slice(0, -1); wahl = 0; zeigen(); return; }
+    if(!/^\p{L}$/u.test(e.key)) return;
+    e.preventDefault();
+    const neu = tipp + norm(e.key);
+    const n = knoepfe.filter(b => passt(person(b.dataset.k), neu));
+    if(!n.length){ toast('Kein Nachname mit „' + neu.toUpperCase() + '…“'); return; }
+    tipp = neu; wahl = 0;
+    if(n.length === 1){ n[0].click(); return; }
+    zeigen();
+  };
+}
 function waehlen(s){
   const akt = dienstVon(s);
   const liste = diensttauglich().map(p => ({p, ...bewerte(p, s)})).sort((a, b) => b.score - a.score);
@@ -2068,40 +2157,7 @@ function waehlen(s){
     el => {
       el.querySelectorAll('[data-k]').forEach(b => b.onclick = ()=>{ einteilen(s, b.dataset.k); zu(); });
       $('dlgZu').onclick = zu;
-      /* Nachname antippen: eindeutig -> sofort eintragen; mehrdeutig -> Liste
-         auf die Treffer reduzieren, weitere Buchstaben grenzen ein, Enter nimmt
-         den markierten, Pfeile wechseln, Rueckschritt nimmt Buchstaben zurueck. */
-      let tipp = '', wahl = 0;
-      const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const nachname = p => norm(p.name ? p.name.trim().split(/\s+/).pop() : p.k);
-      const knoepfe = [...el.querySelectorAll('.kand[data-k]')];
-      /* 1. Buchstabe: Anfang des Nachnamens. Ab dem 2. auch: Nachname weiter, Initialen
-         (Nachname + Vorname) oder Kuerzel - so entscheidet der 2. Buchstabe. */
-      const passt = (p, t) => { const nn = nachname(p), w = norm(p.name || '').split(/\s+/), vn = w.length > 1 ? w[0] : '';
-        return nn.startsWith(t) || (t.length > 1 && (norm(p.k).startsWith(t) || (nn[0] + (vn[0] || '')).startsWith(t))); };
-      const treffer = ()=> knoepfe.filter(b => passt(person(b.dataset.k), tipp));
-      const zeigen = ()=>{
-        const t = treffer();
-        knoepfe.forEach(b => { b.style.display = !tipp || t.includes(b) ? '' : 'none'; b.style.outline = ''; });
-        if(tipp && t[wahl]) t[wahl].style.outline = '2px solid var(--primary)';
-        $('tippAnz').style.display = tipp ? '' : 'none'; $('tippAnz').textContent = tipp.toUpperCase() + '…';
-      };
-      dialogTaste = e => {
-        if(e.ctrlKey || e.metaKey || e.altKey) return;
-        if(e.key === 'Delete' && akt){ e.preventDefault(); einteilen(s, ''); zu(); return; }   // Entf = Leeren
-        const t = treffer();
-        if(e.key === 'Enter' && tipp && t[wahl]){ e.preventDefault(); t[wahl].click(); return; }
-        if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); if(t.length) wahl = (wahl + (e.key === 'ArrowDown' ? 1 : -1) + t.length) % t.length; zeigen(); return; }
-        if(e.key === 'Backspace'){ e.preventDefault(); tipp = tipp.slice(0, -1); wahl = 0; zeigen(); return; }
-        if(!/^\p{L}$/u.test(e.key)) return;
-        e.preventDefault();
-        const neu = tipp + norm(e.key);
-        const n = knoepfe.filter(b => passt(person(b.dataset.k), neu));
-        if(!n.length){ toast('Kein Nachname mit „' + neu.toUpperCase() + '…“'); return; }
-        tipp = neu; wahl = 0;
-        if(n.length === 1){ n[0].click(); return; }
-        zeigen();
-      };
+      dialogTaste = kandTasten(el, akt ? ()=>{ einteilen(s, ''); zu(); } : null);
     }, true);   // neben der Maus
 }
 function einteilen(s, k, auto){
@@ -3770,9 +3826,11 @@ function renderCfg(){
     const k = el.closest('tr').dataset.k, f = el.dataset.f, v = el.type === 'checkbox' ? el.checked : el.value;
     personAendern(k, f, q => { q[f] = v; });
   });
-  $('assTab').innerHTML = `<tr><th>Kürzel</th><th>Name</th><th>aktiv</th></tr>` + cfg.personen.filter(p => p.rolle === 'ass')
+  $('assTab').innerHTML = `<tr><th>Kürzel</th><th>Name</th><th>Abteilung</th><th>aktiv</th></tr>` + cfg.personen.filter(p => p.rolle === 'ass')
     .sort((a, b) => nachn(a).localeCompare(nachn(b), 'de')).map(p => `<tr data-k="${esc(p.k)}"><td><b>${esc(p.k)}</b></td>
-      <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td><td><input type="checkbox" data-f="aktiv" ${p.aktiv !== false ? 'checked' : ''}></td></tr>`).join('');
+      <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td>
+      <td><select data-f="abt">${ABTEILUNGEN.map(a => `<option ${abtVon(p) === a ? 'selected' : ''}>${a}</option>`).join('')}</select></td>
+      <td><input type="checkbox" data-f="aktiv" ${p.aktiv !== false ? 'checked' : ''}></td></tr>`).join('');
   $('assTab').querySelectorAll('[data-f]').forEach(el => el.onchange = ()=>{
     const k = el.closest('tr').dataset.k, f = el.dataset.f;
     personAendern(k, f, q => { q[f] = el.type === 'checkbox' ? el.checked : el.value.trim(); });
@@ -3836,7 +3894,7 @@ $('assAdd').onclick = ()=>{
   const name = $('assName').value.trim(); if(!name) return toast('Bitte Namen eingeben.');
   const basis = (name.split(/\s+/).pop().toUpperCase().replace(/[^A-ZÄÖÜ]/g, '') + 'XXX').slice(0, 3);
   let k = basis; for(let i = 2; person(k); i++) k = basis + i;
-  cfgAendern(`Assistent:in ${k}`, d => { if(!d.personen.some(p => p.k === k)) d.personen.push({k, name, rolle: 'ass', teams: [], aktiv: true, farbe: FARBEN[d.personen.length % FARBEN.length]}); });
+  cfgAendern(`Assistent:in ${k}`, d => { if(!d.personen.some(p => p.k === k)) d.personen.push({k, name, rolle: 'ass', abt: $('assAbt').value, teams: [], aktiv: true, farbe: FARBEN[d.personen.length % FARBEN.length]}); });
   $('assName').value = '';
 };
 $('teamAdd').onclick = ()=>{
