@@ -562,16 +562,12 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
 .wpx tr.apo td{background:#f00;color:#fff;font-weight:700}
 .wpx td.we{background:#dae3f3}
 .wpx tr.url td.we{background:#fff}
-.wpx input{border:0;width:100%;padding:0;text-align:center;font:inherit;color:inherit;background:transparent;outline:none}
-.wpx input:focus{background:#fff7d6}
 .wpx td.w{cursor:pointer}
 .wpx td.w:hover,.wpx td.lbl.edit:hover{outline:2px solid var(--primary);outline-offset:-2px}
 .wpx td.lbl.edit{cursor:pointer}
-.wpx .auto{color:#555}
-.wpx .wp-auto{display:flex;gap:4px;align-items:center;justify-content:center}
-.wpx .wp-auto input{flex:1;min-width:24px;text-align:left}
 .wpx col.wp-l{width:16%}
 #wpEdit .wp-hilfe{font-size:12px;color:var(--muted);margin:8px 0 0}
+.wp-wahl{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));column-gap:12px}
 .wp-wahl label{display:flex;gap:8px;align-items:center;padding:4px 0}
 .wp-wahl label small{color:var(--muted)}
 @media print{
@@ -776,6 +772,12 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
           „Planer“ darf signieren, Urlaub genehmigen, Team und Einstellungen ändern und Einladungen erstellen (Admin ebenso).</div>
       </div>
       <div class="card">
+        <h3><span data-icon="users"></span>Assistenzärzte</h3>
+        <div style="overflow-x:auto"><table class="raster" id="assTab"></table></div>
+        <div class="reihe" style="margin-top:10px"><input type="text" id="assName" placeholder="Vorname Nachname"><button class="btn out" id="assAdd"><span data-icon="plus"></span>Assistent:in</button></div>
+        <div class="hint" style="margin-top:8px">Auswahl im Wochenplan. Rechte wie PA: Plan ansehen, Wochenplan pflegen; Einladung über die Karte Zugang.</div>
+      </div>
+      <div class="card">
         <h3><span data-icon="layers"></span>Teams</h3>
         <div class="liste" id="teamsListe"></div>
         <div class="reihe" style="margin-top:10px"><input type="text" id="neuTeam" placeholder="Teamname"><button class="btn out" id="teamAdd"><span data-icon="plus"></span>Team</button></div>
@@ -868,7 +870,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.37';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.38';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1008,13 +1010,14 @@ let nurLesen = false;
 
 /* Lese-Zugaenge (1.86): Sekretariat und PA sind Konten, aber keine Planungspersonen (keine Dienste,
    keine Besetzung) - nur Matrix/Woche; Sekretariat traegt zusaetzlich Wuensche fuer den Chefarzt ein */
-const LESER = {sek: 'Sekretariat', pa: 'PA'};
+const LESER = {sek: 'Sekretariat', pa: 'PA', ass: 'Assistenzarzt/-ärztin'};   // 2.38: Assistenten = Konten mit Rechten wie PA
 const ROLLEN = {oa: 'Oberarzt/-ärztin', chef: 'Chefarzt', ...LESER};
 const konten = () => cfg.personen.filter(p => p.aktiv !== false);
 const personen = () => konten().filter(p => !LESER[p.rolle]);
 const person = k => cfg.personen.find(p => p.k === k);
 const diensttauglich = () => personen().filter(p => p.rolle !== 'chef');
 const ich = () => person(ichK);
+const assistenten = () => konten().filter(p => p.rolle === 'ass');
 const istLeser = () => !!(ich() && LESER[ich().rolle]);
 const rollenOpt = r => Object.entries(ROLLEN).map(([k, n]) => `<option value="${k}" ${(r || 'oa') === k ? 'selected' : ''}>${n}</option>`).join('');
 const farbe = p => p ? (p.farbe || FARBEN[cfg.personen.indexOf(p) % FARBEN.length]) : '#999';
@@ -1163,7 +1166,7 @@ function undoRedo(zurueck){
     }
   }finally{ imUndo = false; }
   (zurueck ? redoStack : undoStack).push(st);
-  undoKnoepfe(); toast(zurueck ? 'Rückgängig gemacht.' : 'Wiederholt.');
+  undoKnoepfe(); wpRender(); toast(zurueck ? 'Rückgängig gemacht.' : 'Wiederholt.');
 }
 const undoKnoepfe = ()=>{ $('undoBtn').disabled = !undoStack.length || nurLesen; $('redoBtn').disabled = !redoStack.length || nurLesen; };
 $('undoBtn').onclick = ()=> undoRedo(true);
@@ -1478,41 +1481,43 @@ $('druckBtn').onclick = ()=>{
    Aus dem System: OA Dienst, CA, Fortbildung, Abwesend, Urlaub. Ablage je Woche: plan/wochenplan/<Montag>.json
    = {z: {zeile: {tag: wert}}} - Auswahl {k: [Kuerzel], t: Freitext}, Eingabefeld = Text (Zeilen mit n > 1: 'id.i'). */
 const pfadWp = mo => `plan/wochenplan/${mo}.json`;
-const WP_ZEILEN = [
+const WP_ZEILEN = [   // liste: Auswahl aus 'oa' (Team), 'ass' (Assistenten) oder 'alle'
   {band: 'blau'},
-  {id: 'a1', l: 'st1', art: 'text', n: 3},
+  {id: 'a1', l: 'st1', art: 'station', n: 3, liste: 'ass'},
   {band: 'grau'},
-  {id: 'a2', l: 'st2', art: 'text', n: 4},
-  {id: 'apo', l: 'apo', art: 'wahl', kl: 'apo', nurBelegt: true},
-  {id: 'praemed', l: 'praemed', art: 'wahl', kl: 'blau'},
-  {id: 'o1', l: 'st1', art: 'station', n: 3},
-  {id: 'o2', l: 'st2', art: 'station', n: 2},
+  {id: 'a2', l: 'st2', art: 'station', n: 4, liste: 'ass'},
+  {id: 'apo', l: 'apo', art: 'wahl', kl: 'apo', nurBelegt: true, liste: 'alle'},
+  {id: 'praemed', l: 'praemed', art: 'wahl', kl: 'blau', liste: 'alle'},
+  {id: 'o1', l: 'st1', art: 'station', n: 3, liste: 'oa'},
+  {id: 'o2', l: 'st2', art: 'station', n: 2, liste: 'oa'},
   {id: 'ca', l: 'ca', art: 'chef'},
   {band: 'orange'},
-  {id: 'inaF', l: 'inaF', art: 'text'},
-  {id: 'inaS', l: 'inaS', art: 'text'},
-  {id: 'nacht', l: 'nacht', art: 'text'},
-  {id: 'haus', l: 'haus', art: 'text'},
-  {id: 'flex', l: 'flex', art: 'text'},
-  {id: 'ruf', l: 'ruf', art: 'text'},
+  {id: 'inaF', l: 'inaF', art: 'wahl', liste: 'ass'},
+  {id: 'inaS', l: 'inaS', art: 'wahl', liste: 'ass'},
+  {id: 'nacht', l: 'nacht', art: 'wahl', liste: 'ass'},
+  {id: 'haus', l: 'haus', art: 'wahl', liste: 'ass'},
+  {id: 'flex', l: 'flex', art: 'wahl', liste: 'ass'},
+  {id: 'ruf', l: 'ruf', art: 'wahl', liste: 'ass'},
   {id: 'oa', l: 'oa', art: 'oadienst'},
   {band: 'gelb'},
-  {id: 'prokto', l: 'prokto', art: 'wahl'},
-  {id: 'adipo', l: 'adipo', art: 'wahl'},
-  {id: 'fb', l: 'fb', art: 'auto'},
-  {id: 'abw', l: 'abw', art: 'auto'},
-  {id: 'frei', l: 'frei', art: 'text'},
-  {id: 'url', l: 'url', art: 'urlaub', n: 4}
+  {id: 'prokto', l: 'prokto', art: 'wahl', liste: 'alle'},
+  {id: 'adipo', l: 'adipo', art: 'wahl', liste: 'alle'},
+  {id: 'fb', l: 'fb', art: 'wahl', auto: true, liste: 'ass'},
+  {id: 'abw', l: 'abw', art: 'wahl', auto: true, liste: 'ass'},
+  {id: 'frei', l: 'frei', art: 'wahl', liste: 'ass'},
+  {id: 'url', l: 'url', art: 'urlaub', n: 4, liste: 'ass'}
 ];
 const WP_TITEL = {st1: '3.69-3.56 +WL', st2: '3.63-3.68 +Außenlieger', apo: 'Apotheke', praemed: 'Prämed', ca: 'CA',
   inaF: 'INA früh', inaS: 'INA spät/ WE Tagdienst', nacht: 'Nachtdienst', haus: 'Hausdienst/ Spätdienst Station', flex: 'Flexdienst',
   ruf: 'Rufdienst', oa: 'OA Dienst', prokto: 'Prokto 8:30-12h', adipo: 'Adipositas 09:00-11:30h', fb: 'Fortbildung', abw: 'Abwesend',
   frei: 'Frei (nach Dienst)', url: 'Urlaub'};
 const wpTitel = l => (cfg.wpTitel || {})[l] || WP_TITEL[l];
-const darfWp = () => !nurLesen && (!istLeser() || ich().rolle === 'pa');   // PA darf den Wochenplan pflegen
+const darfWp = () => !nurLesen && (!istLeser() || ich().rolle !== 'sek');   // PA und Assistenten duerfen den Wochenplan pflegen
 let wpMo = '', wpOffen = false;
 const wpDaten = () => ((files[pfadWp(wpMo)] || {}).data || {}).z || {};
-const wpWert = (z, s) => (wpDaten()[z] || {})[s];
+const wpW = w => typeof w === 'string' ? (w ? {k: [], t: w} : null) : w;   // 2.36 speicherte Eingabefelder als Text
+const wpWert = (z, s) => wpW((wpDaten()[z] || {})[s]);
+const wpListe = l => l === 'oa' ? personen() : l === 'ass' ? assistenten() : [...personen(), ...assistenten()];
 const wpSort = ps => ps.slice().sort((a, b) => nachn(a).localeCompare(nachn(b), 'de'));
 /* anwesende Haelfte bei halbem Tag: vormittags weg -> „(nachm.)“ */
 const wpName = (p, s) => nachn(p) + (halbWeg(p, s) ? (halbWeg(p, s) === 'vm' ? ' (nachm.)' : ' (vorm.)') : '');
@@ -1529,46 +1534,42 @@ function wpAuto(id, s){
   return out.join('/ ');
 }
 function wpTabelle(druck){
-  const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), d = wpDaten(), edit = !druck && darfWp();
+  const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), edit = !druck && darfWp();
   const we = s => werktag(s) ? '' : 'we';
   const lbl = (z, rs = 1) => `<td class="lbl ${edit && darfVerwalten() ? 'edit' : ''}" data-l="${z.l}" ${rs > 1 ? `rowspan="${rs}"` : ''}>${esc(wpTitel(z.l))}</td>`;
-  const eing = (key, s, auto) => { const v = (d[key] || {})[s] || '';
-    if(!edit) return esc([auto, v].filter(Boolean).join('/ '));
-    const inp = `<input data-z="${key}" data-s="${s}" value="${esc(v)}" ${auto ? 'placeholder="+"' : ''}>`;
-    return auto ? `<div class="wp-auto"><span class="auto">${esc(auto)}</span>${inp}</div>` : inp; };
+  const zelle = (key, s, inhalt) => `<td class="${we(s)} ${edit ? 'w' : ''}" data-w="${key}" data-s="${s}">${inhalt}</td>`;
   const wahlTxt = (w, s) => [...((w && w.k) || []).map(person).filter(Boolean).map(p => abwesend(p, s) ? '0' : wpName(p, s)), ...(w && w.t ? [w.t] : [])].join('/ ');
+  /* je ausgewaehlter Person eine Zeile (wie Excel); an Werktagen ohne Auswahl bzw. abwesend „0“ (nullen) */
+  const stationZeilen = (key, min, nullen) => {   // min: Zahl oder Funktion der belegten Zeilen
+    const ks = [], txt = tage.map(s => (wpWert(key, s) || {}).t || '');
+    tage.forEach(s => ((wpWert(key, s) || {}).k || []).forEach(k => { if(!ks.includes(k) && person(k)) ks.push(k); }));
+    const zeilen = [...ks, ...(txt.some(Boolean) ? ['#t'] : [])];
+    return Array.from({length: Math.max(typeof min === 'function' ? min(zeilen.length) : min, zeilen.length)}, (_, i) => { const k = zeilen[i];
+      return tage.map(s => { const w = wpWert(key, s) || {};
+        const v = k === '#t' ? txt[tage.indexOf(s)] : k ? ((w.k || []).includes(k) && !abwesend(person(k), s) ? wpName(person(k), s) : nullen && werktag(s) ? '0' : '') : '';
+        return zelle(key, s, esc(v)); }).join(''); });
+  };
   let h = `<table class="wpx"><colgroup><col class="wp-l">${tage.map(() => '<col>').join('')}</colgroup><tr class="kopf"><td rowspan="2">Datum</td>${tage.map(s => `<td>${pad(+s.slice(8))}.${s.slice(5, 7)}.${s.slice(0, 4)}</td>`).join('')}</tr>`
     + `<tr class="kopf">${tage.map(s => `<td class="wt">${['', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][wt(s)]}${feiertag(s) ? `<span style="font-weight:400"> · ${esc(feiertag(s))}</span>` : ''}</td>`).join('')}</tr>`;
   for(const z of WP_ZEILEN){
     if(z.band){ h += `<tr class="band b-${z.band}"><td></td>${tage.map(() => '<td></td>').join('')}</tr>`; continue; }
-    const n = z.n || 1;
-    if(z.art === 'text'){
-      for(let i = 0; i < n; i++){ const key = n > 1 ? z.id + '.' + i : z.id;
-        h += `<tr>${i ? '' : lbl(z, n)}${tage.map(s => `<td class="${we(s)}">${eing(key, s)}</td>`).join('')}</tr>`; }
-    }else if(z.art === 'wahl'){
-      if(druck && z.nurBelegt && !tage.some(s => wahlTxt((d[z.id] || {})[s], s))) continue;
-      h += `<tr class="${z.kl || ''}">${lbl(z)}${tage.map(s => `<td class="${we(s)} ${edit ? 'w' : ''}" data-w="${z.id}" data-s="${s}">${esc(wahlTxt((d[z.id] || {})[s], s))}</td>`).join('')}</tr>`;
+    if(z.art === 'wahl'){
+      const txt = s => [z.auto ? wpAuto(z.id, s) : '', wahlTxt(wpWert(z.id, s), s)].filter(Boolean).join('/ ');
+      if(druck && z.nurBelegt && !tage.some(s => txt(s))) continue;
+      h += `<tr class="${z.kl || ''}">${lbl(z)}${tage.map(s => zelle(z.id, s, esc(txt(s)))).join('')}</tr>`;
     }else if(z.art === 'station'){
-      /* je ausgewaehlter Person eine Zeile (wie Excel); an Tagen ohne Auswahl bzw. abwesend „0“ */
-      const ks = [], txt = tage.map(s => ((d[z.id] || {})[s] || {}).t || '');
-      tage.forEach(s => (((d[z.id] || {})[s] || {}).k || []).forEach(k => { if(!ks.includes(k) && person(k)) ks.push(k); }));
-      const zeilen = [...ks, ...(txt.some(Boolean) ? ['#t'] : [])], m = Math.max(n, zeilen.length);
-      for(let i = 0; i < m; i++){ const k = zeilen[i];
-        h += `<tr>${i ? '' : lbl(z, m)}${tage.map(s => { const w = (d[z.id] || {})[s] || {};
-          const v = k === '#t' ? txt[tage.indexOf(s)] : k ? ((w.k || []).includes(k) && !abwesend(person(k), s) ? wpName(person(k), s) : werktag(s) ? '0' : '') : '';
-          return `<td class="${we(s)} ${edit ? 'w' : ''}" data-w="${z.id}" data-s="${s}">${esc(v)}</td>`; }).join('')}</tr>`; }
+      const rz = stationZeilen(z.id, z.n, true);
+      rz.forEach((r, i) => { h += `<tr>${i ? '' : lbl(z, rz.length)}${r}</tr>`; });
     }else if(z.art === 'chef'){
       const chefs = wpSort(personen().filter(p => p.rolle === 'chef'));
       h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${werktag(s) ? esc(chefs.map(p => abwesend(p, s) ? '0' : wpName(p, s)).join('/ ')) : ''}</td>`).join('')}</tr>`;
     }else if(z.art === 'oadienst'){
       h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${person(dienstVon(s)) ? esc(nachn(person(dienstVon(s)))) : ''}</td>`).join('')}</tr>`;
-    }else if(z.art === 'auto'){
-      h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${eing(z.id, s, wpAuto(z.id, s))}</td>`).join('')}</tr>`;
     }else if(z.art === 'urlaub'){
-      /* OA mit Urlaub in dieser Woche je eine Zeile, restliche Zeilen frei (Assistenten) */
-      const ps = wpSort(personen().filter(p => tage.some(s => abwesend(p, s) === 'urlaub'))), m = Math.max(n, ps.length + (edit ? 1 : 0));
-      for(let i = 0; i < m; i++){ const p = ps[i];
-        h += `<tr class="url">${lbl(z)}${tage.map(s => `<td class="${we(s)}">${p ? (abwesend(p, s) === 'urlaub' ? esc(nachn(p)) : '') : eing('url.' + (i - ps.length), s)}</td>`).join('')}</tr>`; }
+      /* OA mit Urlaub (aus dem System) je eine Zeile, darunter die Assistenten (Auswahl), zusammen mind. n Zeilen */
+      const ps = wpSort(personen().filter(p => tage.some(s => abwesend(p, s) === 'urlaub')));
+      ps.forEach(p => { h += `<tr class="url">${lbl(z)}${tage.map(s => `<td class="${we(s)}">${abwesend(p, s) === 'urlaub' ? esc(nachn(p)) : ''}</td>`).join('')}</tr>`; });
+      stationZeilen(z.id, c => Math.max(z.n - ps.length, edit ? c + 1 : 0), false).forEach(r => { h += `<tr class="url">${lbl(z)}${r}</tr>`; });   // im Editor immer eine freie Zeile
     }
   }
   return h + '</table>';
@@ -1578,14 +1579,17 @@ function wpRender(){
   const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i));
   $('wpEdit').innerHTML = `<div class="wp-leiste"><button class="btn out" id="wpZur" title="Vorwoche">‹</button><b>KW ${kw(plus(wpMo, 3))}</b>`
     + `<span>${kurzDat(tage[0])} – ${kurzDat(tage[6])}${tage[6].slice(0, 4)}</span><button class="btn out" id="wpVor" title="Folgewoche">›</button>`
-    + `<span style="flex:1"></span><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
+    + `<span style="flex:1"></span><button class="btn out" id="wpUndo" title="Rückgängig (Strg+Z), bis 10 Schritte" ${undoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="undo"></span></button>`
+    + `<button class="btn out" id="wpRedo" title="Wiederholen (Strg+Y)" ${redoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="redo"></span></button><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
     + wpTabelle(false)
-    + `<p class="wp-hilfe">${darfWp() ? 'Klick auf Station, Apotheke, Prämed, Prokto oder Adipositas: Personen wählen (mehrere möglich). Graue Namen kommen aus dem Plan; Eingabefelder für Assistenten. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat. ' : 'Nur ansehen und drucken. '}`
+    + `<p class="wp-hilfe">${darfWp() ? 'Klick auf Station, Apotheke, Prämed, Prokto oder Adipositas: Personen wählen (mehrere möglich). Assistenten kommen aus der Liste in den Einstellungen. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat. ' : 'Nur ansehen und drucken. '}`
     + `OA Dienst, CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende erscheinen in ihrer Stationszeile als „0“.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
   icons($('wpEdit'));
   $('wpZur').onclick = ()=> wpWoche(-7);
   $('wpVor').onclick = ()=> wpWoche(7);
   $('wpZu').onclick = wpZu;
+  $('wpUndo').onclick = ()=> undoRedo(true);
+  $('wpRedo').onclick = ()=> undoRedo(false);
   $('wpDruck').onclick = wpDrucken;
 }
 async function wpLaden(){
@@ -1629,8 +1633,11 @@ function wpWahl(id, s){
   const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), w = wpWert(id, s) || {k: [], t: ''};
   const z = WP_ZEILEN.find(x => x.id === id);
   dialog(`<h3 style="margin:0 0 4px">${esc(wpTitel(z.l))}</h3><p class="hint" style="margin:0 0 8px">${WT[wt(s)]} ${kurzDat(s)}${s.slice(0, 4)}</p>`
-    + `<div class="wp-wahl">${wpSort(personen()).map(p => { const a = abwesend(p, s);
-        return `<label><input type="checkbox" value="${esc(p.k)}" ${(w.k || []).includes(p.k) ? 'checked' : ''}>${esc(p.name || p.k)}${a ? ` <small>${esc(ABW_NAME[a] || a)}</small>` : halbWeg(p, s) ? ` <small>${HALB_TXT[halbWeg(p, s)]}</small>` : ''}</label>`; }).join('')}</div>`
+    + [['oa', 'Oberärzte'], ['ass', 'Assistenzärzte']].filter(([l]) => z.liste === 'alle' || z.liste === l).map(([l, titel]) => {
+        const ps = wpSort([...new Set([...wpListe(l), ...(w.k || []).map(person).filter(p => p && (l === 'ass') === (p.rolle === 'ass'))])]);
+        return (z.liste === 'alle' ? `<p class="hint" style="margin:8px 0 2px"><b>${titel}</b></p>` : '') + `<div class="wp-wahl">${ps.map(p => { const a = abwesend(p, s);
+          return `<label><input type="checkbox" value="${esc(p.k)}" ${(w.k || []).includes(p.k) ? 'checked' : ''}>${esc(p.name || p.k)}${a ? ` <small>${esc(ABW_NAME[a] || a)}</small>` : halbWeg(p, s) ? ` <small>${HALB_TXT[halbWeg(p, s)]}</small>` : ''}</label>`; }).join('')
+          || `<span class="hint">${l === 'ass' ? 'Noch keine Assistenzärzte – Einstellungen → Assistenzärzte.' : '–'}</span>`}</div>`; }).join('')
     + `<label class="f" style="display:block;margin-top:8px">Weitere (Freitext)<input id="wpT" value="${esc(w.t || '')}" style="width:100%"></label>`
     + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="wpOk">Übernehmen</button>`
     + `<button class="btn out" id="wpWoche" title="Gleiche Auswahl für alle Werktage dieser Woche (überschreibt)">Für Mo–Fr</button><button class="btn gh" id="wpLeer">Leeren</button></div>`,
@@ -1641,10 +1648,6 @@ function wpWahl(id, s){
       dlg.querySelector('#wpLeer').onclick = ()=>{ wpSetzen(id, s, ''); zu(); wpRender(); };
     }, true);
 }
-$('wpEdit').addEventListener('change', e => { const x = e.target.closest('input[data-z]'); if(!x) return;
-  const v = x.value.trim();
-  wpFortschreiben(x.dataset.z, x.dataset.s, v).forEach(t => { const y = $('wpEdit').querySelector(`input[data-z="${x.dataset.z}"][data-s="${t}"]`); if(y) y.value = v; }); });
-$('wpEdit').addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.matches('input[data-z]')) e.target.blur(); });
 $('wpEdit').addEventListener('click', e => {
   const c = e.target.closest('td.w');
   if(c && darfWp()) return wpWahl(c.dataset.w, c.dataset.s);
@@ -1677,7 +1680,7 @@ function render(){
   $('adminLogin').classList.toggle('hidden', adminGeraet() || !ADMIN_TUER);
   todoBadge(); hilfeBadge();
   /* Lese-Zugaenge (1.86): Sekretariat Plan + Wuensche, PA nur Plan (+ Zugang in Einstellungen) */
-  const ohne = istLeser() ? ['urlaub', ...(ich().rolle === 'pa' ? ['meine'] : [])] : [];
+  const ohne = istLeser() ? ['urlaub', ...(ich().rolle !== 'sek' ? ['meine'] : [])] : [];
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('hidden', ohne.includes(b.dataset.tab)));
   $('protoBtn').classList.toggle('hidden', istLeser());
   if(ohne.includes(tab)) return document.querySelector('nav.tabs button[data-tab="plan"]').click();
@@ -3755,7 +3758,7 @@ function renderCfg(){
   setTimeout(cfgSperren);
   // Team
   $('teamTab').innerHTML = `<tr><th></th><th>Kürzel</th><th>Name</th><th>Pers.-Nr.</th><th>Rolle</th><th>Teams</th><th>Planer</th><th>aktiv</th></tr>` +
-    cfg.personen.map(p => `<tr data-k="${esc(p.k)}"><td><input type="color" class="farbe" value="${farbe(p)}" data-f="farbe"></td>
+    cfg.personen.filter(p => p.rolle !== 'ass').map(p => `<tr data-k="${esc(p.k)}"><td><input type="color" class="farbe" value="${farbe(p)}" data-f="farbe"></td>
       <td><b>${esc(p.k)}</b>${p.k === ichK ? ' <span class="tag n">ich</span>' : ''}</td>
       <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td>
       <td><input type="text" value="${esc(p.pnr || '')}" data-f="pnr" style="width:80px" inputmode="numeric" title="Personalnummer wie in TDA (für die Kompaktansicht)"></td>
@@ -3766,6 +3769,13 @@ function renderCfg(){
   $('teamTab').querySelectorAll('[data-f]').forEach(el => el.onchange = ()=>{
     const k = el.closest('tr').dataset.k, f = el.dataset.f, v = el.type === 'checkbox' ? el.checked : el.value;
     personAendern(k, f, q => { q[f] = v; });
+  });
+  $('assTab').innerHTML = `<tr><th>Kürzel</th><th>Name</th><th>aktiv</th></tr>` + cfg.personen.filter(p => p.rolle === 'ass')
+    .sort((a, b) => nachn(a).localeCompare(nachn(b), 'de')).map(p => `<tr data-k="${esc(p.k)}"><td><b>${esc(p.k)}</b></td>
+      <td><input type="text" value="${esc(p.name || '')}" data-f="name"></td><td><input type="checkbox" data-f="aktiv" ${p.aktiv !== false ? 'checked' : ''}></td></tr>`).join('');
+  $('assTab').querySelectorAll('[data-f]').forEach(el => el.onchange = ()=>{
+    const k = el.closest('tr').dataset.k, f = el.dataset.f;
+    personAendern(k, f, q => { q[f] = el.type === 'checkbox' ? el.checked : el.value.trim(); });
   });
   $('teamTab').querySelectorAll('[data-team]').forEach(el => el.onchange = ()=>{
     const k = el.closest('tr').dataset.k, t = el.dataset.team, an = el.checked;
@@ -3820,6 +3830,14 @@ $('nAdd').onclick = ()=>{
   const neu = {k, name: $('nName').value.trim(), rolle: $('nRolle').value, teams: [], aktiv: true, farbe: FARBEN[cfg.personen.length % FARBEN.length]};
   cfgAendern(`Person ${k}`, d => { if(!d.personen.some(p => p.k === k)) d.personen.push(neu); });
   $('nK').value = ''; $('nName').value = '';
+};
+/* Assistent:in (2.38): Kuerzel automatisch aus dem Nachnamen (3 Buchstaben, bei Gleichheit mit Ziffer) */
+$('assAdd').onclick = ()=>{
+  const name = $('assName').value.trim(); if(!name) return toast('Bitte Namen eingeben.');
+  const basis = (name.split(/\s+/).pop().toUpperCase().replace(/[^A-ZÄÖÜ]/g, '') + 'XXX').slice(0, 3);
+  let k = basis; for(let i = 2; person(k); i++) k = basis + i;
+  cfgAendern(`Assistent:in ${k}`, d => { if(!d.personen.some(p => p.k === k)) d.personen.push({k, name, rolle: 'ass', teams: [], aktiv: true, farbe: FARBEN[d.personen.length % FARBEN.length]}); });
+  $('assName').value = '';
 };
 $('teamAdd').onclick = ()=>{
   const n = $('neuTeam').value.trim(); if(!n) return;

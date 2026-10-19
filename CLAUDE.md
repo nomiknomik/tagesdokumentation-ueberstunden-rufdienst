@@ -248,11 +248,15 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Bänder blau/grau/orange/gelb, WE hellblau), Editor `#wpEdit` (Vollbild, Woche ‹ ›, Standard nächste Woche), Druck 1 Seite
   A4 quer (`wpTabelle(true)` in `#wochendruck`, `body.wochendruck`). Klick = Mehrauswahl + Freitext (`wpWahl()`: OA-Stationen,
   Apotheke – nur gedruckt, wenn belegt –, Prämed, Prokto, Adipositas); Station: je gewählter Person eine Zeile, sonst/abwesend „0“.
-  Assistenten-Zeilen = Eingabefelder (später Dropdown). Aus dem System: OA Dienst, CA (`rolle` chef), Fortbildung, Abwesend
+  Aus dem System: OA Dienst, CA (`rolle` chef), Fortbildung, Abwesend
   (krank/FZA/frei/½ Tag), Urlaub (je OA eine Zeile). Ablage `plan/wochenplan/<Montag>.json` = `{z:{zeile:{tag: {k,t}|text}}}`.
   Zeilentitel änderbar (`cfg.wpTitel`, nur `darfVerwalten()`); bearbeiten `darfWp()` = alle außer Sekretariat (PA ja).
   2.37 Fortschreiben (`wpFortschreiben()`): Eintrag gilt auch für folgende Werktage der Woche, solange leer oder gleich dem
   alten Wert des Tages; erster abweichender Tag beendet die Kette. „Für Mo–Fr“ überschreibt alle.
+  2.38 Assistenzärzte: Rolle `ass` in `LESER` (Rechte wie PA: Plan + Wochenplan, `darfWp()` = alle außer Sekretariat),
+  eigene Karte „Assistenzärzte“ (`#assTab`, Kürzel automatisch aus dem Nachnamen), nicht in der Team-Tabelle; `assistenten()`.
+  Wochenplan: alle Zeilen Auswahl (`WP_ZEILEN.liste` 'oa'|'ass'|'alle', Freitext bleibt), Assistenten-Stationen wie OA-Stationen,
+  Urlaub = OA aus dem System + gewählte Assistenten; alte Text-Werte über `wpW()`. ↶/↷ in der Leiste (gemeinsamer Verlauf, 10 Schritte).
   Einladung (seit 1.33, 72 h, ein Link je Person für alle Geräte; Gist `planung-einladung`, eigenes
   `gistsAufraeumen()`): PIN-verschlüsselt wie Tagesdoku mit
   `p` = Kürzel → Gerät fest dieser Person (`planung_ich`); Gist über `tagesdoku_teilen.gist`, sonst `#zugang2=`. QR aus `../app/qrcode.js`.
