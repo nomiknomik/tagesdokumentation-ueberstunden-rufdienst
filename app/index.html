@@ -451,6 +451,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
     <div class="grid2" style="margin-top:14px">
       <div class="field"><label>Stand Ende Monat</label><input type="month" id="kontoMonat"></div>
       <div class="field"><label>Saldo (Std.)</label><input id="kontoStart" inputmode="decimal" placeholder="0,00"></div>
+      <div class="field"><label>Auszahlung über 40 h ab</label><input type="month" id="kontoAuszahlAb"></div>
     </div>
     <div class="hint" id="kontoHinweis"></div>
   </div>
@@ -3363,7 +3364,7 @@ const LA_INFO = {
   796:{kurz:'Rufdienst Werktag'},  797:{kurz:'Rufdienst Wo-Ende'},
   252:{kurz:'Einspringen'},
   '031':{kurz:'Urlaubsaufschlag', unsicher:'031 Urlaubsaufschlag: Schätzung mit rund ±1 % – das Referenzfenster ist belegt, der Divisor (13 Wochen × 5,5 Tage) ruht erst auf zwei Abrechnungen.'},
-  'ÜA':{kurz:'Überstunden ausgezahlt', unsicher:'Ab September 2026: Was am Monatsende über 40 h auf dem Überstundenkonto steht, wird ausgezahlt (egal woher und wie alt), abgerechnet zwei Monate später. Satz angenommen wie RB aktiv (734); der 15-%-Zuschlag (731) bleibt. Lohnart-Nummer und Satz sind noch nicht gegen eine Abrechnung geprüft. Braucht den Kontostand im Überstundenkonto.'}
+  'ÜA':{kurz:'Überstunden ausgezahlt', unsicher:'Ab dem im Überstundenkonto eingestellten Monat (Standard Oktober 2026): Was am Monatsende über 40 h auf dem Überstundenkonto steht, wird ausgezahlt (egal woher und wie alt), abgerechnet zwei Monate später. Satz angenommen wie RB aktiv (734); der 15-%-Zuschlag (731) bleibt. Lohnart-Nummer und Satz sind noch nicht gegen eine Abrechnung geprüft. Braucht den Kontostand im Überstundenkonto.'}
 };
 /* Anzeigereihenfolge: die dicken Posten zuerst */
 
@@ -3599,9 +3600,10 @@ function gehaltTag(k){
    Tagen - deshalb kein Tagesanteil. Der 15-%-Zuschlag (731) bleibt.
    Bewusst ausserhalb des Rechenkerns (gehalt.js), der nur als Ganzes
    getauscht wird. */
-const UE_AUSZAHLUNG_AB = '2026-09';
+const UE_AUSZAHLUNG_AB = '2026-10';   // Standard; genauer Start noch offen (Okt./Nov. 2026), einstellbar
+const ueAuszahlAb = () => (cfg.konto || {}).auszahlAb || UE_AUSZAHLUNG_AB;
 const UE_GRENZE = 40;
-const ueKappen = (m, saldo) => m >= UE_AUSZAHLUNG_AB && saldo > UE_GRENZE ? round2(saldo - UE_GRENZE) : 0;
+const ueKappen = (m, saldo) => m >= ueAuszahlAb() && saldo > UE_GRENZE ? round2(saldo - UE_GRENZE) : 0;
 function mitAuszahlung(r, ym, std){
   if(!(std > 0)) return r;
   const satz = gehaltSaetzeSetzen(ym)[734];
@@ -3793,6 +3795,7 @@ function renderKonto(ym){
   const c = cfg.konto || {};
   $('kontoMonat').value = c.abMonat || '';
   $('kontoStart').value = c.startSaldo || '';
+  $('kontoAuszahlAb').value = ueAuszahlAb();
   const k = kontoFuer(ym);
   const h2 = x => x.toLocaleString('de-DE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' h';
   const auszahlZeilen = k => k.zurAuszahlung ? `
@@ -3830,7 +3833,7 @@ function renderKonto(ym){
     + `Fortgeschrieben seit ${monatName(c.abMonat)}. `
     + `Urlaub kommt aus dem Dienstplan; Fortbildung und Krankheit trägst du als Dienstart des Tages ein – `
     + `sie zählen dann als erfüllte Arbeitszeit. `
-    + `Ab ${monatName(UE_AUSZAHLUNG_AB)} wird am Monatsende alles über ${UE_GRENZE} h ausgezahlt (Satz wie RB aktiv, `
+    + `Ab ${monatName(ueAuszahlAb())} wird am Monatsende alles über ${UE_GRENZE} h ausgezahlt (Satz wie RB aktiv, `
     + `angenommen); die Dienstübersicht zieht es erst mit der Abrechnung zwei Monate später ab. `
     + `Weicht der Stand von der Dienstübersicht ab, trag ihn hier neu ein – ohne Stunden, die aus früheren Monaten schon zur Auszahlung anstehen.`;
 }
@@ -3921,9 +3924,10 @@ $('gmTage').addEventListener('click', e=>{
   $('actionbar').style.display = 'block';
   renderDay(); syncHeaderPad();
 });
-['kontoMonat','kontoStart'].forEach(id => $(id).addEventListener('change', ()=>{
-  cfg.konto = {abMonat: $('kontoMonat').value, startSaldo: $('kontoStart').value};
-  save(LS.cfg, cfg); renderKonto(geldMonat);
+['kontoMonat','kontoStart','kontoAuszahlAb'].forEach(id => $(id).addEventListener('change', ()=>{
+  cfg.konto = {abMonat: $('kontoMonat').value, startSaldo: $('kontoStart').value,
+               auszahlAb: $('kontoAuszahlAb').value || UE_AUSZAHLUNG_AB};
+  save(LS.cfg, cfg); renderGeldMonat();
 }));
 $('gmEinspringen').addEventListener('change', e=>{
   const n = Math.max(0, Math.round(parseNum(e.target.value)));
@@ -4040,7 +4044,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.75';
+const APP_VERSION = '1.76';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
