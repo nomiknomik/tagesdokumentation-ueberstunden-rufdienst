@@ -902,7 +902,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.47';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.48';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1550,7 +1550,7 @@ const WP_ZEILEN = [
   {id: 'adipo', l: 'adipo', art: 'wahl', liste: 'ass', ein: true, oben: true},
   {id: 'fb', l: 'fb', art: 'wahl', auto: true, liste: 'ass', ein: true},
   {id: 'abw', l: 'abw', art: 'wahl', auto: true, liste: 'ass', ein: true},
-  {id: 'frei', l: 'frei', art: 'wahl', liste: 'ass', ein: true},
+  {id: 'frei', l: 'frei', art: 'wahl', liste: 'ass', ein: true, tage: [1, 2, 3, 4, 5]},   // 2.48: frei nach Dienst nur Mo–Fr
   {id: 'url', l: 'url', art: 'urlaub', n: 4, liste: 'ass', ein: true}   // Assistenten je Zeile: Schluessel 'url.0', 'url.1' …
 ];
 const WP_TITEL = {st1: '3.69-3.56 +WL', st2: '3.63-3.68 +Außenlieger', apo: 'Apotheke', praemed: 'Prämed', ca: 'CA',
@@ -1643,12 +1643,13 @@ function wpRender(){
   $('wpEdit').innerHTML = `<div class="wp-leiste"><button class="btn out" id="wpZur" title="Vorwoche">‹</button><b>KW ${kw(plus(wpMo, 3))}</b>`
     + `<span>${kurzDat(tage[0])} – ${kurzDat(tage[6])}${tage[6].slice(0, 4)}</span><button class="btn out" id="wpVor" title="Folgewoche">›</button>`
     + `<span style="flex:1"></span>${darfWp() && assAppDa() ? '<button class="btn out" id="wpAss" title="Dienste und Abwesenheiten der Assistenten dieser Woche aus der Assistenten-App übernehmen (überschreibt die Zeilen INA, Nacht, Haus, Flex, Ruf, Fortbildung, Abwesend, Frei, Urlaub)"><span data-icon="refresh"></span>Assistenten</button>' : ''}<button class="btn out" id="wpUndo" title="Rückgängig (Strg+Z), bis 10 Schritte" ${undoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="undo"></span></button>`
-    + `<button class="btn out" id="wpRedo" title="Wiederholen (Strg+Y)" ${redoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="redo"></span></button><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
+    + `<button class="btn out" id="wpRedo" title="Wiederholen (Strg+Y)" ${redoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="redo"></span></button><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn out" id="wpMelden" title="Problem oder Idee melden"><b style="font-size:16px;line-height:1">@</b></button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
     + wpTabelle(false)
     + `<p class="wp-hilfe">${darfWp() ? 'Klick auf ein Feld wählt aus (Stationen: mehrere). Maus über dem Feld + Anfangsbuchstabe = Schnellwahl, + Entf = löschen. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat (nicht Flex- und Rufdienst). Wer unten eingetragen oder abwesend ist, steht oben nicht zur Wahl. Rot und fett: am Vortag Dienst (OA-Dienst bzw. Rufdienst). ' : 'Nur ansehen und drucken. '}`
     + `OA Dienst, CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende bleiben in ihrer Stationszeile leer.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
   icons($('wpEdit'));
   $('wpZur').onclick = ()=> wpWoche(-7);
+  $('wpMelden').onclick = ()=> $('hilfeBtn').click();   // 2.48: @ auch im Wochenplan (Vollbild deckt den Kopf ab)
   $('wpVor').onclick = ()=> wpWoche(7);
   $('wpZu').onclick = wpZu;
   $('wpUndo').onclick = ()=> undoRedo(true);
@@ -1698,6 +1699,7 @@ async function wpAssUebernehmen(auto){
     if(!p) fremd.add(e.nachname);
     for(const z of e.wp){
       if(!WP_ASS_ZEILEN.includes(z)) continue;
+      const zl = wpZeile(z); if(zl && zl.tage && !zl.tage.includes(wt(e.datum))) continue;   // 2.48: z. B. frei am WE nicht eintragen
       let key = z;
       if(z === 'url'){   // je Assistent:in eine Urlaubszeile
         const id = p ? p.k : '#' + e.nachname;

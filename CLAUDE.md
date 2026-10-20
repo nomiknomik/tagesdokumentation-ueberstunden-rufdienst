@@ -287,6 +287,8 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   2.47 Personen ohne Konto (z. B. Notaufnahme) im Wochenplan: Freitextfeld direkt im Einzel-Dialog (Enter übernimmt, Tippen dort
   ist keine Schnellwahl), Vorschläge = frühere Freitexte der geladenen Wochenpläne (`wpExterne()`, keine eigene Liste). Wert
   `{k:[], t, ext:true}`; `wpAssUebernehmen()` lässt `ext`-Felder stehen, wo die Assistenten-App nichts liefert.
+  2.48: Zeile „frei (nach Dienst)“ nur Mo–Fr (`tage` in `WP_ZEILEN`, auch beim Übernehmen aus der Assistenten-App – Zeilen mit
+  `tage` überspringen andere Wochentage); @ als Knopf in der Wochenplan-Leiste (`#wpMelden`, Vollbild deckt den Kopf ab).
   2.44 Assistenten-Karte: Sortierung aktiv > Abteilung (VCH, INA, UCH) > Nachname, inaktive blass; Löschen (Papierkorb, Rückfrage).
   Angezeigtes Kürzel `kuerzel(p)` = `p.kurz || p.k` (`pk()`, Tipp-Schnellwahl); Namensänderung setzt `kurz` neu (`kuerzelAus()`),
   `k` bleibt feste Kennung (Wochenplan-Einträge, `planung_ich`).
