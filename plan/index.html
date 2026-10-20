@@ -778,6 +778,12 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
         <h3><span data-icon="users"></span>Assistenzärzte</h3>
         <div style="overflow-x:auto"><table class="raster" id="assTab"></table></div>
         <div class="reihe" style="margin-top:10px"><input type="text" id="assName" placeholder="Vorname Nachname"><select id="assAbt"><option>VCH</option><option>UCH</option><option>INA</option></select><button class="btn out" id="assAdd"><span data-icon="plus"></span>Assistent:in</button></div>
+        <div class="reihe" style="margin-top:10px"><b style="font-size:13px">Assistenten-App:</b>
+          <input type="url" id="assAppUrl" placeholder="https://…workers.dev" style="flex:1 1 220px">
+          <input type="password" id="assAppSchl" placeholder="Schlüssel (wp_…)" autocomplete="off" style="flex:1 1 160px">
+          <button class="btn out" id="assAppTest">Testen</button></div>
+        <div class="hint" id="assAppInfo" style="margin-top:4px">Adresse und Schlüssel aus der Verwaltung der Assistenten-App (Abteilungen → Schnittstelle Wochenplan).
+          Dann übernimmt der Wochenplan Dienste und Abwesenheiten der Assistenten (Knopf „Assistenten“, beim ersten Öffnen einer leeren Woche automatisch).</div>
         <div class="hint" style="margin-top:8px">Auswahl im Wochenplan (Apotheke, Prämed und Stationen nur VCH). Zugang zur App nur mit Rolle „Wochenplan“: Plan ansehen und Wochenplan pflegen, Einladung über die Karte Zugang. Doppelt geführte Person: eine Zeile behalten (die mit Zugang), die andere auf „aktiv“ aus.</div>
       </div>
       <div class="card">
@@ -873,7 +879,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.44';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.45';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1612,7 +1618,7 @@ function wpRender(){
   const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i));
   $('wpEdit').innerHTML = `<div class="wp-leiste"><button class="btn out" id="wpZur" title="Vorwoche">‹</button><b>KW ${kw(plus(wpMo, 3))}</b>`
     + `<span>${kurzDat(tage[0])} – ${kurzDat(tage[6])}${tage[6].slice(0, 4)}</span><button class="btn out" id="wpVor" title="Folgewoche">›</button>`
-    + `<span style="flex:1"></span><button class="btn out" id="wpUndo" title="Rückgängig (Strg+Z), bis 10 Schritte" ${undoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="undo"></span></button>`
+    + `<span style="flex:1"></span>${darfWp() && assAppDa() ? '<button class="btn out" id="wpAss" title="Dienste und Abwesenheiten der Assistenten dieser Woche aus der Assistenten-App übernehmen (überschreibt die Zeilen INA, Nacht, Haus, Flex, Ruf, Fortbildung, Abwesend, Frei, Urlaub)"><span data-icon="refresh"></span>Assistenten</button>' : ''}<button class="btn out" id="wpUndo" title="Rückgängig (Strg+Z), bis 10 Schritte" ${undoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="undo"></span></button>`
     + `<button class="btn out" id="wpRedo" title="Wiederholen (Strg+Y)" ${redoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="redo"></span></button><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
     + wpTabelle(false)
     + `<p class="wp-hilfe">${darfWp() ? 'Klick auf ein Feld wählt aus (Stationen: mehrere). Maus über dem Feld + Anfangsbuchstabe = Schnellwahl, + Entf = löschen. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat (nicht Flex- und Rufdienst). Wer unten eingetragen oder abwesend ist, steht oben nicht zur Wahl. Rot und fett: am Vortag Dienst (OA-Dienst bzw. Rufdienst). ' : 'Nur ansehen und drucken. '}`
@@ -1624,12 +1630,78 @@ function wpRender(){
   $('wpUndo').onclick = ()=> undoRedo(true);
   $('wpRedo').onclick = ()=> undoRedo(false);
   $('wpDruck').onclick = wpDrucken;
+  if($('wpAss')) $('wpAss').onclick = ()=> wpAssUebernehmen(false);
 }
 async function wpLaden(){
   const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), ms = [...new Set(tage.map(ymVon))];
   const pf = [pfadWp(wpMo), pfadWp(plus(wpMo, -7)), pfadDienst(ymVon(plus(wpMo, -1))), ...ms.map(pfadDienst), ...ms.flatMap(m => personen().map(p => pfadWunsch(p.k, m)))];   // Vorwoche/Vortag: „nach Dienst“
   try{ await Promise.all([...new Set(pf)].map(x => x === pfadWp(wpMo) || !files[x] ? lesen(x) : null)); }catch(e){ toast(e.message); }
   wpRender();
+  /* leere Woche: Assistenten automatisch übernehmen (danach nur noch per Knopf, damit Korrekturen bleiben) */
+  if(darfWp() && assAppDa() && !Object.keys(wpDaten()).some(k => WP_ASS_ZEILEN.includes(k.split('.')[0]))) wpAssUebernehmen(true);
+}
+/* ---------- Assistenten aus der Assistenten-App (tagesdoku-team-ass, Cloudflare) ----------
+   GET /api/extern/woche liefert je Tag und Person die Dienste mit der Wochenplan-Zeile (dort je Dienstart eingestellt).
+   Getauschte/geänderte Dienste kommen so mit – korrigiert wird zuerst in der Assistenten-App, dann erneut übernehmen. */
+const WP_ASS_ZEILEN = ['inaF', 'inaS', 'nacht', 'haus', 'flex', 'ruf', 'fb', 'abw', 'frei', 'url'];
+const assAppDa = ()=> !!(cfg.assApp && cfg.assApp.url && cfg.assApp.schluessel);
+async function assAppHolen(von, bis){
+  const a = cfg.assApp || {};
+  if(!a.url || !a.schluessel) throw new Error('Adresse und Schlüssel der Assistenten-App fehlen (Einstellungen → Assistenzärzte).');
+  let r;
+  try{ r = await fetch(`${a.url}/api/extern/woche?von=${von}&bis=${bis}`, {headers: {authorization: 'Bearer ' + a.schluessel}, cache: 'no-store'}); }
+  catch(e){ throw new Error('Assistenten-App nicht erreichbar.'); }
+  const j = await r.json().catch(()=> ({}));
+  if(!r.ok) throw new Error(j.fehler || 'Fehler ' + r.status);
+  return j;
+}
+/* Person der Assistenten-App → Assistent:in hier: Nachname (alle Wörter) im Namen, bei mehreren auch der Vorname */
+function assZuordnen(e){
+  const n = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss');
+  const woerter = p => n(p.name || '').split(/[\s,]+/).filter(Boolean);
+  const nach = n(e.nachname).split(/[\s-]+/).filter(Boolean), vor = n(e.vorname).split(/\s+/)[0];
+  const treffer = assistenten().filter(p => p.aktiv !== false && nach.length && nach.every(w => woerter(p).includes(w)));
+  return treffer.length > 1 ? treffer.find(p => vor && woerter(p).includes(vor)) || null : treffer[0] || null;
+}
+async function wpAssUebernehmen(auto){
+  const tage = Array.from({length: 7}, (_, i) => plus(wpMo, i)), mo = wpMo;
+  let d;
+  try{ d = await assAppHolen(tage[0], tage[6]); }catch(e){ if(!auto) toast(e.message); return; }
+  if(mo !== wpMo) return;   // inzwischen andere Woche
+  const neu = {}, fremd = new Set(), urlReihe = [];
+  for(const e of d.eintraege){
+    const p = assZuordnen(e);
+    if(!p) fremd.add(e.nachname);
+    for(const z of e.wp){
+      if(!WP_ASS_ZEILEN.includes(z)) continue;
+      let key = z;
+      if(z === 'url'){   // je Assistent:in eine Urlaubszeile
+        const id = p ? p.k : '#' + e.nachname;
+        if(!urlReihe.includes(id)) urlReihe.push(id);
+        key = 'url.' + urlReihe.indexOf(id);
+      }
+      const w = ((neu[key] ||= {})[e.datum] ||= {k: [], t: ''});
+      if(p){ if(!w.k.includes(p.k)) w.k.push(p.k); }
+      else if(!w.t.split('/ ').includes(e.nachname)) w.t = [w.t, e.nachname].filter(Boolean).join('/ ');
+    }
+  }
+  /* Vergleich mit dem Stand im Plan: was würde überschrieben? */
+  const alt = wpDaten(), keys = [...new Set([...Object.keys(alt).filter(k => WP_ASS_ZEILEN.includes(k.split('.')[0])), ...Object.keys(neu)])];
+  const gleich = (a, b) => JSON.stringify(a ? {k: [...(a.k || [])].sort(), t: a.t || ''} : null) === JSON.stringify(b ? {k: [...b.k].sort(), t: b.t} : null);
+  const anders = keys.flatMap(k => tage.filter(s => !gleich(wpW((alt[k] || {})[s]), (neu[k] || {})[s])).map(s => k + s));
+  if(!anders.length){ if(!auto) toast('Wochenplan ist schon auf dem Stand der Assistenten-App.'); return; }
+  const handEintraege = keys.some(k => tage.some(s => wpW((alt[k] || {})[s])));
+  if(!auto && handEintraege && !confirm(`Assistenten übernehmen? ${anders.length} Felder ändern sich – Einträge von Hand in den Zeilen INA, Nacht, Haus, Flex, Ruf, Fortbildung, Abwesend, Frei und Urlaub werden ersetzt.`)) return;
+  aendern(pfadWp(mo), {z: {}}, 'Wochenplan: Assistenten übernommen', x => {
+    x.z = x.z || {};
+    keys.forEach(k => {
+      const z = x.z[k] || {};
+      tage.forEach(s => { if((neu[k] || {})[s]) z[s] = clone(neu[k][s]); else delete z[s]; });
+      if(Object.keys(z).length) x.z[k] = z; else delete x.z[k];
+    });
+  });
+  wpRender();
+  toast(`Assistenten übernommen (${anders.length} Felder)` + (fremd.size ? ` – ohne Zuordnung, als Text: ${[...fremd].join(', ')}` : '') + '.');
 }
 function wpWoche(n){ wpMo = plus(wpMo, n); wpRender(); wpLaden(); }
 function wpZu(){ wpOffen = false; $('wpEdit').classList.add('hidden'); $('wpEdit').innerHTML = ''; }
@@ -3850,6 +3922,8 @@ function renderCfg(){
   });
   /* 2.44: aktiv vor inaktiv, dann VCH > INA > UCH, dann Nachname */
   const abtRang = p => ({VCH: 0, INA: 1, UCH: 2})[abtVon(p)] ?? 3;
+  if(document.activeElement !== $('assAppUrl')) $('assAppUrl').value = (cfg.assApp || {}).url || '';
+  if(document.activeElement !== $('assAppSchl')) $('assAppSchl').value = (cfg.assApp || {}).schluessel || '';
   $('assTab').innerHTML = `<tr><th>Kürzel</th><th>Name</th><th>Abteilung</th><th>Rolle</th><th>aktiv</th><th></th></tr>` + cfg.personen.filter(p => ASS_ROLLEN.includes(p.rolle))
     .sort((a, b) => (a.aktiv === false) - (b.aktiv === false) || abtRang(a) - abtRang(b) || nachn(a).localeCompare(nachn(b), 'de'))
     .map(p => `<tr data-k="${esc(p.k)}" style="${p.aktiv === false ? 'opacity:.5' : ''}"><td><b>${esc(kuerzel(p))}</b></td>
@@ -3924,6 +3998,13 @@ $('nAdd').onclick = ()=>{
   $('nK').value = ''; $('nName').value = '';
 };
 /* Assistent:in (2.38): Kuerzel automatisch aus dem Nachnamen (3 Buchstaben, bei Gleichheit mit Ziffer) */
+/* Verbindung zur Assistenten-App (Cloudflare): Adresse + Schlüssel im Team-Repo (cfg.assApp) */
+const assAppSpeichern = ()=> cfgAendern('Assistenten-App', d => { d.assApp = {url: $('assAppUrl').value.trim().replace(/\/+$/, ''), schluessel: $('assAppSchl').value.trim()}; });
+$('assAppUrl').onchange = assAppSpeichern; $('assAppSchl').onchange = assAppSpeichern;
+$('assAppTest').onclick = async ()=>{
+  try{ const r = await assAppHolen(heute(), heute()); $('assAppInfo').textContent = `Verbunden ✓ – heute ${r.eintraege.length} Einträge.`; }
+  catch(e){ $('assAppInfo').textContent = 'Keine Verbindung: ' + e.message; }
+};
 $('assAdd').onclick = ()=>{
   const name = $('assName').value.trim(); if(!name) return toast('Bitte Namen eingeben.');
   const k = kuerzelAus(name);

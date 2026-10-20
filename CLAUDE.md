@@ -272,6 +272,13 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Leser ausgeblendet. Start: `body.vorab` verbirgt Inhalte/Reiter, bis `render()` mit geladener Konfiguration lief (zuerst aus
   `LS_CACHE`, dann frisch) – bei der Erstanmeldung bleibt der Hintergrund leer.
   2.43: Wochenplan ohne „0“ (Excel-Artefakt): abwesend/nicht gewählt = leeres Feld (Stationen, Funktionen, CA).
+  2.45 Assistenten aus der Assistenten-App (Cloudflare, Repo `tagesdoku-team-ass`): `cfg.assApp = {url, schluessel}` (Karte
+  Assistenzärzte), `assAppHolen()` = `GET <url>/api/extern/woche?von&bis` (Bearer-Schlüssel, CORS dort). `wpAssUebernehmen()`
+  füllt die Zeilen `WP_ASS_ZEILEN` (inaF, inaS, nacht, haus, flex, ruf, fb, abw, frei, url.i) der Woche komplett neu (Zeile je
+  Dienstart stellt die Assistenten-App ein), Zuordnung per Nachname (+ Vorname bei Gleichstand, `assZuordnen()`), sonst Name als
+  Freitext; ein `aendern()` = ein Rückgängig-Schritt. Automatisch nur in einer Woche ohne Einträge in diesen Zeilen, sonst Knopf
+  „Assistenten“ (Rückfrage, wenn Handeinträge ersetzt werden). Korrekturen von Diensten zuerst in der Assistenten-App.
+  Test lokal: Harness + `wrangler dev` der Assistenten-App (localhost ist dort für CORS erlaubt).
   2.44 Assistenten-Karte: Sortierung aktiv > Abteilung (VCH, INA, UCH) > Nachname, inaktive blass; Löschen (Papierkorb, Rückfrage).
   Angezeigtes Kürzel `kuerzel(p)` = `p.kurz || p.k` (`pk()`, Tipp-Schnellwahl); Namensänderung setzt `kurz` neu (`kuerzelAus()`),
   `k` bleibt feste Kennung (Wochenplan-Einträge, `planung_ich`).
