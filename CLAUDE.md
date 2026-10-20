@@ -371,10 +371,13 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   Feldnamen und datiert Nacht-Einsätze vor 06:00 einen Tag zurück.
 - Überstundenkonto: pauschal 30 min Pause ab 6 h von Ist UND Soll – ändern
   nur, wenn LA 731 danach gleich bleibt.
-- Ab 09/2026 werden Überstunden an Rufdienst-Beginntagen zum 734-Satz
-  ausgezahlt (`ueAuszahlStd()`, Posten „ÜA“, außerhalb gehalt.js); 731 bleibt.
-  Auf dem Konto bleiben sie, bis die TDA die Auszahlung bucht (`kontoFuer()`
-  zeigt sie nur als „davon zur Auszahlung vorgesehen“; TDA 09/2026 bestätigt).
+- Ab 09/2026 (`UE_AUSZAHLUNG_AB`, seit 1.75): Konto am Monatsende über 40 h
+  (`UE_GRENZE`) → Überschuss ausgezahlt, egal woher/wie alt (`ueKappen()` in
+  `kontoFuer()`, `zurAuszahlung`/`verbleibt`, fortgeschrieben mit 40 h), Posten
+  „ÜA“ im Leistungsmonat zum 734-Satz (Annahme „wie RB aktiv“, außerhalb
+  gehalt.js), kein Tagesanteil; 731 bleibt. Eingetragener Stand = vor offener
+  Auszahlung, wird im Startmonat ebenfalls gekappt. (Bis 1.74: Annahme
+  „Überstunden an Rufdienst-Tagen“, verworfen.)
 - Abwesenheit hängt nur an der Dienstart (`ABWESENHEIT`, `URLAUB` über
   `istUrlaubstag()`), nie an der FRN-Checkbox; ein Tag zählt nie doppelt.
 - LA 031 Aufschlag Urlaub (`urlaubsaufschlag()`): variable Bezüge der

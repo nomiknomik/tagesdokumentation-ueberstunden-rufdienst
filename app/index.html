@@ -3363,7 +3363,7 @@ const LA_INFO = {
   796:{kurz:'Rufdienst Werktag'},  797:{kurz:'Rufdienst Wo-Ende'},
   252:{kurz:'Einspringen'},
   '031':{kurz:'Urlaubsaufschlag', unsicher:'031 Urlaubsaufschlag: Schätzung mit rund ±1 % – das Referenzfenster ist belegt, der Divisor (13 Wochen × 5,5 Tage) ruht erst auf zwei Abrechnungen.'},
-  'ÜA':{kurz:'Überstunden ausgezahlt', unsicher:'Ab September 2026 angenommen: Überstunden an Tagen mit Rufdienst-Beginn werden zum Aktivzeit-Satz (wie 734) ausgezahlt; der 15-%-Zuschlag (731) bleibt. Auf dem Überstundenkonto bleiben sie, bis die Auszahlung gebucht ist. Lohnart-Nummer und Satz sind noch nicht gegen eine Abrechnung geprüft.'}
+  'ÜA':{kurz:'Überstunden ausgezahlt', unsicher:'Ab September 2026: Was am Monatsende über 40 h auf dem Überstundenkonto steht, wird ausgezahlt (egal woher und wie alt), abgerechnet zwei Monate später. Satz angenommen wie RB aktiv (734); der 15-%-Zuschlag (731) bleibt. Lohnart-Nummer und Satz sind noch nicht gegen eine Abrechnung geprüft. Braucht den Kontostand im Überstundenkonto.'}
 };
 /* Anzeigereihenfolge: die dicken Posten zuerst */
 
@@ -3551,11 +3551,11 @@ function monatsDaten(ym){
   const alle = gehaltEintraege(ym);
   const mengen = GEHALT.berechneMengen(alle, ym);
   const r0 = euroFuer(mengen, ym, extraFuer(ym));
-  const {posten, summe} = mitAuszahlung(r0, ym, auszahlStdMonat(ym));
+  const {posten, summe} = mitAuszahlung(r0, ym, kontoFuer(ym)?.zurAuszahlung || 0);
   const tage = [];
   const kandidaten = [...new Set(alle.map(e => e._appTag))].filter(k => k.startsWith(ym)).sort();
   kandidaten.forEach(k => {
-    const r = mitAuszahlung(tagesAnteil(alle, mengen, ym, k), ym, ueAuszahlStd(k));
+    const r = tagesAnteil(alle, mengen, ym, k);
     if(r.posten.length) tage.push({tag:k, ...r});
   });
   /* Urlaubstage ueber ALLE Kalendertage suchen, nicht nur ueber die mit
@@ -3589,29 +3589,19 @@ function tagesAnteil(alle, mengenMit, ym, k){
 function gehaltTag(k){
   const ym = k.slice(0,7);
   const alle = gehaltEintraege(ym);
-  return mitAuszahlung(tagesAnteil(alle, GEHALT.berechneMengen(alle, ym), ym, k), ym, ueAuszahlStd(k));
+  return tagesAnteil(alle, GEHALT.berechneMengen(alle, ym), ym, k);
 }
 
-/* Ueberstunden-Auszahlung (ab Leistungsmonat September 2026): Ueberstunden
-   eines Tages, an dem ein Rufdienst BEGINNT, werden zum Aktivzeit-Satz (734)
-   ausgezahlt (vom Konto erst, wenn die TDA die Auszahlung bucht). Der 15-%-Zuschlag (731)
-   und alle Zeitzuschlaege bleiben unveraendert. Tageswert = dieselbe
-   Ueberstundenrechnung wie im Formular (calcFor), nur positive Werte.
+/* Ueberstunden-Auszahlung (ab Leistungsmonat September 2026): steht das
+   Ueberstundenkonto am Monatsende ueber 40 h, wird alles darueber ausgezahlt
+   (egal aus welchem Monat), abgerechnet zwei Monate spaeter wie die Zuschlaege.
+   Satz angenommen wie RB aktiv (734). Haengt am Konto, nicht an einzelnen
+   Tagen - deshalb kein Tagesanteil. Der 15-%-Zuschlag (731) bleibt.
    Bewusst ausserhalb des Rechenkerns (gehalt.js), der nur als Ganzes
    getauscht wird. */
 const UE_AUSZAHLUNG_AB = '2026-09';
-function ueAuszahlStd(k){
-  if(k.slice(0,7) < UE_AUSZAHLUNG_AB) return 0;
-  if(!RUFDIENST_CODES.includes(rufdienstCode(k)) || istUrlaubstag(k)) return 0;
-  const ue = calcFor(k).ue;
-  return ue > 0 ? round2(ue) : 0;
-}
-function auszahlStdMonat(ym){
-  const [y,m] = ym.split('-').map(Number);
-  let h = 0;
-  for(let i = 0; i < new Date(Date.UTC(y, m, 0)).getUTCDate(); i++) h += ueAuszahlStd(nrIso(tagNr(`${ym}-01`) + i));
-  return round2(h);
-}
+const UE_GRENZE = 40;
+const ueKappen = (m, saldo) => m >= UE_AUSZAHLUNG_AB && saldo > UE_GRENZE ? round2(saldo - UE_GRENZE) : 0;
 function mitAuszahlung(r, ym, std){
   if(!(std > 0)) return r;
   const satz = gehaltSaetzeSetzen(ym)[734];
@@ -3757,18 +3747,19 @@ function kontoMonat(m, vorSaldo){
 function kontoFuer(ym){
   const c = cfg.konto || {};
   if(!c.abMonat || !String(c.startSaldo || '').trim()) return null;
-  if(ym <= c.abMonat) return null;
-  let saldoGesamt = parseNum(c.startSaldo);
-  let letzte = null;
+  if(ym < c.abMonat) return null;
+  /* Eingetragen wird der Stand der Dienstuebersicht VOR der Auszahlung (die
+     TDA bucht sie erst mit der Abrechnung zwei Monate spaeter). Ueber 40 h
+     geht am Monatsende in die Auszahlung, fortgeschrieben wird mit dem Rest. */
+  const start = parseNum(c.startSaldo), aus0 = ueKappen(c.abMonat, start);
+  let saldoGesamt = round2(start - aus0);
+  let letzte = {monat:c.abMonat, start:true, saldoGesamt:start, zurAuszahlung:aus0, verbleibt:saldoGesamt};
   let m = plusMonate(c.abMonat, 1);
   for(let i = 0; m <= ym && i < 120; i++){
     const k = kontoMonat(m, saldoGesamt);
-    /* Ueberstunden an Rufdienst-Tagen (ab 09/2026) sind zur Auszahlung
-       vorgesehen, bleiben aber auf dem Konto, bis die Auszahlung gebucht ist -
-       so fuehrt es die TDA (09/2026: Konto 108,92 h inklusive dieser Stunden).
-       Sinkt der Stand in der TDA nach der Auszahlung, traegt man ihn neu ein. */
-    k.zurAuszahlung = auszahlStdMonat(m);
-    saldoGesamt = k.saldoGesamt;
+    k.zurAuszahlung = ueKappen(m, k.saldoGesamt);
+    k.verbleibt = round2(k.saldoGesamt - k.zurAuszahlung);
+    saldoGesamt = k.verbleibt;
     letzte = Object.assign({monat:m}, k);
     m = plusMonate(m, 1);
   }
@@ -3803,13 +3794,24 @@ function renderKonto(ym){
   $('kontoMonat').value = c.abMonat || '';
   $('kontoStart').value = c.startSaldo || '';
   const k = kontoFuer(ym);
+  const h2 = x => x.toLocaleString('de-DE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' h';
+  const auszahlZeilen = k => k.zurAuszahlung ? `
+    <tr><td>zur Auszahlung (über ${UE_GRENZE} h, Abrechnung ${monatName(plusMonate(k.monat, 2))})</td><td class="r">${h2(k.zurAuszahlung)}</td></tr>
+    <tr class="sum"><td>bleibt auf dem Konto</td><td class="r">${std(k.verbleibt)}</td></tr>` : '';
+  if(k && k.start){
+    $('kontoInhalt').innerHTML = `<table class="patab">
+      <tr class="sum"><td>Stand eingetragen</td><td class="r">${std(k.saldoGesamt)}</td></tr>${auszahlZeilen(k)}</table>`;
+    $('kontoHinweis').innerHTML = `Der eingetragene Stand gilt für das Ende von ${monatName(c.abMonat)} – `
+      + `spätere Monate schreibt die App aus dem Dienstplan fort.`;
+    return;
+  }
   if(k) k.abdeckung = kontoAbdeckung(ym);
   if(!k){
     $('kontoInhalt').innerHTML = `<div class="hint" style="margin-top:0">Trage einmal deinen
       Kontostand aus der Dienstübersicht ein – Monat und Saldo. Ab dann schreibt die App das
-      Konto aus dem Dienstplan fort.</div>`;
-    $('kontoHinweis').innerHTML = c.abMonat && ym <= c.abMonat
-      ? `Der eingetragene Stand gilt für das Ende von ${monatName(c.abMonat)} – wähle oben einen späteren Monat.` : '';
+      Konto aus dem Dienstplan fort und rechnet die Auszahlung über ${UE_GRENZE} h aus.</div>`;
+    $('kontoHinweis').innerHTML = c.abMonat && ym < c.abMonat
+      ? `Der eingetragene Stand gilt für das Ende von ${monatName(c.abMonat)} – wähle oben diesen oder einen späteren Monat.` : '';
     return;
   }
   $('kontoInhalt').innerHTML = `<table class="patab">
@@ -3817,7 +3819,7 @@ function renderKonto(ym){
     <tr><td>Ist (geleistet und angerechnet)</td><td class="r">${k.ist.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>
     <tr><td>Saldo des Monats</td><td class="r">${std(k.saldo)}</td></tr>
     <tr class="sum"><td>Saldo gesamt</td><td class="r">${std(k.saldoGesamt)}</td></tr>
-    ${k.zurAuszahlung ? `<tr><td>davon zur Auszahlung vorgesehen (Überstunden an Rufdienst-Tagen dieses Monats)</td><td class="r">${k.zurAuszahlung.toLocaleString('de-DE',{minimumFractionDigits:2})} h</td></tr>` : ''}
+    ${auszahlZeilen(k)}
     </table>`;
   const a = k.abdeckung;
   const warnung = a.fehlend
@@ -3828,8 +3830,9 @@ function renderKonto(ym){
     + `Fortgeschrieben seit ${monatName(c.abMonat)}. `
     + `Urlaub kommt aus dem Dienstplan; Fortbildung und Krankheit trägst du als Dienstart des Tages ein – `
     + `sie zählen dann als erfüllte Arbeitszeit. `
-    + `Überstunden an Rufdienst-Tagen bleiben auf dem Konto, bis die Auszahlung gebucht ist. `
-    + `Weicht der Stand von der Dienstübersicht ab (z. B. nach einer Auszahlung), trag ihn hier einfach neu ein.`;
+    + `Ab ${monatName(UE_AUSZAHLUNG_AB)} wird am Monatsende alles über ${UE_GRENZE} h ausgezahlt (Satz wie RB aktiv, `
+    + `angenommen); die Dienstübersicht zieht es erst mit der Abrechnung zwei Monate später ab. `
+    + `Weicht der Stand von der Dienstübersicht ab, trag ihn hier neu ein – ohne Stunden, die aus früheren Monaten schon zur Auszahlung anstehen.`;
 }
 
 function renderGeldMonat(){
@@ -4037,7 +4040,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.74';
+const APP_VERSION = '1.75';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){
