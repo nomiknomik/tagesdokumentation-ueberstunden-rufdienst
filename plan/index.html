@@ -77,6 +77,8 @@ nav.tabs .ic{width:16px;height:16px}
 .bild-gross .x{position:fixed;top:8px;right:10px;width:36px;height:36px;border-radius:50%;border:0;background:#fff;font-size:18px;cursor:pointer;z-index:1}
 .meld-z{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--card);font-size:13px}
 .meld-z.erledigt{opacity:.55}
+.wp-ext{display:flex;gap:8px;margin-top:10px}
+.wp-ext input{flex:1;min-width:0}
 .meld-z.arbeit{border-color:var(--primary)}
 .meld-z .kopf select{margin-left:auto}
 .meld-z .kopf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
@@ -900,7 +902,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.46';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.47';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1707,12 +1709,16 @@ async function wpAssUebernehmen(auto){
       else if(!w.t.split('/ ').includes(e.nachname)) w.t = [w.t, e.nachname].filter(Boolean).join('/ ');
     }
   }
+  /* 2.47: von Hand eingetragene Freitexte (ext) bleiben, wo die Assistenten-App nichts liefert */
+  const alt = wpDaten();
+  Object.entries(alt).filter(([k]) => WP_ASS_ZEILEN.includes(k.split('.')[0])).forEach(([k, z]) =>
+    tage.forEach(s => { const v = wpW(z[s]); if(v && v.ext && !(neu[k] || {})[s]) (neu[k] ||= {})[s] = clone(v); }));
   /* Vergleich mit dem Stand im Plan: was würde überschrieben? */
-  const alt = wpDaten(), keys = [...new Set([...Object.keys(alt).filter(k => WP_ASS_ZEILEN.includes(k.split('.')[0])), ...Object.keys(neu)])];
+  const keys = [...new Set([...Object.keys(alt).filter(k => WP_ASS_ZEILEN.includes(k.split('.')[0])), ...Object.keys(neu)])];
   const gleich = (a, b) => JSON.stringify(a ? {k: [...(a.k || [])].sort(), t: a.t || ''} : null) === JSON.stringify(b ? {k: [...b.k].sort(), t: b.t} : null);
   const anders = keys.flatMap(k => tage.filter(s => !gleich(wpW((alt[k] || {})[s]), (neu[k] || {})[s])).map(s => k + s));
   if(!anders.length){ if(!auto) toast('Wochenplan ist schon auf dem Stand der Assistenten-App.'); return; }
-  const handEintraege = keys.some(k => tage.some(s => wpW((alt[k] || {})[s])));
+  const handEintraege = keys.some(k => tage.some(s => wpW((alt[k] || {})[s]) && !gleich(wpW(alt[k][s]), (neu[k] || {})[s])));
   if(!auto && handEintraege && !confirm(`Assistenten übernehmen? ${anders.length} Felder ändern sich – Einträge von Hand in den Zeilen INA, Nacht, Haus, Flex, Ruf, Fortbildung, Abwesend, Frei und Urlaub werden ersetzt.`)) return;
   aendern(pfadWp(mo), {z: {}}, 'Wochenplan: Assistenten übernommen', x => {
     x.z = x.z || {};
@@ -1778,6 +1784,14 @@ function wpWahl(id, s){   // Mehrfachauswahl (Stationen, Apotheke)
     }, true);
 }
 /* Einzelauswahl (2.39) wie beim OA-Dienst: Liste an der Maus, Anfangsbuchstaben waehlen, Entf leert */
+/* Freitexte (Personen ohne Konto) aus den geladenen Wochenplaenen, haeufigste zuerst – keine eigene Liste */
+function wpExterne(){
+  const n = {};
+  Object.entries(files).filter(([p, f]) => p.startsWith('plan/wochenplan/') && f && f.data).forEach(([, f]) =>
+    Object.values(f.data.z || {}).forEach(z => Object.values(z).forEach(v => { const x = wpW(v);
+      if(x && !(x.k || []).length && x.t) x.t.split('/ ').forEach(t => { t = t.trim(); if(t) n[t] = (n[t] || 0) + 1; }); })));
+  return Object.keys(n).sort((a, b) => n[b] - n[a] || a.localeCompare(b, 'de'));
+}
 function wpEinzel(key, s){
   const z = wpZeile(key), w = wpWert(key, s) || {}, akt = (w.k || [])[0] || '';
   const setzen = v => { if(z.fort === false || !v) wpSetzen(key, s, v); else wpFortschreiben(key, s, v); zu(); wpRender(); };
@@ -1787,13 +1801,22 @@ function wpEinzel(key, s){
     ${ps.map(p => `<button class="kand ${p.k === akt ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b>`
       + `<span class="tags">${p.rolle === 'ass' ? `<span class="tag n">${abtVon(p)}</span>` : ''}${halbWeg(p, s) ? `<span class="tag o">${HALB_TXT[halbWeg(p, s)]}</span>` : ''}</span></span></button>`).join('')
       || '<div class="hint">Niemand verfügbar (Einstellungen → Assistenzärzte).</div>'}
-    <div class="fuss"><button class="btn out" id="wpFrei" title="z. B. NN">Freitext</button>${akt || w.t ? `<button class="btn out" id="wpLeer" title="Taste Entf">${icon('trash')}Leeren</button>` : ''}<button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
+    <div class="wp-ext"><input id="wpFreiT" list="wpExtListe" value="${esc(akt ? '' : w.t || '')}" placeholder="Andere (z. B. Notaufnahme): Name oder Text">
+      <datalist id="wpExtListe">${wpExterne().map(t => `<option value="${esc(t)}">`).join('')}</datalist>
+      <button class="btn out" id="wpFrei" title="Enter">Übernehmen</button></div>
+    <div class="fuss">${akt || w.t ? `<button class="btn out" id="wpLeer" title="Taste Entf">${icon('trash')}Leeren</button>` : ''}<button class="btn gh" id="dlgZu">Abbrechen</button></div>`,
     el => {
       el.querySelectorAll('.kand[data-k]').forEach(b => b.onclick = ()=> setzen({k: [b.dataset.k], t: ''}));
       $('dlgZu').onclick = zu;
-      $('wpFrei').onclick = ()=>{ const t = prompt('Freitext:', w.t || ''); if(t !== null) setzen(t.trim() ? {k: [], t: t.trim()} : ''); };
+      /* 2.47 Freitext direkt im Dialog (Personen ohne Konto, z. B. Notaufnahme), Vorschlaege aus frueheren Eintraegen.
+         ext:true = von Hand -> bleibt bei „Assistenten übernehmen“, wenn die Assistenten-App fuer das Feld nichts liefert */
+      $('wpFrei').onclick = ()=>{ const t = $('wpFreiT').value.trim(); setzen(t ? {k: [], t, ext: true} : ''); };
       if($('wpLeer')) $('wpLeer').onclick = ()=> setzen('');
-      dialogTaste = kandTasten(el, akt || w.t ? ()=> setzen('') : null);
+      const kt = kandTasten(el, akt || w.t ? ()=> setzen('') : null);
+      dialogTaste = e => {
+        if(e.target.id === 'wpFreiT'){ if(e.key === 'Enter'){ e.preventDefault(); $('wpFrei').click(); } return; }   // Tippen im Feld ist keine Schnellwahl
+        kt(e);
+      };
     }, true);
 }
 /* Maus ueber einer Zelle + Buchstabe = Einzelauswahl mit diesem Buchstaben, + Entf/Ruecktaste = leeren */

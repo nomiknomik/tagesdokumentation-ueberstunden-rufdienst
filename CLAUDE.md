@@ -284,6 +284,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `#meldZahl`): Filter Status (aktiv|offen|arbeit|erledigt|alle)/Person/Suche, Status offen|arbeit|erledigt (`meldStatus()`),
   „Angezeigte kopieren“ (Text + Screenshots `meldung-<id>.jpg`, offene → in Arbeit), „Alle erledigt“. Wochenplan-Mehrauswahl:
   „Übernehmen“ = nur dieser Tag, „Für Mo–Fr“ = Woche (Einzelauswahl schreibt weiter fort).
+  2.47 Personen ohne Konto (z. B. Notaufnahme) im Wochenplan: Freitextfeld direkt im Einzel-Dialog (Enter übernimmt, Tippen dort
+  ist keine Schnellwahl), Vorschläge = frühere Freitexte der geladenen Wochenpläne (`wpExterne()`, keine eigene Liste). Wert
+  `{k:[], t, ext:true}`; `wpAssUebernehmen()` lässt `ext`-Felder stehen, wo die Assistenten-App nichts liefert.
   2.44 Assistenten-Karte: Sortierung aktiv > Abteilung (VCH, INA, UCH) > Nachname, inaktive blass; Löschen (Papierkorb, Rückfrage).
   Angezeigtes Kürzel `kuerzel(p)` = `p.kurz || p.k` (`pk()`, Tipp-Schnellwahl); Namensänderung setzt `kurz` neu (`kuerzelAus()`),
   `k` bleibt feste Kennung (Wochenplan-Einträge, `planung_ich`).
@@ -331,6 +334,17 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   weitere Gruppe in eigenem Ordner, gemeinsame Personen-/Termin-Daten). Daraus später: Wochenpläne/
   Anwesenheitslisten über alle Gruppen, Tagesdoku liest Dienste/Urlaub direkt statt Excel-Import.
   Neue Felder daher gruppenneutral benennen und Daten nie an eine Oberfläche koppeln.
+
+## Umzug auf Cloudflare (geplant, bei JEDER Änderung beachten)
+Dienstplanung (`plan/`) und Tagesdoku (`app/`) ziehen später in die Plattform `tagesdoku-team-ass` (Worker + D1) –
+eine gemeinsame Datenbank für alle Apps. Deshalb schon jetzt:
+- Eine Quelle je Fakt: Assistenten (Personen, Dienste, Abwesenheiten) kommen aus der Assistenten-App, hier nur
+  Verweis/Abbild – nie parallel pflegen. Keine Pseudo-Personen ohne Dienste anlegen; Externe = Freitext (`ext`).
+- Personen über feste Kennung (`k`, Personalnr. `pnr` wo vorhanden), nie über Anzeigenamen verknüpfen.
+- Daten nach Tag (ISO `JJJJ-MM-TT`) und Person speichern, Abgeleitetes (Zähler, Fairness, Wochenplan-Zeilen aus dem
+  System) nicht speichern, sondern berechnen. Felder gruppenneutral benennen, nicht an eine Oberfläche koppeln.
+- Neue Datenarten so anlegen, dass sie 1:1 eine D1-Tabelle werden können (flache Einträge, `von`/`am` für Änderungen).
+- Begriffe/Status wie in der Plattform (z. B. Meldungen offen|arbeit|erledigt, Dienst-Codes wie TDA).
 
 ## Geteilte Logik (in BEIDEN Tools pflegen)
 Dienstart-Labels und -Zeiten (`DIENSTART_OPTIONS` im Desktop-Tool, `DUTY` in
