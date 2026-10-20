@@ -47,6 +47,8 @@ header{position:sticky;top:0;z-index:20;background:rgba(250,245,236,.94);backdro
 nav.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px}
 nav.tabs button{border:0;background:transparent;padding:7px 11px;border-radius:999px;display:flex;gap:6px;align-items:center;
   color:var(--text2);font-weight:600;cursor:pointer}
+nav.tabs button{position:relative}
+nav.tabs .badge{top:-4px;right:-4px}
 nav.tabs button.on{background:var(--primary);color:#fff}
 nav.tabs .ic{width:16px;height:16px}
 .monat{display:flex;align-items:center;gap:6px;margin-left:auto}
@@ -66,7 +68,7 @@ nav.tabs .ic{width:16px;height:16px}
 @media (min-width:761px){ .status{width:160px;justify-content:flex-start} #statusTxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} }
 .hknopf{position:relative;border:1px solid var(--border);background:var(--card);border-radius:999px;width:38px;height:38px;display:grid;place-items:center;cursor:pointer;color:var(--text2);padding:0}
 .hknopf:hover{border-color:var(--primary);color:var(--primary)}
-.hknopf .badge{position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font:700 11px/18px system-ui,sans-serif;font-style:normal;padding:0 5px;text-align:center}
+.hknopf .badge,nav.tabs .badge{position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font:700 11px/18px system-ui,sans-serif;font-style:normal;padding:0 5px;text-align:center}
 #meldText{font:inherit;font-size:14px;border:1px solid var(--border);border-radius:12px;padding:10px;resize:vertical}
 .meld-bild{width:100%;max-height:260px;object-fit:contain;object-position:top;border:1px solid var(--border);border-radius:10px;background:#fff}
 .bild-gross{position:fixed;inset:0;z-index:100;background:rgba(20,18,16,.88);overflow:auto;-webkit-overflow-scrolling:touch;text-align:center;padding:44px 8px 8px}
@@ -75,6 +77,8 @@ nav.tabs .ic{width:16px;height:16px}
 .bild-gross .x{position:fixed;top:8px;right:10px;width:36px;height:36px;border-radius:50%;border:0;background:#fff;font-size:18px;cursor:pointer;z-index:1}
 .meld-z{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--card);font-size:13px}
 .meld-z.erledigt{opacity:.55}
+.meld-z.arbeit{border-color:var(--primary)}
+.meld-z .kopf select{margin-left:auto}
 .meld-z .kopf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
 .meld-z .kopf small{color:var(--muted)} .meld-z .kopf .btn{margin-left:auto;padding:4px 10px;font-size:12px;min-height:0}
 .meld-z p{margin:4px 0;white-space:pre-wrap}
@@ -597,6 +601,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
       <button data-tab="meine"><span data-icon="heart"></span><span class="txt">Wünsche</span></button>
       <button data-tab="urlaub"><span data-icon="sun"></span><span class="txt">Urlaub</span></button>
       <button data-tab="cfg"><span data-icon="settings"></span><span class="txt">Einstellungen</span></button>
+      <button data-tab="meld" class="hidden" title="Meldungen (@)"><b style="font-size:15px;line-height:16px">@</b><span class="txt">Meldungen</span><i class="badge hidden" id="meldZahl"></i></button>
     </nav>
     <div class="monat">
       <button class="rund" id="mZur" title="Vormonat"><span data-icon="chevronLeft"></span></button>
@@ -604,7 +609,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
       <button class="rund" id="mVor" title="Nächster Monat"><span data-icon="chevronRight"></span></button>
     </div>
     <div class="zoom"><button id="undoBtn" title="Rückgängig (Strg+Z), bis 10 Schritte"><span data-icon="undo"></span></button><button id="redoBtn" title="Wiederholen (Strg+Y)"><span data-icon="redo"></span></button><i class="zoom-trenn"></i><button id="zoomMinus" title="verkleinern (je Gerät)">−</button><span id="zoomWert">100 %</span><button id="zoomPlus" title="vergrößern (je Gerät)">+</button></div>
-    <button class="hknopf" id="hilfeBtn" title="Problem oder Idee melden"><b style="font-size:17px;line-height:1">@</b><i class="badge hidden" id="hilfeZahl"></i></button>
+    <button class="hknopf" id="hilfeBtn" title="Problem oder Idee melden"><b style="font-size:17px;line-height:1">@</b></button>
     <button class="hknopf" id="protoBtn" title="Protokoll und offene Anträge"><span data-icon="activity"></span><i class="badge hidden" id="todoZahl"></i></button>
     <button class="status" id="status" data-st="off" title="Jetzt speichern bzw. neu laden"><span data-icon="cloud"></span><span id="statusTxt">offline</span></button>
     <div class="ich" id="ichBtn" title="Angemeldet als"></div>
@@ -759,6 +764,22 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
     </div>
   </section>
 
+  <section id="tab-meld" class="hidden">
+    <div class="card">
+      <h3>Meldungen (@)</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        <select id="meldFilter"></select><select id="meldVon"></select>
+        <input id="meldSuche" placeholder="Suchen …" style="flex:1;min-width:140px">
+        <button class="btn out" id="meldKopieren"><span data-icon="copy"></span>Angezeigte als Text kopieren (+ Screenshots)</button>
+        <button class="btn out" id="meldSelbst">Selbst melden</button>
+        <button class="btn gh" id="meldAlleErledigt"><span data-icon="check"></span>Alle erledigt</button>
+        <button class="btn gh" id="meldNeu" title="Neu laden"><span data-icon="refresh"></span></button>
+      </div>
+      <div class="hint" id="meldKopiertInfo" style="margin:0 0 10px">„Als Text kopieren“ fasst die angezeigten Meldungen zusammen, setzt offene auf „in Arbeit“ und lädt ihre Screenshots als Dateien (meldung-….jpg) herunter – Text im Chat mit Claude einfügen, die Bilder dazu ziehen.</div>
+      <div id="meldListe"></div>
+    </div>
+  </section>
+
   <section id="tab-cfg" class="hidden">
     <div class="banner hidden" id="cfgHinweis">Nur Planer:innen und Admin können Team und Einstellungen ändern.</div>
     <div class="cfggrid">
@@ -879,7 +900,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.45';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.46';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1469,8 +1490,9 @@ document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = ()=>{
   if(tab === 'urlaub') urlScrollZiel = ym;
   if(tab === 'meine') fuerK = ichK;   // 1.65: beim Oeffnen immer die eigene Person
   if(tab === 'urlaub') urlK = ichK;
+  if(tab === 'meld') meldungenLaden().then(()=>{ hilfeBadge(); if(tab === 'meld') renderMeld(); }, e => toast(e.message));
   document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['plan','meine','urlaub','cfg'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
+  ['plan','meine','urlaub','cfg','meld'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
   render();
 });
 async function monatWechseln(n){
@@ -1746,11 +1768,11 @@ function wpWahl(id, s){   // Mehrfachauswahl (Stationen, Apotheke)
           `<label><input type="checkbox" value="${esc(p.k)}" ${(w.k || []).includes(p.k) ? 'checked' : ''}>${esc(p.name || p.k)}${halbWeg(p, s) ? ` <small>${HALB_TXT[halbWeg(p, s)]}</small>` : ''}</label>`).join('')
           || `<span class="hint">${l === 'oa' ? 'niemand verfügbar' : 'Keine Assistenzärzte verfügbar (Einstellungen → Assistenzärzte).'}</span>`}</div>`; }).join('')
     + `<label class="f" style="display:block;margin-top:8px">Weitere (Freitext)<input id="wpT" value="${esc(w.t || '')}" style="width:100%"></label>`
-    + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="wpOk">Übernehmen</button>`
+    + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="wpOk" title="Nur für diesen Tag">Übernehmen</button>`
     + `<button class="btn out" id="wpWoche" title="Gleiche Auswahl für alle Werktage dieser Woche (überschreibt)">Für Mo–Fr</button><button class="btn gh" id="wpLeer">Leeren</button></div>`,
     dlg => {
       const wert = () => ({k: [...dlg.querySelectorAll('.wp-wahl input:checked')].map(x => x.value), t: dlg.querySelector('#wpT').value.trim()});
-      dlg.querySelector('#wpOk').onclick = ()=>{ wpFortschreiben(id, s, wert()); zu(); wpRender(); };
+      dlg.querySelector('#wpOk').onclick = ()=>{ wpSetzen(id, s, wert()); zu(); wpRender(); };   // 2.46: nur dieser Tag, Woche ueber „Für Mo–Fr“
       dlg.querySelector('#wpWoche').onclick = ()=>{ const v = wert(); tage.filter(x => werktag(x) && (!z.tage || z.tage.includes(wt(x)))).forEach(x => wpSetzen(id, x, clone(v))); zu(); wpRender(); };
       dlg.querySelector('#wpLeer').onclick = ()=>{ wpSetzen(id, s, ''); zu(); wpRender(); };
     }, true);
@@ -1827,7 +1849,7 @@ function render(){
   $('adminLogin').classList.toggle('hidden', adminGeraet() || !ADMIN_TUER);
   todoBadge(); hilfeBadge();
   /* Lese-Zugaenge (1.86): Sekretariat Plan + Wuensche, Wochenplan (pa) nur Plan (+ Zugang in Einstellungen) */
-  const ohne = istLeser() ? ['urlaub', ...(ich().rolle !== 'sek' ? ['meine'] : [])] : [];
+  const ohne = [...(istLeser() ? ['urlaub', ...(ich().rolle !== 'sek' ? ['meine'] : [])] : []), ...(adminGeraet() ? [] : ['meld'])];
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('hidden', ohne.includes(b.dataset.tab)));
   $('protoBtn').classList.toggle('hidden', istLeser());
   if(ohne.includes(tab)) return document.querySelector('nav.tabs button[data-tab="plan"]').click();
@@ -1835,6 +1857,7 @@ function render(){
   if(tab === 'meine') renderMeine();
   if(tab === 'cfg') renderCfg();
   if(tab === 'urlaub') renderUrlaub();
+  if(tab === 'meld') renderMeld();
   if((files[pfadCfg] || {}).data) document.body.classList.remove('vorab');   // 2.42: erst jetzt sind die Rechte bekannt
 }
 
@@ -3564,7 +3587,7 @@ async function meldungenLaden(){
 }
 function hilfeBadge(){
   const n = adminGeraet() ? meldungen().filter(m => m.status !== 'erledigt').length : 0;
-  $('hilfeZahl').textContent = n; $('hilfeZahl').classList.toggle('hidden', !n);
+  $('meldZahl').textContent = n; $('meldZahl').classList.toggle('hidden', !n);
 }
 /* Screenshot gross (1.70): Ebene ueber allem statt Download; Tippen wechselt
    zwischen Fensterbreite und Originalgroesse, ✕ oder Esc schliesst */
@@ -3584,85 +3607,159 @@ async function ghRoh(pfad){   // Datei als Blob (Screenshot ansehen)
   if(!r.ok) throw new Error('GitHub antwortet mit ' + r.status + '.');
   return URL.createObjectURL(await r.blob());
 }
-$('hilfeBtn').onclick = async ()=>{
+/* 2.46 wie Assistenten-App: @ oeffnet immer nur den Meldedialog (auch auf dem Admin-Geraet). Screenshot entsteht im
+   Hintergrund, waehrend der Dialog offen ist (#dlg nie im Bild); Anhaengen Standard AUS, Vorschau erst nach dem Einschalten.
+   ⇧/Strg/⌘+Enter sendet, Esc schliesst. Liste mit Filtern im Reiter „Meldungen“ (nur Admin-Geraet). */
+$('hilfeBtn').onclick = ()=>{
   if(!zugang() || nurLesen) return toast('Melden geht nur mit Verbindung.');
-  let bild = null, fehler = '';
-  if(adminGeraet()) return meldeDialog(null, '', 'liste');   // 1.70: Admin zuerst die Meldungen, ohne Screenshot
-  $('hilfeBtn').disabled = true;
-  try{ bild = await appFoto(); }catch(e){ fehler = e.message; }
-  $('hilfeBtn').disabled = false;
-  meldeDialog(bild, fehler);
+  meldeDialog();
 };
-function meldeDialog(bild, fehler, reiter = 'neu'){
-  const adm = adminGeraet(), offen = meldungen().filter(m => m.status !== 'erledigt').length;
-  dialog(`<h3>Rückmeldung an den Admin</h3>
-    ${adm ? `<div class="seg" id="meldReiter" style="margin-bottom:10px"><button data-r="liste" class="${reiter === 'liste' ? 'on' : ''}">Meldungen (${offen})</button><button data-r="neu" class="${reiter === 'neu' ? 'on' : ''}">Melden</button></div>` : ''}
-    <div id="meldInhalt"></div>`, el => {
-    const zeig = r => {
-      reiter = r; el.querySelectorAll('#meldReiter button').forEach(b => b.classList.toggle('on', b.dataset.r === r));
-      const box = $('meldInhalt');
-      if(r === 'neu'){
-        box.innerHTML = `<div class="unter">Problem, Fehler oder Idee beschreiben.</div>
-          <textarea id="meldText" rows="5" style="width:100%;box-sizing:border-box" placeholder="Was ist passiert bzw. was wünschst du dir?"></textarea>
-          ${bild ? `<label class="f" style="flex-direction:row;align-items:center;gap:8px;margin:10px 0 6px"><input type="checkbox" id="meldBildAn"> Screenshot dieses App-Fensters anhängen</label>
-            <img class="meld-bild hidden" id="meldVorschau" src="${bild}" alt="Screenshot">` : ''}
-          <div class="fuss"><button class="btn gh" id="dlgZu">Abbrechen</button><button class="btn" id="meldSenden">${icon('send')}Senden</button></div>`;
-        icons(box);
-        $('dlgZu').onclick = zu;
-        if($('meldBildAn')) $('meldBildAn').onchange = e => $('meldVorschau').classList.toggle('hidden', !e.target.checked);   // Bild nur auf Wunsch (Standard aus)
-        $('meldText').focus();
-        $('meldSenden').onclick = async ()=>{
-          const text = $('meldText').value.trim();
-          if(!text) return toast('Bitte kurz beschreiben.');
-          const mit = bild && $('meldBildAn').checked;
-          const id = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14) + '-' + (ichK || 'X');
-          const daten = {am: Date.now(), von: ichK || '?', text, version: PLAN_VERSION, reiter: tab, monat: ym,
-            ansicht: tab === 'plan' ? ansicht : '', fenster: innerWidth + '×' + innerHeight, geraet: navigator.userAgent.slice(0, 160),
-            bild: mit ? id + '.jpg' : '', status: 'offen'};
-          $('meldSenden').disabled = true; $('meldSenden').textContent = 'Sende …';
-          try{
-            if(mit) await gh('PUT', MELD_DIR + id + '.jpg', {message: `Meldung ${id} (Bild)`, content: bild.split(',')[1]});
-            const r = await gh('PUT', MELD_DIR + id + '.json', {message: `Meldung ${id}`, content: kodieren(JSON.stringify(daten))});
-            files[MELD_DIR + id + '.json'] = {data: daten, sha: r.content && r.content.sha};
-            zu(); toast('Danke – Meldung ist beim Admin.'); hilfeBadge();
-          }catch(e){ toast(e.message); $('meldSenden').disabled = false; $('meldSenden').textContent = 'Senden'; }
-        };
-      }else{
-        box.innerHTML = '<div class="hint">Lade …</div>';
-        meldungenLaden().catch(e => toast(e.message)).then(()=>{
-          if(reiter !== 'liste') return;
-          const l = meldungen(), zeit = am => new Date(am).toLocaleString('de-DE', {day: 'numeric', month: 'numeric', year: '2-digit', hour: '2-digit', minute: '2-digit'});
-          box.innerHTML = (l.length ? l.map(m => `<div class="meld-z ${m.status === 'erledigt' ? 'erledigt' : ''}"><div class="kopf"><b>${esc(m.von)}</b><small>${zeit(m.am)} · v${esc(m.version)} · ${esc(m.reiter)}${m.ansicht ? '/' + esc(m.ansicht) : ''} · ${esc(m.monat)} · ${esc(m.fenster)}</small>
-              <button class="btn out" data-erl="${esc(m.pfad)}">${m.status === 'erledigt' ? 'wieder offen' : icon('check') + 'erledigt'}</button></div>
-              <p>${esc(m.text)}</p>${m.bild ? `<button class="btn gh" data-bild="${esc(MELD_DIR + m.bild)}" style="padding:4px 10px;font-size:12px">Screenshot ansehen</button><div data-platz="${esc(m.bild)}"></div>` : ''}</div>`).join('')
-            : '<div class="hint">Noch keine Meldungen.</div>') + `<div class="fuss"><button class="btn gh" id="dlgZu">Schließen</button></div>`;
-          icons(box); hilfeBadge();
-          $('dlgZu').onclick = zu;
-          box.querySelectorAll('[data-bild]').forEach(b => b.onclick = async ()=>{
-            b.textContent = 'Lade …';
-            try{ const u = await ghRoh(b.dataset.bild); b.remove(); const pl = box.querySelector(`[data-platz="${b.dataset.bild.slice(MELD_DIR.length)}"]`);
-              pl.innerHTML = `<img class="meld-bild" src="${u}" alt="Screenshot" title="Tippen: groß anzeigen" style="cursor:zoom-in">`;
-              pl.querySelector('img').onclick = ()=> bildGross(u); }
-            catch(e){ toast(e.message); b.textContent = 'Screenshot ansehen'; }
-          });
-          box.querySelectorAll('[data-erl]').forEach(b => b.onclick = async ()=>{
-            const pf = b.dataset.erl, f = files[pf]; b.disabled = true;
-            try{
-              const j = await gh('GET', pf), d = j ? JSON.parse(dekodieren(j.content)) : f.data;
-              d.status = d.status === 'erledigt' ? 'offen' : 'erledigt';
-              if(d.status === 'erledigt') d.erledigt = {von: ichK || 'Admin', am: Date.now()}; else delete d.erledigt;
-              const r = await gh('PUT', pf, {message: `Meldung ${d.status}`, content: kodieren(JSON.stringify(d)), ...(j ? {sha: j.sha} : {})});
-              files[pf] = {data: d, sha: r.content && r.content.sha};
-              zeig('liste');
-            }catch(e){ toast(e.message); b.disabled = false; }
-          });
-        });
-      }
+/* Geraete-Details zur Fehlersuche (Adresse ohne #…, dort koennen Codes stehen) */
+function geraetInfo(){
+  const mm = q => matchMedia(q).matches;
+  return {adresse: location.pathname, bildschirm: `${screen.width}×${screen.height}`, fenster: `${innerWidth}×${innerHeight}`,
+    pixel: Math.round(devicePixelRatio * 100) / 100, hochkant: mm('(orientation: portrait)'), touch: navigator.maxTouchPoints || 0,
+    installiert: mm('(display-mode: standalone)') || navigator.standalone === true, dunkel: mm('(prefers-color-scheme: dark)'),
+    sprache: navigator.language, online: navigator.onLine, browser: navigator.userAgent};
+}
+function meldeDialog(){
+  let bild = null;
+  const fotoP = appFoto().then(b => bild = b).catch(()=> null);
+  dialog(`<h3>Fehler oder Idee melden</h3>
+    <div class="unter">Was passt nicht, was wäre besser? Die Meldung geht an den Admin – mit Reiter, Version und Gerät, damit sie nachvollziehbar ist.</div>
+    <textarea id="meldText" rows="5" style="width:100%;box-sizing:border-box" placeholder="z. B. Beim Tippen auf … passiert nichts. / Schön wäre, wenn …"></textarea>
+    <label class="f" style="flex-direction:row;align-items:center;gap:8px;margin:10px 0 6px"><input type="checkbox" id="meldBildAn"> Screenshot anhängen</label>
+    <div id="meldVorschau" class="hidden"></div>
+    <div class="fuss"><button class="btn gh" id="dlgZu">Abbrechen</button><button class="btn" id="meldSenden">${icon('send')}Senden <small style="opacity:.7;font-weight:400">⇧/⌘ + Enter</small></button></div>`, el => {
+    $('dlgZu').onclick = zu;
+    $('meldText').focus();
+    el.addEventListener('keydown', e => {
+      if(e.key === 'Enter' && (e.shiftKey || e.ctrlKey || e.metaKey)){ e.preventDefault(); e.stopPropagation(); $('meldSenden').click(); }
+    });
+    $('meldBildAn').onchange = async ()=>{
+      const v = $('meldVorschau'), an = $('meldBildAn').checked;
+      v.classList.toggle('hidden', !an);
+      if(!an) return;
+      v.innerHTML = '<div class="hint">Screenshot wird erstellt …</div>';
+      await fotoP;
+      if($('meldVorschau')) v.innerHTML = bild ? `<img class="meld-bild" src="${bild}" alt="Screenshot">`
+        : '<div class="hint">Screenshot nicht möglich – die Meldung geht trotzdem.</div>';
     };
-    el.querySelectorAll('#meldReiter button').forEach(b => b.onclick = ()=> zeig(b.dataset.r));
-    zeig(reiter);
+    $('meldSenden').onclick = async ()=>{
+      const text = $('meldText').value.trim();
+      if(!text) return toast('Bitte kurz beschreiben, was nicht passt oder was besser wäre.');
+      const b = $('meldSenden'); b.disabled = true; b.textContent = 'Sende …';
+      if($('meldBildAn').checked) await fotoP;
+      const mit = !!(bild && $('meldBildAn') && $('meldBildAn').checked);
+      const id = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14) + '-' + (ichK || 'X');
+      const daten = {am: Date.now(), von: ichK || '?', text, version: PLAN_VERSION, reiter: tab, monat: ym,
+        ansicht: tab === 'plan' ? ansicht : '', fenster: innerWidth + '×' + innerHeight, geraet: navigator.userAgent.slice(0, 160),
+        info: geraetInfo(), bild: mit ? id + '.jpg' : '', status: 'offen'};
+      try{
+        if(mit) await gh('PUT', MELD_DIR + id + '.jpg', {message: `Meldung ${id} (Bild)`, content: bild.split(',')[1]});
+        const r = await gh('PUT', MELD_DIR + id + '.json', {message: `Meldung ${id}`, content: kodieren(JSON.stringify(daten))});
+        files[MELD_DIR + id + '.json'] = {data: daten, sha: r.content && r.content.sha};
+        zu(); toast('Danke – Meldung gesendet.'); hilfeBadge();
+        if(tab === 'meld') renderMeld();
+      }catch(e){ toast(e.message); if($('meldSenden')){ b.disabled = false; b.textContent = 'Senden'; } }
+    };
   });
 }
+
+/* Reiter „Meldungen“ (2.46, nur Admin-Geraet) wie die Verwaltung der Assistenten-App: Filter Status/Person/Suche,
+   Status offen | arbeit | erledigt, „Angezeigte kopieren“ (Text fuer den Chat mit Claude + Screenshots als
+   meldung-<id>.jpg) setzt offene auf in Arbeit, „Alle erledigt“. */
+const MELD_STATUS = {offen: 'offen', arbeit: 'in Arbeit', erledigt: 'erledigt'};
+const MELD_FILTER = {aktiv: 'Offen + in Arbeit', offen: 'Offen', arbeit: 'In Arbeit', erledigt: 'Erledigt', alle: 'Alle'};
+let meldF = {status: 'aktiv', von: '', suche: ''};
+const meldId = m => m.pfad.slice(MELD_DIR.length, -5);
+const meldZeit = am => new Date(am).toLocaleString('de-DE', {day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'});
+const meldWer = m => { const p = person(m.von); return p ? `${p.name || p.k} (${kuerzel(p)})` : m.von; };
+function meldInfoText(i, lang){
+  if(!i) return '';
+  return [i.adresse, i.fenster && 'Fenster ' + i.fenster, i.bildschirm && 'Bildschirm ' + i.bildschirm, i.pixel && 'DPR ' + i.pixel,
+    i.touch ? 'Touch' : 'Maus', i.installiert ? 'installiert' : 'Browser', i.dunkel ? 'dunkel' : '', i.online === false ? 'offline' : '',
+    i.sprache, lang && i.browser].filter(Boolean).join(' · ');
+}
+const meldOrt = m => `${m.reiter || ''}${m.ansicht ? '/' + m.ansicht : ''}${m.monat ? ' · ' + m.monat : ''}`;
+const meldText = m => `${meldId(m)} · ${meldZeit(m.am)} · ${meldWer(m)} · v${m.version} · ${meldOrt(m)}${m.status === 'arbeit' ? ' · in Arbeit' : ''}`
+  + `${m.bild ? ` · Screenshot: meldung-${meldId(m)}.jpg` : ''}\n(${m.info ? meldInfoText(m.info, true) : 'Fenster ' + m.fenster + ' · ' + m.geraet})\n${m.text}`;
+function meldGefiltert(){
+  const q = meldF.suche.toLowerCase(), st = m => m.status || 'offen';
+  return meldungen().filter(m => (meldF.status === 'alle' || (meldF.status === 'aktiv' ? st(m) !== 'erledigt' : st(m) === meldF.status))
+    && (!meldF.von || m.von === meldF.von) && (!q || (m.text + ' ' + meldWer(m) + ' ' + meldOrt(m)).toLowerCase().includes(q)));
+}
+function renderMeld(){
+  const alle = meldungen(), l = meldGefiltert(), von = [...new Set(alle.map(m => m.von))];
+  const fs = $('meldFilter');
+  fs.innerHTML = Object.entries(MELD_FILTER).map(([k, v]) => `<option value="${k}"${k === meldF.status ? ' selected' : ''}>${v} (${
+    alle.filter(m => k === 'alle' || (k === 'aktiv' ? (m.status || 'offen') !== 'erledigt' : (m.status || 'offen') === k)).length})</option>`).join('');
+  $('meldVon').innerHTML = '<option value="">Alle Personen</option>' + von.map(k => `<option value="${esc(k)}"${k === meldF.von ? ' selected' : ''}>${esc(meldWer({von: k}))}</option>`).join('');
+  $('meldListe').innerHTML = l.map(m => `<div class="meld-z ${m.status === 'erledigt' ? 'erledigt' : ''} ${m.status === 'arbeit' ? 'arbeit' : ''}" data-p="${esc(m.pfad)}">
+      <div class="kopf"><b>${esc(meldWer(m))}</b><small>${meldZeit(m.am)} · v${esc(m.version)} · ${esc(meldOrt(m))}</small>
+      <select data-m="status">${Object.entries(MELD_STATUS).map(([k, v]) => `<option value="${k}"${k === (m.status || 'offen') ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
+      <p>${esc(m.text)}</p>
+      <small class="hint">${esc(m.info ? meldInfoText(m.info) : 'Fenster ' + m.fenster)}</small>
+      ${m.bild ? `<div><button class="btn gh" data-m="bild" style="padding:4px 10px;font-size:12px;min-height:0;margin-top:6px">Screenshot ansehen</button></div>` : ''}</div>`).join('')
+    || '<div class="hint">Keine Meldungen.</div>';
+  icons($('meldListe'));
+}
+/* Status setzen: je Meldung frisch lesen und schreiben (eine Datei = eine Meldung) */
+async function meldStatus(pfade, status){
+  for(const pf of pfade){
+    const j = await gh('GET', pf), d = j ? JSON.parse(dekodieren(j.content)) : files[pf].data;
+    if(d.status === status) continue;
+    d.status = status;
+    if(status === 'erledigt') d.erledigt = {von: ichK || 'Admin', am: Date.now()}; else delete d.erledigt;
+    const r = await gh('PUT', pf, {message: `Meldung ${status}`, content: kodieren(JSON.stringify(d)), ...(j ? {sha: j.sha} : {})});
+    files[pf] = {data: d, sha: r.content && r.content.sha};
+  }
+  hilfeBadge();
+  if(tab === 'meld') renderMeld();
+}
+$('meldFilter').onchange = e => { meldF.status = e.target.value; renderMeld(); };
+$('meldVon').onchange = e => { meldF.von = e.target.value; renderMeld(); };
+$('meldSuche').oninput = e => { meldF.suche = e.target.value.trim(); renderMeld(); };
+$('meldSelbst').onclick = ()=> $('hilfeBtn').click();
+$('meldNeu').onclick = ()=> meldungenLaden().then(()=>{ renderMeld(); hilfeBadge(); toast('Meldungen neu geladen.'); }, e => toast(e.message));
+$('meldAlleErledigt').onclick = async ()=>{
+  const l = meldungen().filter(m => m.status !== 'erledigt');
+  if(!l.length) return toast('Keine offenen Meldungen.');
+  if(!confirm(`Alle ${l.length} offenen und in Arbeit befindlichen Meldungen als erledigt markieren?`)) return;
+  try{ await meldStatus(l.map(m => m.pfad), 'erledigt'); }catch(e){ toast(e.message); }
+};
+$('meldKopieren').onclick = async ()=>{
+  const l = meldGefiltert();
+  if(!l.length){ $('meldKopiertInfo').textContent = 'Keine Meldungen angezeigt.'; return; }
+  const txt = `${MELD_FILTER[meldF.status]} – Meldungen Dienstplanung (${l.length}), Stand ${meldZeit(Date.now())}:\n\n` + l.map(meldText).join('\n\n');
+  let info = '';
+  try{ await navigator.clipboard.writeText(txt); info = `${l.length} Meldungen kopiert.`; $('meldKopiertInfo').textContent = info; }   // synchron als Erstes (iOS-Geste)
+  catch(e){ $('meldKopiertInfo').innerHTML = `<pre style="white-space:pre-wrap;font-size:12px">${esc(txt)}</pre>`; }
+  /* Screenshots als Dateien – Text und Bilder zusammen an Claude geben */
+  const mitBild = l.filter(m => m.bild);
+  try{
+    for(const m of mitBild){
+      const u = await ghRoh(MELD_DIR + m.bild), a = document.createElement('a');
+      a.href = u; a.download = `meldung-${meldId(m)}.jpg`; document.body.appendChild(a); a.click(); a.remove();
+      await new Promise(ok => setTimeout(ok, 300));   // mehrere Downloads: Browser nicht ueberfahren
+    }
+    if(mitBild.length && info) $('meldKopiertInfo').textContent = info + ` ${mitBild.length} Screenshots heruntergeladen (${mitBild.map(m => `meldung-${meldId(m)}.jpg`).join(', ')}).`;
+    /* kopierte offene Meldungen sind jetzt in Arbeit */
+    await meldStatus(l.filter(m => (m.status || 'offen') === 'offen').map(m => m.pfad), 'arbeit');
+  }catch(e){ toast(e.message); }
+};
+$('meldListe').onchange = async e => {
+  const s = e.target.closest('select[data-m=status]'); if(!s) return;
+  s.disabled = true;
+  try{ await meldStatus([s.closest('[data-p]').dataset.p], s.value); }catch(err){ toast(err.message); s.disabled = false; }
+};
+$('meldListe').onclick = async e => {
+  const b = e.target.closest('button[data-m=bild]'); if(!b) return;
+  const m = files[b.closest('[data-p]').dataset.p].data;
+  b.textContent = 'Lade …';
+  try{ bildGross(await ghRoh(MELD_DIR + m.bild)); }catch(err){ toast(err.message); }
+  b.textContent = 'Screenshot ansehen';
+};
 
 /* Urlaub genehmigen: je Monat, Planer/Admin. Genehmigt wird genau der Stand beim
    Klick (spaeter eingetragene Tage bleiben beantragt); ok = {von, am} am Eintrag. */
@@ -4272,7 +4369,7 @@ async function start(){
   render();
   if(!ich()) ichWaehlen();
   if(darfVerwalten()) todoLaden().then(render, ()=>{});
-  if(adminGeraet()) meldungenLaden().then(hilfeBadge, ()=>{});
+  if(adminGeraet()) meldungenLaden().then(()=>{ hilfeBadge(); if(tab === 'meld') renderMeld(); }, ()=>{});
 }
 /* Zoom je Geraet (CSS zoom auf <html>), 70–200 % */
 let zoom = +load('planung_zoom', 1) || 1;
@@ -4330,7 +4427,7 @@ zoomSetzen(zoom);
 $('verBtn').textContent = 'v' + PLAN_VERSION;
 { const t = load('planung_tab', 'plan'); const b = document.querySelector(`nav.tabs button[data-tab="${t}"]`);
   if(b && t !== 'plan'){ tab = t; urlScrollZiel = ym; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
-    ['plan','meine','urlaub','cfg'].forEach(x => $('tab-' + x).classList.toggle('hidden', x !== tab)); } }
+    ['plan','meine','urlaub','cfg','meld'].forEach(x => $('tab-' + x).classList.toggle('hidden', x !== tab)); } }
 $('verBtn').onclick = async ()=>{
   if(Object.keys(queue).length || flushLaeuft){ toast('Speichere zuerst …'); await flush(); }
   let neu = '';

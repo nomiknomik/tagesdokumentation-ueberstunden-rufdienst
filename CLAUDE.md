@@ -201,7 +201,7 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   zusammengefasst; vor 1.51 nur Eintragszeit `am` am Eintrag). Seit 1.67 lädt `protoLaden()` Wunschdateien
   Vorjahr–Folgejahr + Dienstdateien ±12 Monate; Filter `protoF` (`zeit` = geändert in den letzten 1/7/30 Tagen seit 1.68, Monat des betroffenen Tags, geändert von,
   betroffen = `betr`, Art `protoArt()`), max. 300 Zeilen. Dienst-`log` auf 2000 Einträge begrenzt.
-  Rückmeldung (1.69, Kopf `#hilfeBtn` „@“): erst `appFoto()` (html2canvas-pro 1.5.11 von jsdelivr – 1.4.1 kann kein
+  Rückmeldung (1.69, Kopf `#hilfeBtn` „@“, seit 2.46 s. o.): `appFoto()` (html2canvas-pro 1.5.11 von jsdelivr – 1.4.1 kann kein
   color-mix; `ignoreElements` #dlg/#tip/.toast), dann `meldeDialog()`; Häkchen „Screenshot anhängen“ Standard AUS
   (Wunsch, Vorschau erst nach Aktivieren). Ablage `plan/meldungen/<zeit>-<kürzel>.json` (+ `.jpg`) direkt per `gh('PUT')`;
   Admin-Gerät: öffnet direkt „Meldungen“ (ohne Screenshot, 1.70), Zähler `hilfeBadge()`, Bild über `ghRoh()`,
@@ -279,6 +279,11 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Freitext; ein `aendern()` = ein Rückgängig-Schritt. Automatisch nur in einer Woche ohne Einträge in diesen Zeilen, sonst Knopf
   „Assistenten“ (Rückfrage, wenn Handeinträge ersetzt werden). Korrekturen von Diensten zuerst in der Assistenten-App.
   Test lokal: Harness + `wrangler dev` der Assistenten-App (localhost ist dort für CORS erlaubt).
+  2.46 Meldungen wie Assistenten-App: @ öffnet überall nur den Dialog (auch Admin; Screenshot im Hintergrund, Anhängen Std. AUS,
+  ⇧/Strg/⌘+Enter sendet, Esc schließt, `info` = `geraetInfo()`). Reiter „Meldungen“ (`#tab-meld`, nur `adminGeraet()`, Zähler
+  `#meldZahl`): Filter Status (aktiv|offen|arbeit|erledigt|alle)/Person/Suche, Status offen|arbeit|erledigt (`meldStatus()`),
+  „Angezeigte kopieren“ (Text + Screenshots `meldung-<id>.jpg`, offene → in Arbeit), „Alle erledigt“. Wochenplan-Mehrauswahl:
+  „Übernehmen“ = nur dieser Tag, „Für Mo–Fr“ = Woche (Einzelauswahl schreibt weiter fort).
   2.44 Assistenten-Karte: Sortierung aktiv > Abteilung (VCH, INA, UCH) > Nachname, inaktive blass; Löschen (Papierkorb, Rückfrage).
   Angezeigtes Kürzel `kuerzel(p)` = `p.kurz || p.k` (`pk()`, Tipp-Schnellwahl); Namensänderung setzt `kurz` neu (`kuerzelAus()`),
   `k` bleibt feste Kennung (Wochenplan-Einträge, `planung_ich`).
