@@ -608,7 +608,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
         <button class="btn outline" id="qrForget" style="font-size:14px;min-height:44px">Hier vergessen</button>
       </div>
       <div class="hint" id="qrMsg"></div>
-      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. QR-Code und Link öffnen sich nur mit der PIN – die mündlich oder auf anderem Weg mitteilen – und gelten 24 Stunden. Mit Gist-Token liegt die verschlüsselte Einladung als geheimer Gist online, der Code enthält nur dessen Kennung; abgelaufene Gists löscht diese App beim Öffnen. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
+      <div class="hint">Repo und Token gehen mit der PIN verschlüsselt in den Code, das Passwort trägt jede Person selbst ein. QR-Code und Link öffnen sich nur mit der PIN – die mündlich oder auf anderem Weg mitteilen – und gelten 7 Tage. Mit Gist-Token liegt die verschlüsselte Einladung als geheimer Gist online, der Code enthält nur dessen Kennung; abgelaufene Gists löscht diese App beim Öffnen. <b>Nicht das Repo deines eigenen Backups weitergeben.</b> Die Angaben bleiben nur auf diesem Gerät gespeichert.</div>
     </div>
     <div id="qrOut" style="display:none;text-align:center">
       <div class="hint" id="qrPinZeige" style="margin-top:0"></div>
@@ -1787,7 +1787,7 @@ $('syncSave').onclick = ()=>{
    Das Passwort ist bewusst NICHT im Code. */
 const LS_TEILEN = 'tagesdoku_teilen';   // nur Geraet, nicht im Backup
 const ZUGANG_ITER = 600000;
-const ZUGANG_GUELTIG = 24 * 3600 * 1000;   // Einladung gilt 24 h; Ablauf steckt verschluesselt (AES-GCM) im Code
+const ZUGANG_GUELTIG = 7 * 24 * 3600 * 1000;   // Einladung gilt 7 Tage (seit 1.74, vorher 24 h); Ablauf steckt verschluesselt (AES-GCM) im Code
 const b64url = buf => b64(buf).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const unb64url = s => unb64(s.replace(/-/g,'+').replace(/_/g,'/'));
 async function pinSchluessel(pin, salt){
@@ -1936,7 +1936,7 @@ $('qrPinOk').onclick = async ()=>{
     const z = await zugangEntschluesseln(pinCode, pin);
     $('qrBox').style.display = 'none'; zugangUebernehmen(z);
   }catch(e){ $('qrPinMsg').innerHTML = e.message === 'abgelaufen'
-    ? '<span class="note">Diese Einladung ist abgelaufen (gilt 24 Stunden). Bitte einen neuen Code anfordern.</span>'
+    ? '<span class="note">Diese Einladung ist abgelaufen (gilt 7 Tage). Bitte einen neuen Code anfordern.</span>'
     : '<span class="note">PIN falsch oder Code beschädigt.</span>'; }
 };
 $('qrPinIn').onkeydown = e=>{ if(e.key === 'Enter') $('qrPinOk').click(); };
@@ -1991,7 +1991,7 @@ async function zugangLinkBauen(){
 $('qrMail').onclick = async ()=>{
   const pin = await zugangLinkBauen(); if(!pin) return;
   const text = 'Hallo,\n\nhier dein Zugang zur Zeiterfassungs-App (Online-Backup):\n\n' + zugangLink
-    + '\n\nSo geht es:\n1. Link auf dem Handy oder PC öffnen.\n2. Die PIN eingeben – die bekommst du von mir getrennt von dieser Mail. Der Link gilt 24 Stunden.\n'
+    + '\n\nSo geht es:\n1. Link auf dem Handy oder PC öffnen.\n2. Die PIN eingeben – die bekommst du von mir getrennt von dieser Mail. Der Link gilt 7 Tage.\n'
     + '3. Deine Personalnummer und ein eigenes Backup-Passwort eintragen und „Verbinden“ tippen.\n'
     + '   Das Passwort auf allen eigenen Geräten gleich wählen und gut merken – ohne es ist das Backup verloren.\n\n'
     + 'Ist die App schon auf dem Home-Bildschirm: Im Browser „Code kopieren“ tippen, in der App unter Einstellungen → Daten → Zugangsdaten ins Feld „Repo“ einfügen.\n\nBitte den Link nicht weiterleiten.';
@@ -2082,7 +2082,7 @@ $('qrForget').onclick = ()=>{
   localStorage.removeItem(LS_TEILEN); $('qr_token').value = ''; $('qr_pin').value = ''; $('qr_gist').value = '';
   $('qrMsg').innerHTML = '<span class="ok">Token, Gist-Token und PIN von diesem Gerät gelöscht.</span>';
 };
-/* Admin-Geraet: abgelaufene Einladungs-Gists (aelter als 24 h) beim Start loeschen */
+/* Admin-Geraet: abgelaufene Einladungs-Gists (aelter als ZUGANG_GUELTIG) beim Start loeschen */
 const GIST_BESCHR = 'tagesdoku-einladung';
 async function gistsAufraeumen(){
   const g = load(LS_TEILEN, {}).gist; if(!g || !navigator.onLine) return;
@@ -4037,7 +4037,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.73';
+const APP_VERSION = '1.74';
 const APP_BUILD   = '14.10.2026';
 
 function showVersion(){

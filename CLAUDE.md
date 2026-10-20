@@ -408,12 +408,12 @@ Ende vor dem Beginn zählt als Folgetag, +24 h), FRN-Verhalten. Alles andere in 
   Passwort-Probe gefunden und umbenannt – fremde Hash-Dateien nie proben.
   Passwort und PIN ohne Mindestlänge (Wunsch). Zugangs-Link und QR-Code
   (`#zugang2=`) sind mit PIN verschlüsselt (AES-GCM, PBKDF2 600k), die PIN steht
-  nie im Code, Öffnen nur mit PIN-Eingabe. Gültig 24 h (`ZUGANG_GUELTIG`,
+  nie im Code, Öffnen nur mit PIN-Eingabe. Gültig 7 Tage seit 1.74, vorher 24 h (`ZUGANG_GUELTIG`,
   `bis` im verschlüsselten Inhalt); Codes ohne `bis` und alte unverschlüsselte
   `#zugang=`-Links sind gesperrt. Reine App-Prüfung, der Token selbst bleibt gültig.
   Mit Gist-Token (nur Admin, `tagesdoku_teilen.gist`) liegt der verschlüsselte
   Code als geheimer Gist (`GIST_BESCHR`), der Link trägt nur `#einladung=<id>`;
-  `gistsAufraeumen()` löscht beim Start Gists älter als 24 h. Laden: API, bei Fehler Rohdatei
+  `gistsAufraeumen()` löscht beim Start Gists älter als `ZUGANG_GUELTIG`. Laden: API, bei Fehler Rohdatei
   `gist.githubusercontent.com/<owner>/<id>/raw/einladung.txt` (API ohne Anmeldung
   ~60/h je IP, Klinik-WLAN). Fehler im PIN-Fenster anzeigen, nicht per Toast.
 - „Link oder Code einfügen“ (`#zugangEinfuegen`, auch im Startdialog) per `prompt`,
