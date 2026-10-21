@@ -346,6 +346,8 @@ Neue Funktionen der Dienstplanung **dort** bauen, nicht mehr in `plan/` hier. `p
 schaltet in Einstellungen → Zugang `cfg.umzug` (`hinweis` = Banner mit Link, `fertig` = Fenster mit Link + nur lesen, `umzugZeigen()`).
 Ablauf: Zugänge anlegen + einladen → „hinweis“ → „fertig“ → einige Minuten warten → Backup herunterladen → Verwaltung → Abteilungen →
 „Umzug Dienstplanung Oberärzte“ einspielen (Gegenprobe muss „bestanden“ zeigen). Tagesdoku (`app/`) zieht als letztes um.
+Leitfaden für den Umzug (auch Stufenplan für `app/`, Daten dort je Person verschlüsselt → Umzug je Person): `docs/UMZUG.md` im Repo
+`tagesdoku-team-ass` – vor dem Umzug der Tagesdoku lesen.
 
 ### Grundsätze (weiter gültig)
 Dienstplanung (`plan/`) und Tagesdoku (`app/`) ziehen später in die Plattform `tagesdoku-team-ass` (Worker + D1) –
