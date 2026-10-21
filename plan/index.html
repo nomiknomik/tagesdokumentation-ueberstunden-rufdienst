@@ -883,6 +883,15 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
           <button class="btn gh" id="adminLogin"><span data-icon="key"></span>Admin-Anmeldung</button>
         </div>
         <label class="f hidden" id="adminKWahl" style="margin-top:10px">Admin-Person (darf die Regeln der Verteilung ändern)<select id="adminK"></select></label>
+        <div class="hidden" id="umzugWahl" style="margin-top:12px">
+          <b style="font-size:13px">Umzug auf die Plattform (Cloudflare)</b>
+          <div class="reihe" style="margin-top:6px">
+            <select id="umzugModus"><option value="">aus</option><option value="hinweis">Hinweis zeigen (hier weiter eintragen)</option><option value="fertig">Umgezogen – hier nur noch lesen</option></select>
+            <input type="url" id="umzugUrl" style="flex:1 1 260px" placeholder="https://…/oa/">
+          </div>
+          <div class="hint" style="margin-top:4px">Alle Geräte zeigen den Hinweis mit Link (spätestens nach 2 Minuten). „Umgezogen“ sperrt hier das Eintragen –
+            danach einige Minuten warten, dann Backup herunterladen und in der Verwaltung der Plattform einspielen.</div>
+        </div>
       </div>
     </div>
   </section>
@@ -904,7 +913,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.49';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.50';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1139,7 +1148,7 @@ function cacheSchreiben(){
 const queue = {};            // pfad -> {fns, leer, was}
 let flushTimer = 0, flushLaeuft = false;
 function aendern(pfad, leer, was, fn){
-  if(nurLesen){ toast('Offline – nur lesen.'); return; }
+  if(nurLesen){ toast(umgezogen() ? 'Die Dienstplanung ist umgezogen – bitte die neue Adresse nutzen.' : 'Offline – nur lesen.'); return; }
   if(/^plan\/wuensche\//.test(pfad) || (imUndo && /^plan\/dienst\//.test(pfad))) fn = mitLog(fn, pfad);
   const f = files[pfad] || (files[pfad] = {data: null, sha: null});
   if(!f.data) f.data = clone(leer);
@@ -1281,6 +1290,7 @@ async function ladeAlles(){
     await Promise.all(pf.map(x => !da || da.has(x) || queue[x] ? lesen(x) : (files[x] = {data: null, sha: null})));
     cacheSchreiben();
     nurLesen = false; $('banner').classList.add('hidden');
+    umzugZeigen();
     if(Object.keys(queue).length) ungespeichert(); else if(!flushLaeuft) status('ok', 'aktuell');
     return !!c.data;
   }catch(e){
@@ -4115,7 +4125,10 @@ function renderCfg(){
   // Zugang
   const z = zugang();
   $('zugInfo').innerHTML = (ich() ? `Angemeldet als <b>${esc(ich().name || ich().k)}</b> (${esc(ich().k)})<br>` : '') + (z ? `Repo <b>${esc(z.repo)}</b> · Token aus ${esc(z.quelle || 'Einladung')}` : 'Kein Zugang.');
-  $('adminKWahl').classList.toggle('hidden', !darfAdminK());   // 2.34: nur in der Ansicht der Admin-Person selbst
+  $('adminKWahl').classList.toggle('hidden', !darfAdminK());
+  $('umzugWahl').classList.toggle('hidden', !adminGeraet());
+  if(document.activeElement !== $('umzugModus')) $('umzugModus').value = (cfg.umzug && cfg.umzug.modus) || '';
+  if(document.activeElement !== $('umzugUrl')) $('umzugUrl').value = (cfg.umzug && cfg.umzug.url) || UMZUG_URL;   // 2.34: nur in der Ansicht der Admin-Person selbst
   $('adminK').innerHTML = `<option value="">– (Planer)</option>` + personen().map(p => `<option value="${esc(p.k)}" ${p.k === cfg.adminK ? 'selected' : ''}>${esc(p.name || p.k)}</option>`).join('');
 }
 $('adminK').onchange = ()=> darfAdminK() && cfgAendern('Admin-Person', d => { if($('adminK').value) d.adminK = $('adminK').value; else delete d.adminK; });
@@ -4228,6 +4241,43 @@ $('abmelden').onclick = ()=>{
   localStorage.removeItem(LS_ZUGANG); localStorage.removeItem(LS_ICH); localStorage.removeItem(LS_CACHE); location.reload();
 };
 
+/* ---------- Umzug auf die Plattform (2.50) ----------
+   cfg.umzug = {modus: 'hinweis' | 'fertig', url}: Admin-Geraet schaltet in der Karte Zugang. 'hinweis' = Banner mit Link,
+   hier weiter eintragen; 'fertig' = Banner + einmal je Sitzung ein Fenster mit dem Link, Eintragen gesperrt (nurLesen). */
+const UMZUG_URL = '';   // Adresse steht nur in cfg.umzug (privates Daten-Repo), nicht im oeffentlichen Code
+const umgezogen = () => !!(cfg.umzug && cfg.umzug.modus === 'fertig');
+let umzugGezeigt = false;
+function umzugZeigen(){
+  const u = cfg.umzug, url = (u && u.url) || UMZUG_URL;
+  if(!u || !u.modus || !url) return;
+  const link = `<a href="${esc(url)}" style="color:inherit;font-weight:700">${esc(url.replace(/^https:\/\//, ''))}</a>`;
+  if(u.modus === 'fertig') nurLesen = true;   // auch das Admin-Geraet: zurueck nur ueber den Schalter
+  $('banner').innerHTML = icon('alert') + (u.modus === 'fertig'
+    ? ` Die Dienstplanung ist umgezogen: ${link} – hier nur noch lesen. Anmeldung mit deiner Personalnummer und dem Passwort aus der Einladung.`
+    : ` Die Dienstplanung zieht bald um: ${link}. Anmeldung dort mit deiner Personalnummer und dem Passwort aus der Einladung. Bis zum Umzug hier weiter eintragen.`);
+  $('banner').classList.remove('hidden');
+  if(u.modus !== 'fertig' || umzugGezeigt || adminGeraet()) return;
+  umzugGezeigt = true;
+  dialog(`<h3>Die Dienstplanung ist umgezogen</h3>
+    <div class="unter">Alle Dienste, Wünsche und Urlaube sind schon dort. Hier kannst du ab jetzt nur noch lesen.</div>
+    <ol style="margin:10px 0 0 18px;padding:0;line-height:1.5">
+      <li>Neue Adresse öffnen: <b>${esc(url)}</b></li>
+      <li>Anmelden mit deiner <b>Personalnummer</b> und dem <b>Passwort aus der Einladung</b> (danach eigenes Passwort festlegen).</li>
+      <li>iPhone: in Safari öffnen → Teilen → „Zum Home-Bildschirm“, die alte App vom Home-Bildschirm löschen.<br>
+        PC: neue Adresse als Lesezeichen speichern.</li>
+    </ol>
+    <div class="fuss"><button class="btn gh" id="dlgZu">Später</button><a class="btn" style="text-decoration:none" href="${esc(url)}">${icon('send')}Jetzt öffnen</a></div>`,
+    ()=>{ $('dlgZu').onclick = zu; });
+}
+$('umzugModus').onchange = $('umzugUrl').onchange = ()=>{
+  if(!adminGeraet()) return;
+  const modus = $('umzugModus').value, url = $('umzugUrl').value.trim() || UMZUG_URL;
+  if(modus && !/^https:\/\/\S+$/.test(url)){ toast('Bitte zuerst die neue Adresse (https://…/oa/) eintragen.'); return render(); }
+  if(modus === 'fertig' && !confirm('Umgezogen: Alle anderen Geräte können hier nichts mehr eintragen und bekommen den Link zur neuen App. Fortfahren?')) return render();
+  const vorher = nurLesen; nurLesen = false;
+  cfgAendern('Umzug', d => { if(modus) d.umzug = {modus, url}; else delete d.umzug; });
+  nurLesen = vorher; flush().then(()=>{ $('banner').classList.add('hidden'); umzugZeigen(); });
+};
 /* Einstellungen: ohne Planer-/Admin-Recht nur lesen (Zugang und Backup-Download bleiben) */
 /* 2.35: Akkordeon - Klick auf die Ueberschrift oeffnet die Karte und schliesst alle anderen */
 function karteAuf(c){

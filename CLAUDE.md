@@ -340,7 +340,14 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   Anwesenheitslisten über alle Gruppen, Tagesdoku liest Dienste/Urlaub direkt statt Excel-Import.
   Neue Felder daher gruppenneutral benennen und Daten nie an eine Oberfläche koppeln.
 
-## Umzug auf Cloudflare (geplant, bei JEDER Änderung beachten)
+## Umzug auf Cloudflare (Dienstplanung: 10/2026 umgezogen)
+Die Dienstplanung lebt jetzt in `tagesdoku-team-ass` unter `public/oa/` (D1, Anmeldung mit Personalnummer, Zugänge über die Verwaltung).
+Neue Funktionen der Dienstplanung **dort** bauen, nicht mehr in `plan/` hier. `plan/` 2.50 bleibt nur für den Übergang: Admin-Gerät
+schaltet in Einstellungen → Zugang `cfg.umzug` (`hinweis` = Banner mit Link, `fertig` = Fenster mit Link + nur lesen, `umzugZeigen()`).
+Ablauf: Zugänge anlegen + einladen → „hinweis“ → „fertig“ → einige Minuten warten → Backup herunterladen → Verwaltung → Abteilungen →
+„Umzug Dienstplanung Oberärzte“ einspielen (Gegenprobe muss „bestanden“ zeigen). Tagesdoku (`app/`) zieht als letztes um.
+
+### Grundsätze (weiter gültig)
 Dienstplanung (`plan/`) und Tagesdoku (`app/`) ziehen später in die Plattform `tagesdoku-team-ass` (Worker + D1) –
 eine gemeinsame Datenbank für alle Apps. Deshalb schon jetzt:
 - Eine Quelle je Fakt: Assistenten (Personen, Dienste, Abwesenheiten) kommen aus der Assistenten-App, hier nur
