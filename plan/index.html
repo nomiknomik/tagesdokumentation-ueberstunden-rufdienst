@@ -570,6 +570,8 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
 .wpx tr.apo td{background:#f00;color:#fff;font-weight:700}
 .wpx td.we{background:#dae3f3}
 .wpx b.vd{color:#e00000}
+.wpx td.hand{box-shadow:inset 0 0 0 2px #E8A33D}
+@media print{.wpx td.hand{box-shadow:none}}
 .wpx tr.url td.we{background:#fff}
 .wpx td.w{cursor:pointer}
 .wpx td.w:hover,.wpx td.lbl.edit:hover{outline:2px solid var(--primary);outline-offset:-2px}
@@ -902,7 +904,7 @@ table.wpx{border-collapse:collapse;table-layout:fixed;width:100%;min-width:980px
    Zugang (Repo + Token) wie in der Tagesdoku; gleiche Domain, daher wird
    ein vorhandener Tagesdoku-Zugang direkt uebernommen.
    ===================================================================== */
-const PLAN_VERSION = '2.48';   // bei jeder Aenderung hochzaehlen
+const PLAN_VERSION = '2.49';   // bei jeder Aenderung hochzaehlen
 const TEAM_REPO = 'nomiknomik/tagesdoku-team';
 const LS_ZUGANG = 'planung_zugang', LS_ICH = 'planung_ich', LS_CACHE = 'planung_cache';
 const $ = id => document.getElementById(id);
@@ -1544,7 +1546,7 @@ const WP_ZEILEN = [
   {id: 'haus', l: 'haus', art: 'wahl', liste: 'ass', ein: true, oben: true},
   {id: 'flex', l: 'flex', art: 'wahl', liste: 'ass', ein: true, oben: true, fort: false},
   {id: 'ruf', l: 'ruf', art: 'wahl', liste: 'ass', ein: true, oben: true, fort: false},
-  {id: 'oa', l: 'oa', art: 'oadienst'},
+  {id: 'oa', l: 'oa', art: 'oadienst', liste: 'oa', ein: true, fort: false},   // 2.49: von Hand änderbar (nur Wochenplan), leer = Dienstplan
   {band: 'gelb'},
   {id: 'prokto', l: 'prokto', art: 'wahl', liste: 'ass', ein: true, oben: true},
   {id: 'adipo', l: 'adipo', art: 'wahl', liste: 'ass', ein: true, oben: true},
@@ -1576,7 +1578,9 @@ const wpSort = ps => ps.slice().sort((a, b) => nachn(a).localeCompare(nachn(b), 
 /* Wert eines beliebigen Tages (auch Vorwoche, z. B. Rufdienst am Sonntag davor) */
 const wpWertAm = (key, s) => { const f = files[pfadWp(plus(s, 1 - wt(s)))]; return wpW((((f && f.data) || {}).z || {})[key]?.[s]); };
 /* 2.40: am Vortag Dienst (OA-Dienst bzw. Rufdienst als Assistent) -> rot und fett */
-const wpNachDienst = (p, s) => p.rolle === 'ass' ? ((wpWertAm('ruf', plus(s, -1)) || {}).k || []).includes(p.k) : dienstVon(plus(s, -1)) === p.k;
+/* 2.49: OA-Dienst laut Wochenplan (Handeintrag geht vor) */
+const wpOaAm = s => { const w = wpWertAm('oa', s); return w && ((w.k || []).length || w.t) ? (w.k || [])[0] || '' : dienstVon(s); };
+const wpNachDienst = (p, s) => p.rolle === 'ass' ? ((wpWertAm('ruf', plus(s, -1)) || {}).k || []).includes(p.k) : wpOaAm(plus(s, -1)) === p.k;
 /* VCH-Assistent im Spaetdienst (INA spaet bzw. Haus-/Spaetdienst) ist auf der Station erst ab Nachmittag da - am Wochenende ganztags */
 const wpSpaet = (p, s) => werktag(s) && p.rolle === 'ass' && abtVon(p) === 'VCH' && ['inaS', 'haus'].some(z => ((wpWert(z, s) || {}).k || []).includes(p.k));
 /* Name als HTML: anwesende Haelfte bei halbem Tag („(nachm.)“ = vormittags weg), auf der Station auch beim Spaetdienst */
@@ -1625,7 +1629,11 @@ function wpTabelle(druck){
       const chefs = wpSort(personen().filter(p => p.rolle === 'chef'));
       h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${werktag(s) ? chefs.filter(p => !abwesend(p, s)).map(p => wpName(p, s)).join('/ ') : ''}</td>`).join('')}</tr>`;
     }else if(z.art === 'oadienst'){
-      h += `<tr>${lbl(z)}${tage.map(s => `<td class="${we(s)}">${person(dienstVon(s)) ? esc(nachn(person(dienstVon(s)))) : ''}</td>`).join('')}</tr>`;
+      /* 2.49: Handeintrag im Wochenplan geht vor (z. B. kurzfristiger Tausch), leer = laut Dienstplan; Dienstplan selbst bleibt unverändert */
+      h += `<tr>${lbl(z)}${tage.map(s => { const w = wpWert('oa', s), sys = person(dienstVon(s));
+        if(!w || !((w.k || []).length || w.t)) return zelle('oa', s, sys ? esc(nachn(sys)) : '');
+        const txt = wahlTxt(w, s, false), dp = sys ? nachn(sys) : 'niemand';
+        return druck || !edit ? `<td class="${we(s)}">${txt}</td>` : `<td class="${we(s)} w hand" data-w="oa" data-s="${s}" title="von Hand geändert – laut Dienstplan: ${esc(dp)} (Leeren = wieder Dienstplan)">${txt}</td>`; }).join('')}</tr>`;
     }else if(z.art === 'urlaub'){
       /* OA mit Urlaub (aus dem System) je eine Zeile, darunter die Assistenten (Auswahl), zusammen mind. n Zeilen */
       const ps = wpSort(personen().filter(p => tage.some(s => werktag(s) && abwesend(p, s) === 'urlaub')));   // Wochenende: nicht eintragen
@@ -1646,7 +1654,7 @@ function wpRender(){
     + `<button class="btn out" id="wpRedo" title="Wiederholen (Strg+Y)" ${redoStack.length && !nurLesen ? '' : 'disabled'}><span data-icon="redo"></span></button><button class="btn" id="wpDruck"><span data-icon="printer"></span>Drucken</button><button class="btn out" id="wpMelden" title="Problem oder Idee melden"><b style="font-size:16px;line-height:1">@</b></button><button class="btn gh" id="wpZu"><span data-icon="x"></span>Schließen</button></div>`
     + wpTabelle(false)
     + `<p class="wp-hilfe">${darfWp() ? 'Klick auf ein Feld wählt aus (Stationen: mehrere). Maus über dem Feld + Anfangsbuchstabe = Schnellwahl, + Entf = löschen. Ein Eintrag gilt auch für die folgenden Werktage, bis ein Tag etwas anderes hat (nicht Flex- und Rufdienst). Wer unten eingetragen oder abwesend ist, steht oben nicht zur Wahl. Rot und fett: am Vortag Dienst (OA-Dienst bzw. Rufdienst). ' : 'Nur ansehen und drucken. '}`
-    + `OA Dienst, CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende bleiben in ihrer Stationszeile leer.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
+    + `OA Dienst (von Hand änderbar, ändert nur den Wochenplan; Leeren = wieder laut Dienstplan), CA, Fortbildung, Abwesend und Urlaub kommen aus dem System. Abwesende bleiben in ihrer Stationszeile leer.${darfVerwalten() && darfWp() ? ' Klick auf eine Zeilenbezeichnung ändert sie für alle Wochen.' : ''}</p>`;
   icons($('wpEdit'));
   $('wpZur').onclick = ()=> wpWoche(-7);
   $('wpMelden').onclick = ()=> $('hilfeBtn').click();   // 2.48: @ auch im Wochenplan (Vollbild deckt den Kopf ab)
@@ -1802,7 +1810,7 @@ function wpEinzel(key, s){
     <div class="unter"><b>Tippen:</b> Anfangsbuchstabe des Nachnamens <span id="tippAnz" class="tag n" style="display:none"></span></div>
     ${ps.map(p => `<button class="kand ${p.k === akt ? 'akt' : ''}" data-k="${esc(p.k)}">${pk(p)}<span class="mid"><b>${esc(p.name || p.k)}</b>`
       + `<span class="tags">${p.rolle === 'ass' ? `<span class="tag n">${abtVon(p)}</span>` : ''}${halbWeg(p, s) ? `<span class="tag o">${HALB_TXT[halbWeg(p, s)]}</span>` : ''}</span></span></button>`).join('')
-      || '<div class="hint">Niemand verfügbar (Einstellungen → Assistenzärzte).</div>'}
+      || `<div class="hint">${z.liste === 'oa' ? 'Niemand verfügbar.' : 'Niemand verfügbar (Einstellungen → Assistenzärzte).'}</div>`}
     <div class="wp-ext"><input id="wpFreiT" list="wpExtListe" value="${esc(akt ? '' : w.t || '')}" placeholder="Andere (z. B. Notaufnahme): Name oder Text">
       <datalist id="wpExtListe">${wpExterne().map(t => `<option value="${esc(t)}">`).join('')}</datalist>
       <button class="btn out" id="wpFrei" title="Enter">Übernehmen</button></div>

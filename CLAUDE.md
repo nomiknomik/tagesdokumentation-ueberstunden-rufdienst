@@ -289,6 +289,9 @@ Git-Historie der Commit-Nachrichten, nicht hier.
   `{k:[], t, ext:true}`; `wpAssUebernehmen()` lässt `ext`-Felder stehen, wo die Assistenten-App nichts liefert.
   2.48: Zeile „frei (nach Dienst)“ nur Mo–Fr (`tage` in `WP_ZEILEN`, auch beim Übernehmen aus der Assistenten-App – Zeilen mit
   `tage` überspringen andere Wochentage); @ als Knopf in der Wochenplan-Leiste (`#wpMelden`, Vollbild deckt den Kopf ab).
+  2.49: OA Dienst im Wochenplan von Hand änderbar (Meldung: Rolle Wochenplan, `darfWp()`): Einzelauswahl OA, gespeichert nur im
+  Wochenplan (`z.oa`), geht vor dem Dienstplan (orange umrandet, Tooltip „laut Dienstplan: …“), Leeren = wieder Dienstplan; Dienstplan
+  bleibt unverändert. „Am Vortag Dienst“ (rot) folgt dem Handeintrag (`wpOaAm()`).
   2.44 Assistenten-Karte: Sortierung aktiv > Abteilung (VCH, INA, UCH) > Nachname, inaktive blass; Löschen (Papierkorb, Rückfrage).
   Angezeigtes Kürzel `kuerzel(p)` = `p.kurz || p.k` (`pk()`, Tipp-Schnellwahl); Namensänderung setzt `kurz` neu (`kuerzelAus()`),
   `k` bleibt feste Kennung (Wochenplan-Einträge, `planung_ich`).
