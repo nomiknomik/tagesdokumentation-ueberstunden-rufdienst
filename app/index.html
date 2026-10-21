@@ -542,9 +542,9 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   </div>
   <div class="card">
     <h2><span data-icon="save"></span>Daten</h2>
-    <button class="btn outline" id="umzugKnopf" style="font-size:14px;min-height:44px">Auf die Klinik-Plattform umziehen</button>
+    <button class="btn outline hidden" id="umzugKnopf" style="font-size:14px;min-height:44px">Auf die Klinik-Plattform umziehen</button>
     <button class="btn ghost hidden" id="umzugAufheben" style="font-size:13px;min-height:36px;margin-top:4px">Umzug aufheben (hier wieder eintragen)</button>
-    <div class="hint" style="margin-bottom:10px">Die Tagesdoku zieht je Person um, wann du willst: Anmeldung mit Personalnummer, Daten werden übertragen und geprüft. Danach ist diese App nur noch zum Lesen da.</div>
+    <div class="hint hidden" id="umzugKnopfHinweis" style="margin-bottom:10px">Die Tagesdoku zieht je Person um, wann du willst: Anmeldung mit Personalnummer, Daten werden übertragen und geprüft. Danach ist diese App nur noch zum Lesen da.</div>
     <div class="field"><label><b>Online-Backup &amp; Sync (privates GitHub-Repo, verschlüsselt)</b></label></div>
     <div class="row"><label>Nutzung auf diesem Gerät</label>
       <select id="syncModus"><option value="online">Online (Sync)</option><option value="offline">Nur offline</option></select></div>
@@ -2318,10 +2318,18 @@ async function umzugZiel(){
   }
   return plattform.ziel || '';
 }
+/* Startsignal: der Umzug ist erst sichtbar, wenn die Verwaltung ihn freigibt (GET oatd/freigabe, ohne Anmeldung).
+   Zum Ausprobieren vorab: #umzug in der Adresse. */
+const UMZUG_TEST = /(^#|[&#])umzug\b/.test(location.hash);
+async function umzugFrei(){
+  if(UMZUG_TEST) return true;
+  if(!(await umzugZiel())) return false;
+  try{ return !!(await papi('oatd/freigabe', {token: ''})).an; }catch(e){ return false; }
+}
 const neueAppUrl = code => plattform.ziel + '/?ziel=/oa-td/' + (code ? '#koppeln=' + code : '');
 async function umzugAnzeigen(){
   $('umzugAufheben').classList.toggle('hidden', !cfg.umzug);
-  $('umzugKnopf').classList.toggle('hidden', !!cfg.umzug);
+  $('umzugKnopf').classList.add('hidden'); $('umzugKnopfHinweis').classList.add('hidden');
   if(cfg.umzug){
     $('umzugBanner').classList.add('hidden');
     $('umzugNurLesen').classList.remove('hidden');
@@ -2329,9 +2337,11 @@ async function umzugAnzeigen(){
     if(!plattform.ziel && cfg.umzug.ziel){ plattform.ziel = cfg.umzug.ziel; plattformSpeichern(); }
     return;
   }
-  $('umzugNurLesen').classList.add('hidden');
+  $('umzugNurLesen').classList.add('hidden'); $('umzugBanner').classList.add('hidden');
+  if(!(await umzugFrei())) return;
+  $('umzugKnopf').classList.remove('hidden'); $('umzugKnopfHinweis').classList.remove('hidden');
   if(Date.now() < (+localStorage.getItem(LS_UMZUG_SPAETER) || 0)) return;
-  if(await umzugZiel()) $('umzugBanner').classList.remove('hidden');
+  $('umzugBanner').classList.remove('hidden');
 }
 const uzSchritt = id => ['uzAnmelden','uzPwNeu','uzPruefen','uzFertig'].forEach(x => $(x).style.display = x === id ? '' : 'none');
 const uzMsg = (t, art = 'note') => $('uzMsg').innerHTML = t ? `<span class="${art}">${t}</span>` : '';
@@ -4255,7 +4265,7 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.77';
+const APP_VERSION = '1.78';
 const APP_BUILD   = '21.10.2026';
 
 function showVersion(){
