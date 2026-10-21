@@ -216,6 +216,7 @@ select{color-scheme:light}
 .note{background:rgba(180,83,9,.10);border-left:3px solid var(--color-warning);color:var(--color-warning);
   padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:10px}
 .ok{color:var(--color-success);font-size:13px}
+.hidden{display:none!important}
 /* Token: Textfeld mit Punkten statt type=password (sonst haelt iOS es fuer Passwort-Bestaetigung) */
 .maskiert{-webkit-text-security:disc;text-security:disc}
 
@@ -337,6 +338,19 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
 </header>
 
 <main>
+<div class="card hidden" id="umzugBanner" style="border-color:var(--color-primary)">
+  <div style="font-weight:700">Neu: Tagesdoku auf der Klinik-Plattform</div>
+  <div class="hint" style="margin-top:4px">Dienste, Urlaub und Tausch kommen dort automatisch aus der Dienstplanung – kein Excel-Import mehr. Gehalt und Konto bleiben gleich. Du entscheidest, wann du umziehst; bis dahin geht es hier normal weiter.</div>
+  <div class="row2" style="margin-top:10px">
+    <button class="btn" id="umzugStart" style="font-size:14px;min-height:44px">Jetzt umziehen</button>
+    <button class="btn ghost" id="umzugSpaeter" style="font-size:14px;min-height:44px">Später</button>
+  </div>
+</div>
+<div class="card hidden" id="umzugNurLesen" style="border-color:var(--color-warning)">
+  <div style="font-weight:700">Umgezogen – hier nur noch lesen</div>
+  <div class="hint" style="margin-top:4px" id="umzugNurLesenText"></div>
+  <button class="btn" id="umzugOeffnen2" style="font-size:14px;min-height:44px;margin-top:10px">Neue App öffnen</button>
+</div>
 <!-- ================= TAG ================= -->
 <section id="tag" class="on">
   <div class="datebar">
@@ -528,6 +542,9 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   </div>
   <div class="card">
     <h2><span data-icon="save"></span>Daten</h2>
+    <button class="btn outline" id="umzugKnopf" style="font-size:14px;min-height:44px">Auf die Klinik-Plattform umziehen</button>
+    <button class="btn ghost hidden" id="umzugAufheben" style="font-size:13px;min-height:36px;margin-top:4px">Umzug aufheben (hier wieder eintragen)</button>
+    <div class="hint" style="margin-bottom:10px">Die Tagesdoku zieht je Person um, wann du willst: Anmeldung mit Personalnummer, Daten werden übertragen und geprüft. Danach ist diese App nur noch zum Lesen da.</div>
     <div class="field"><label><b>Online-Backup &amp; Sync (privates GitHub-Repo, verschlüsselt)</b></label></div>
     <div class="row"><label>Nutzung auf diesem Gerät</label>
       <select id="syncModus"><option value="online">Online (Sync)</option><option value="offline">Nur offline</option></select></div>
@@ -637,6 +654,37 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
       <div class="hint">Die App auf dem Home-Bildschirm hat einen eigenen Speicher. Dort Einstellungen → Daten → Zugangsdaten → „QR-Code scannen“ – oder den kopierten Code ins Feld „Repo“ einfügen. Danach Personalnummer und eigenes Passwort eintragen und „Verbinden“ tippen.</div>
     </div>
     <button class="btn ghost" id="qrClose" style="margin-top:8px">Schließen</button>
+  </div>
+</div>
+
+<div id="umzugBox" style="display:none;position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.45);overflow:auto;padding:24px 16px">
+  <div class="card" style="max-width:440px;margin:0 auto">
+    <h2><span data-icon="upload"></span>Umzug auf die Klinik-Plattform</h2>
+    <div id="uzAnmelden">
+      <div class="hint" style="margin-top:0">Personalnummer und Passwort aus deiner Einladung zur Klinik-Plattform (bzw. dein eigenes, wenn du dich dort schon angemeldet hast). Noch keine Einladung bekommen? Kurz bei der Verwaltung melden – bis dahin geht es hier normal weiter.</div>
+      <div class="row" id="uzZielZeile" style="display:none"><label>Adresse</label><input id="uzZiel" placeholder="https://…" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="row"><label>Personalnummer</label><input id="uzPnr" inputmode="numeric" autocomplete="username"></div>
+      <div class="row"><label>Passwort</label><input id="uzPw" type="password" autocomplete="current-password"></div>
+      <button class="btn" id="uzLogin" style="font-size:14px;min-height:44px">Anmelden</button>
+    </div>
+    <div id="uzPwNeu" style="display:none">
+      <div class="hint" style="margin-top:0">Bitte jetzt ein eigenes Passwort festlegen (mindestens 6 Zeichen). Damit meldest du dich künftig an.</div>
+      <div class="row"><label>Neues Passwort</label><input id="uzPw1" type="password" autocomplete="new-password"></div>
+      <div class="row"><label>Wiederholen</label><input id="uzPw2" type="password" autocomplete="new-password"></div>
+      <button class="btn" id="uzPwOk" style="font-size:14px;min-height:44px">Passwort speichern</button>
+    </div>
+    <div id="uzPruefen" style="display:none">
+      <div id="uzInfo" class="hint" style="margin-top:0"></div>
+      <button class="btn" id="uzLos" style="font-size:14px;min-height:44px;margin-top:10px">Jetzt umziehen</button>
+    </div>
+    <div id="uzFertig" style="display:none">
+      <div id="uzErgebnis"></div>
+      <button class="btn" id="umzugOeffnen" style="font-size:14px;min-height:44px;margin-top:10px">Neue App öffnen</button>
+      <div class="hint" id="uzCode"></div>
+      <div class="hint"><b>iPhone:</b> in Safari unten auf Teilen <span style="white-space:nowrap">(□↑)</span> → „Zum Home-Bildschirm“. Startet die App vom Home-Bildschirm noch einmal mit der Anmeldung: dort „Mit Code anmelden“ und den Code oben eintippen – oder Personalnummer und Passwort. <b>Android:</b> Chrome → ⋮ → „App installieren“. Das alte Symbol kannst du danach löschen.</div>
+    </div>
+    <div class="hint" id="uzMsg"></div>
+    <button class="btn ghost" id="uzClose" style="margin-top:8px">Schließen</button>
   </div>
 </div>
 
@@ -762,6 +810,7 @@ const load = (k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }cat
 /* Jede Datenaenderung markiert den Stand als "noch nicht online gesichert" (Sync) */
 const LS_DIRTY = 'tagesdoku_dirty';
 const save = (k,v)=>{
+  if(k !== LS.cfg && !fremdSchreiben && nurLesen()) return;   // umgezogen: nur noch lesen (Sync darf weiter uebernehmen)
   localStorage.setItem(k, JSON.stringify(v)); localStorage.setItem(LS_DIRTY, '1');
   if(typeof syncNachAenderung === 'function') syncNachAenderung();
 };
@@ -770,7 +819,14 @@ cfg.nachtBuchung = 'dienstbeginn'; // fest: naechtliche Einsaetze stehen am Tag 
 cfg.empfaenger ??= '';   // leer = bewusst nichts kopieren
 let plan  = load(LS.plan, {});   // "2026-09-07" -> {wd, oa, urlaub}
 let days  = load(LS.days, {});   // "2026-09-07" -> Tagesdaten
-let swap  = load(LS.swap, {});   // "2026-09-07" -> Name des Diensthabenden (Tausch nach dem Excel-Import)
+let swap  = load(LS.swap, {});
+/* Umgezogen (cfg.umzug, kommt per Sync auf alle Geraete): hier nur noch lesen */
+let nurLesenGemeldet = false, fremdSchreiben = false;
+const nurLesen = ()=>{
+  if(!cfg.umzug) return false;
+  if(!nurLesenGemeldet){ nurLesenGemeldet = true; setTimeout(()=> toast('Umgezogen – Änderungen bitte in der neuen App eintragen.'), 0); }
+  return true;
+};   // "2026-09-07" -> Name des Diensthabenden (Tausch nach dem Excel-Import)
 let extras= load(LS.extra, {}); // "2026-09" -> {252: Einspringtage} - laesst sich nicht aus den Zeiten ableiten
 /* v1.11.0 hatte hier Dienstart-Codes gespeichert – die sind jetzt bedeutungslos */
 {
@@ -862,7 +918,7 @@ const echteTage = () => {
   for(const k in days) if(hasContent(k)) out[k] = days[k];
   return out;
 };
-const persist = () => { save(LS.days, echteTage()); histNote(); };
+const persist = () => { if(nurLesen()) return; save(LS.days, echteTage()); histNote(); };
 
 /* ---------- Rueckgaengig / Wiederholen ----------
    Snapshots von Tagen, Diensttausch und Einspringtagen (nicht Plan/Einstellungen).
@@ -1355,15 +1411,18 @@ function uebernehmeBackup(data){
   if(!data || typeof data !== 'object' || (!data.cfg && !data.plan && !data.days))
     throw new Error('Keine Sicherungsdatei dieser App.');
   lokaleKopie('-vorher');   // Stand vor dem Ueberschreiben bleibt als eigene Geraete-Kopie erhalten
+  fremdSchreiben = true;
   if(data.cfg  && typeof data.cfg  === 'object'){ cfg  = Object.assign(cfg, data.cfg); save(LS.cfg,  cfg);  }
   if(data.plan && typeof data.plan === 'object'){ plan = data.plan;  save(LS.plan, plan); }
   if(data.days && typeof data.days === 'object'){ days = data.days;  save(LS.days, days); }
   if(data.swap && typeof data.swap === 'object'){ swap = data.swap;  save(LS.swap, swap); }
   if(data.extras && typeof data.extras === 'object'){ extras = data.extras; save(LS.extra, extras); }
+  fremdSchreiben = false;
   Object.entries(CFGMAP).forEach(([id,key])=> $(id).value = cfg[key] || '');
   fuelleNettoFelder();
   expanded = new Set(); lastRenderedDay = null;
   renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo(); renderDuty();
+  if(typeof umzugAnzeigen === 'function') umzugAnzeigen();
 }
 
 $('exportData').onclick = ()=>{
@@ -2226,6 +2285,157 @@ $('resetAlles').onclick = async ()=>{
   location.replace(location.pathname);
 };
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+
+/* ---------- Umzug auf die Klinik-Plattform (je Person, selbst gewaehlt) ----------
+   Adresse aus plan/config.json im Team-Repo (umzug.url der Dienstplanung), sonst Eingabe. Ablauf: anmelden
+   (Startpasswort -> eigenes) -> Tage (oatd/umzug) und Einstellungen (einstellung/oatd) hochladen -> Gegenprobe Tag fuer Tag ->
+   cfg.umzug = {am, ziel} (per Sync auf die anderen Geraete) -> hier nur noch lesen, Link mit Kopplungscode zur neuen App.
+   Dienstplan und Diensttausch (Excel) ziehen nicht mit: die neue App holt Dienste aus der Dienstplanung. */
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const LS_PLATTFORM = 'tagesdoku_plattform';   // {ziel, token} – nur Geraet, nicht im Backup
+let plattform = load(LS_PLATTFORM, {});
+const plattformSpeichern = ()=> localStorage.setItem(LS_PLATTFORM, JSON.stringify(plattform));
+const LS_UMZUG_SPAETER = 'tagesdoku_umzug_spaeter';
+async function papi(pfad, {method = 'GET', body, token = plattform.token} = {}){
+  let res;
+  try{
+    res = await fetch(plattform.ziel + '/api/' + pfad, {method, cache:'no-store',
+      headers: Object.assign({}, token ? {authorization: 'Bearer ' + token} : {}, body !== undefined ? {'content-type': 'application/json'} : {}),
+      body: body === undefined ? undefined : JSON.stringify(body)});
+  }catch(e){ throw new Error('Keine Verbindung zur Klinik-Plattform.'); }
+  const d = await res.json().catch(()=> ({}));
+  if(!res.ok) throw Object.assign(new Error(d.fehler || 'Fehler ' + res.status), {status: res.status});
+  return d;
+}
+async function umzugZiel(){
+  if(plattform.ziel) return plattform.ziel;
+  if(syncAktiv() && sync.repo.toLowerCase() === TEAM_REPO){
+    try{
+      const r = await gh('GET', null, 'plan/config.json');
+      const c = r && JSON.parse(new TextDecoder().decode(unb64(r.content.replace(/\s/g, ''))));
+      if(c && c.umzug && c.umzug.url){ plattform.ziel = new URL(c.umzug.url).origin; plattformSpeichern(); }
+    }catch(e){}
+  }
+  return plattform.ziel || '';
+}
+const neueAppUrl = code => plattform.ziel + '/?ziel=/oa-td/' + (code ? '#koppeln=' + code : '');
+async function umzugAnzeigen(){
+  $('umzugAufheben').classList.toggle('hidden', !cfg.umzug);
+  $('umzugKnopf').classList.toggle('hidden', !!cfg.umzug);
+  if(cfg.umzug){
+    $('umzugBanner').classList.add('hidden');
+    $('umzugNurLesen').classList.remove('hidden');
+    $('umzugNurLesenText').textContent = `Deine Tagesdoku ist am ${new Date(cfg.umzug.am).toLocaleDateString('de-DE')} auf die Klinik-Plattform umgezogen. Neue Einträge bitte dort – hier wird nichts mehr gespeichert.`;
+    if(!plattform.ziel && cfg.umzug.ziel){ plattform.ziel = cfg.umzug.ziel; plattformSpeichern(); }
+    return;
+  }
+  $('umzugNurLesen').classList.add('hidden');
+  if(Date.now() < (+localStorage.getItem(LS_UMZUG_SPAETER) || 0)) return;
+  if(await umzugZiel()) $('umzugBanner').classList.remove('hidden');
+}
+const uzSchritt = id => ['uzAnmelden','uzPwNeu','uzPruefen','uzFertig'].forEach(x => $(x).style.display = x === id ? '' : 'none');
+const uzMsg = (t, art = 'note') => $('uzMsg').innerHTML = t ? `<span class="${art}">${t}</span>` : '';
+async function umzugOeffnen(){
+  uzMsg(''); $('umzugBox').style.display = 'block';
+  $('uzPnr').value = cfg.pnr || sync.kennung || '';
+  const ziel = await umzugZiel();
+  $('uzZielZeile').style.display = ziel ? 'none' : ''; $('uzZiel').value = ziel;
+  uzSchritt('uzAnmelden');
+}
+$('umzugStart').onclick = $('umzugKnopf').onclick = umzugOeffnen;
+$('umzugSpaeter').onclick = ()=>{ localStorage.setItem(LS_UMZUG_SPAETER, String(Date.now() + 7 * 864e5)); $('umzugBanner').classList.add('hidden'); syncHeaderPad(); };
+$('uzClose').onclick = ()=>{ $('umzugBox').style.display = 'none'; };
+$('uzLogin').onclick = async ()=>{
+  uzMsg('');
+  try{
+    if(!plattform.ziel){
+      const z = $('uzZiel').value.trim(); if(!/^https:\/\/|^http:\/\/localhost/.test(z)) throw new Error('Bitte die Adresse der Klinik-Plattform eintragen (https://…).');
+      plattform.ziel = new URL(z).origin;
+    }
+    const r = await papi('login', {method:'POST', body:{pnr: $('uzPnr').value.trim(), passwort: $('uzPw').value}, token: ''});
+    plattform.token = r.token; plattformSpeichern(); $('uzPw').value = '';
+    if(r.pw_neu){ uzSchritt('uzPwNeu'); return; }
+    await umzugPruefen();
+  }catch(e){ if($('uzZielZeile').style.display === '') delete plattform.ziel; uzMsg(e.message); }
+};
+$('uzPwOk').onclick = async ()=>{
+  uzMsg('');
+  if($('uzPw1').value !== $('uzPw2').value){ uzMsg('Die beiden Eingaben sind verschieden.'); return; }
+  try{ await papi('passwort', {method:'POST', body:{neu: $('uzPw1').value}}); $('uzPw1').value = $('uzPw2').value = ''; await umzugPruefen(); }
+  catch(e){ uzMsg(e.message); }
+};
+/* Vor dem Umzug: frischen Stand von GitHub holen, zeigen was uebertragen wird, Dienste Excel <-> Dienstplanung vergleichen */
+async function umzugPruefen(){
+  uzSchritt('uzPruefen'); $('uzLos').disabled = true;
+  $('uzInfo').textContent = 'Prüfe …';
+  if(syncAktiv()) await abgleichen(false);
+  const [ich, st] = await Promise.all([papi('ich'), papi('oatd/stand')]);
+  const nTage = Object.keys(echteTage()).length;
+  const zeilen = [`Angemeldet als <b>${esc(ich.person.nachname)}${ich.person.vorname ? ', ' + esc(ich.person.vorname) : ''}</b> (${esc(ich.person.pnr)}).`,
+    `Übertragen werden <b>${nTage}</b> erfasste Tage, die Einstellungen (Gehalt, Netto, Konto) und die Einspringtage.`];
+  if(ich.oa !== 'oa') zeilen.push('⚠️ Du bist in der Dienstplanung der Oberärzte noch nicht verknüpft – die neue App zeigt dann keine Dienste. Bitte der Verwaltung melden (umziehen geht trotzdem).');
+  if(st.tage) zeilen.push(`⚠️ Auf der Plattform liegen schon <b>${st.tage}</b> Tage (z. B. von einem anderen Gerät). Gleiche Tage werden durch die von hier ersetzt.`);
+  /* Dienste laut Excel-Plan hier vs. Dienstplanung (letzte 4 Monate mit Plan) */
+  try{
+    const keys = Object.keys(plan).sort().filter(k => k <= iso(new Date()) && k >= nrIso(tagNr(iso(new Date())) - 120));
+    if(keys.length && ich.oa === 'oa'){
+      const r = await papi(`oatd/plan?von=${keys[0]}&bis=${keys[keys.length - 1]}`);
+      const RUF = ['ZD1','ZD2','RBD','RBD2'], ABW = ['urlaub','fb','krank','fza','frei'];
+      const abw = keys.filter(k => (RUF.includes(derive(k).code) !== (r.dienste[k] === r.k)) || ((derive(k).code === 'abwesend') !== !!(r.wunsch[k] && ABW.includes(r.wunsch[k].typ))));
+      zeilen.push(abw.length ? `Dienstplan: an <b>${abw.length}</b> Tagen weicht der Excel-Plan hier von der Dienstplanung ab (${abw.slice(0, 6).map(k => k.slice(8) + '.' + k.slice(5, 7) + '.').join(', ')}${abw.length > 6 ? ' …' : ''}). Die neue App nimmt die Dienstplanung – bitte dort prüfen.`
+        : 'Dienstplan: Excel-Plan hier und Dienstplanung stimmen in den letzten Monaten überein.');
+    }
+  }catch(e){}
+  $('uzInfo').innerHTML = zeilen.map(z => `<div style="margin-bottom:6px">${z}</div>`).join('');
+  $('uzLos').disabled = false;
+}
+$('uzLos').onclick = async ()=>{
+  uzMsg(''); $('uzLos').disabled = true;
+  try{
+    const echt = echteTage(), liste = Object.keys(echt).sort().map(k => ({datum: k, daten: echt[k]}));
+    for(let i = 0; i < liste.length; i += 300){
+      $('uzInfo').textContent = `Übertrage Tage ${i + 1}–${Math.min(i + 300, liste.length)} von ${liste.length} …`;
+      await papi('oatd/umzug', {method:'POST', body:{tage: liste.slice(i, i + 300)}});
+    }
+    const einst = {cfg: Object.assign({}, cfg), extras};
+    delete einst.cfg.umzug;
+    await papi('einstellung/oatd', {method:'PUT', body:{daten: einst}});
+    /* Gegenprobe: alles vom Server zurueck und Tag fuer Tag vergleichen */
+    $('uzInfo').textContent = 'Gegenprobe …';
+    const server = {};
+    for(let seit = 0, mehr = true; mehr; ){
+      const r = await papi('oatd/tage?seit=' + seit);
+      r.tage.forEach(t => server[t.datum] = t.daten); seit = r.rev; mehr = r.mehr;
+    }
+    const gleich = liste.filter(t => JSON.stringify(server[t.datum]) === JSON.stringify(t.daten)).length;
+    const se = await papi('einstellung/oatd');
+    const einstGleich = JSON.stringify(se.daten) === JSON.stringify(einst);
+    if(gleich !== liste.length || !einstGleich)
+      throw new Error(`Gegenprobe nicht bestanden: ${gleich} von ${liste.length} Tagen gleich${einstGleich ? '' : ', Einstellungen verschieden'}. Hier bleibt alles unverändert – bitte später erneut versuchen oder melden.`);
+    cfg.umzug = {am: Date.now(), ziel: plattform.ziel};
+    save(LS.cfg, cfg);
+    if(syncAktiv()) abgleichen(false);   // andere Geraete erfahren vom Umzug
+    $('uzErgebnis').innerHTML = `<div class="ok" style="font-size:15px">✓ Umzug fertig – Gegenprobe bestanden: ${gleich} von ${liste.length} Tagen und die Einstellungen sind auf der Plattform gleich.</div>`;
+    uzSchritt('uzFertig'); umzugCode(); umzugAnzeigen(); renderDay();
+  }catch(e){ uzMsg(e.message); $('uzLos').disabled = false; }
+};
+/* Kopplungscode: die neue App ist ohne erneute Anmeldung offen (10 min, einmal) */
+async function umzugCode(){
+  try{ const r = await papi('kopplung', {method:'POST', body:{}}); plattform.code = r.code; plattform.codeBis = r.ablauf; plattformSpeichern();
+    $('uzCode').innerHTML = `Code für „Mit Code anmelden“: <b style="font-size:18px;letter-spacing:.1em">${esc(r.code)}</b> (gültig bis ${new Date(r.ablauf).toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'})} Uhr).`;
+  }catch(e){ plattform.code = ''; $('uzCode').textContent = ''; }
+}
+$('umzugOeffnen').onclick = $('umzugOeffnen2').onclick = async ()=>{
+  if(!plattform.ziel){ await umzugOeffnen(); return; }
+  if(plattform.token && !(plattform.code && plattform.codeBis > Date.now() + 30000)) await umzugCode();
+  const code = plattform.token && plattform.codeBis > Date.now() ? plattform.code : '';
+  plattform.code = ''; plattformSpeichern();   // nur einmal gueltig
+  location.href = neueAppUrl(code);
+};
+$('umzugAufheben').onclick = ()=>{
+  if(!confirm('Umzug aufheben und hier wieder eintragen?\n\nEinträge, die du inzwischen in der neuen App gemacht hast, kommen NICHT hierher zurück. Auf allen deinen Geräten wird diese App wieder beschreibbar.')) return;
+  delete cfg.umzug; nurLesenGemeldet = false; save(LS.cfg, cfg); umzugAnzeigen();
+};
 
 /* ---------- Dienstplan-Import ---------- */
 $('xlsFile').onchange = async e => {
@@ -3934,6 +4144,7 @@ $('gmEinspringen').addEventListener('change', e=>{
   if(n) (extras[geldMonat] ||= {})[252] = n;
   else if(extras[geldMonat]) delete extras[geldMonat][252];
   if(extras[geldMonat] && !Object.keys(extras[geldMonat]).length) delete extras[geldMonat];
+  if(nurLesen()) return;
   save(LS.extra, extras); histNote();
   renderGeldMonat();
 });
@@ -4044,8 +4255,8 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.76';
-const APP_BUILD   = '14.10.2026';
+const APP_VERSION = '1.77';
+const APP_BUILD   = '21.10.2026';
 
 function showVersion(){
   $('appVersion').textContent = 'v' + APP_VERSION;
@@ -4099,7 +4310,7 @@ function fuelleNettoFelder(){
 }
 fuelleNettoFelder();
 renderDay(); renderPlanList(); renderTeamList(); renderHistory(); updateStorageInfo();
-renderSnaps(); syncStatus(); autoSichern();
+renderSnaps(); syncStatus(); autoSichern(); umzugAnzeigen();
 /* Update-Suche: Tipp auf die Versionsnummer im Kopf */
 $('appVersion').onclick = async ()=>{
   const info = {set textContent(t){ toast(t); }};

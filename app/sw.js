@@ -1,4 +1,4 @@
-const CACHE = 'tagesdoku-v82';
+const CACHE = 'tagesdoku-v83';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './Tagesdokumentation_Ueberstunden_Rufdienst_ausfuellbar.pdf',
@@ -19,6 +19,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   if (new URL(e.request.url).hostname === 'api.github.com') return;   // Online-Backup nie aus dem Cache
+  if (new URL(e.request.url).pathname.startsWith('/api/')) return;     // Klinik-Plattform (Umzug) nie aus dem Cache
   const isPage = e.request.mode === 'navigate' || e.request.url.endsWith('/index.html') || e.request.url.endsWith('/app/');
   if (isPage) {
     /* Cache-first: Start sofort, auch offline. Frisch aus dem Netz nur, wenn die
