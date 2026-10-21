@@ -346,7 +346,7 @@ Neue Funktionen der Dienstplanung **dort** bauen, nicht mehr in `plan/` hier. `p
 schaltet in Einstellungen → Zugang `cfg.umzug` (`hinweis` = Banner mit Link, `fertig` = Fenster mit Link + nur lesen, `umzugZeigen()`).
 Ablauf: Zugänge anlegen + einladen → „hinweis“ → „fertig“ → einige Minuten warten → Backup herunterladen → Verwaltung → Abteilungen →
 „Umzug Dienstplanung Oberärzte“ einspielen (Gegenprobe muss „bestanden“ zeigen). Tagesdoku (`app/`) zieht als letztes um.
-Tagesdoku (`app/`) zieht seit 1.77 **je Person** um (kein Stichtag, wer will bleibt): Banner/Knopf „Auf die Klinik-Plattform umziehen“ →
+Tagesdoku (`app/`) zieht seit 1.77 **je Person** um (kein Stichtag, wer will bleibt; ab 1.78 erst nach Startsignal der Verwaltung, `umzugFrei()` = `GET oatd/freigabe`, Probe mit `#umzug`): Banner/Knopf „Auf die Klinik-Plattform umziehen“ →
 Anmeldung dort (CORS) → `oatd/umzug` + `einstellung/oatd` → Gegenprobe → `cfg.umzug = {am, ziel}` (per Sync auf alle Geräte) → nur lesen (`nurLesen()`,
 `save()` blockt außer cfg und Sync-Übernahme `fremdSchreiben`), „Neue App öffnen“ mit Kopplungscode. Adresse aus `plan/config.json` (`umzug.url`), Gerät
 `tagesdoku_plattform` {ziel, token}. Neue App: `public/oa-td/` in `tagesdoku-team-ass` (Dienste aus der DB, kein Excel). SW lässt `/api/` durch.
