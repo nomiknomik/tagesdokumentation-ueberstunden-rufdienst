@@ -661,7 +661,7 @@ nav button.on{color:var(--color-primary);background:rgba(0,99,110,.08)}
   <div class="card" style="max-width:440px;margin:0 auto">
     <h2><span data-icon="upload"></span>Umzug auf die Klinik-Plattform</h2>
     <div id="uzAnmelden">
-      <div class="hint" style="margin-top:0">Personalnummer und Passwort aus deiner Einladung zur Klinik-Plattform (bzw. dein eigenes, wenn du dich dort schon angemeldet hast). Noch keine Einladung bekommen? Kurz bei der Verwaltung melden – bis dahin geht es hier normal weiter.</div>
+      <div class="hint" style="margin-top:0">Gleiche Anmeldung wie in der <b>Dienstplanung der Oberärzte</b> (Klinik-Plattform): Personalnummer und dein Passwort von dort. Noch nie dort angemeldet? Dann Personalnummer und Startpasswort aus der Einladung. Noch keine Einladung bekommen? Kurz bei der Verwaltung melden – bis dahin geht es hier normal weiter.</div>
       <div class="row" id="uzZielZeile" style="display:none"><label>Adresse</label><input id="uzZiel" placeholder="https://…" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
       <div class="row"><label>Personalnummer</label><input id="uzPnr" inputmode="numeric" autocomplete="username"></div>
       <div class="row"><label>Passwort</label><input id="uzPw" type="password" autocomplete="current-password"></div>
@@ -4265,8 +4265,8 @@ $('grundAdd').onclick = ()=>{
 gehaltMigrieren(); renderGrundListe();
 
 /* ---------- Start ---------- */
-const APP_VERSION = '1.78';
-const APP_BUILD   = '21.10.2026';
+const APP_VERSION = '1.79';
+const APP_BUILD   = '22.10.2026';
 
 function showVersion(){
   $('appVersion').textContent = 'v' + APP_VERSION;
